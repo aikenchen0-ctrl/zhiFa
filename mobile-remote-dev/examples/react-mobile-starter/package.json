@@ -1,0 +1,58 @@
+{
+  "name": "react-mobile-starter",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "移动端开发启动模板",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 3000",
+    "dev:mobile": "concurrently \"npm run dev\" \"npm run tunnel\"",
+    "dev:debug": "VITE_DEBUG_VCONSOLE=true npm run dev",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0",
+    "tunnel": "ngrok http 3000",
+    "tunnel:lt": "lt --port 3000",
+    "tunnel:serveo": "ssh -R 80:localhost:3000 serveo.net",
+    "setup": "../scripts/mobile-dev-workflow.sh",
+    "cleanup": "../scripts/mobile-dev-workflow.sh cleanup",
+    "info": "../scripts/mobile-dev-workflow.sh info",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "lint": "eslint src --ext js,jsx,ts,tsx",
+    "lint:fix": "eslint src --ext js,jsx,ts,tsx --fix",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.8.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.28",
+    "@types/react-dom": "^18.0.11",
+    "@vitejs/plugin-react": "^3.1.0",
+    "autoprefixer": "^10.4.14",
+    "concurrently": "^7.6.0",
+    "eruda": "^3.0.1",
+    "eslint": "^8.36.0",
+    "eslint-plugin-react": "^7.32.2",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "postcss": "^8.4.21",
+    "tailwindcss": "^3.2.7",
+    "typescript": "^4.9.3",
+    "vconsole": "^3.15.1",
+    "vite": "^4.2.0",
+    "vite-plugin-pwa": "^0.14.4",
+    "vitest": "^0.29.2"
+  },
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
+  "browserslist": [
+    "iOS >= 10",
+    "Android >= 5",
+    "Chrome >= 60",
+    "Safari >= 10",
+    "Firefox >= 60"
+  ]
+}

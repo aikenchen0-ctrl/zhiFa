@@ -1,0 +1,42 @@
+{
+  "version": "1.0",
+  "language": "zh-CN",
+  "systemPrompt": "请始终用中文回复用户。Use Chinese for all responses and interactions.",
+  "sparc": {
+    "enabled": true,
+    "modes": [
+      "orchestrator",
+      "coder",
+      "researcher",
+      "tdd",
+      "architect",
+      "reviewer",
+      "debugger",
+      "tester",
+      "analyzer",
+      "optimizer",
+      "documenter",
+      "designer",
+      "innovator",
+      "swarm-coordinator",
+      "memory-manager",
+      "batch-executor",
+      "workflow-manager"
+    ]
+  },
+  "swarm": {
+    "enabled": true,
+    "strategies": [
+      "research",
+      "development",
+      "analysis",
+      "testing",
+      "optimization",
+      "maintenance"
+    ]
+  },
+  "agents": {
+    "defaultLanguage": "zh-CN",
+    "alwaysRespondInChinese": true
+  }
+}
