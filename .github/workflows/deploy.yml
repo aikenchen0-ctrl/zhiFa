@@ -34,19 +34,15 @@ jobs:
           node-version: '18'
           cache: 'npm'
           
-      - name: Install dependencies
-        run: npm ci || npm install
-        
       - name: Build project
         run: |
           # 静态HTML部署 - 直接复制文件
           mkdir -p dist
-          cp index.html dist/
-          # 如果有其他资源文件，也复制过去
-          [ -d "assets" ] && cp -r assets dist/ || true
-          [ -d "images" ] && cp -r images dist/ || true
-          [ -d "css" ] && cp -r css dist/ || true
-          [ -d "js" ] && cp -r js dist/ || true
+          cp index.html dist/index.html
+          echo "✅ 复制完成，检查文件:"
+          ls -la dist/
+          echo "✅ index.html内容预览:"
+          head -5 dist/index.html
           
       - name: Setup Pages
         uses: actions/configure-pages@v4
