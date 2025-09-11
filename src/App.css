@@ -1,0 +1,142 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.App {
+  padding: 1rem;
+}
+
+.card {
+  padding: 2em;
+  margin: 1em 0;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  background: #f9f9f9;
+}
+
+.mobile-info {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border: 2px solid #4CAF50;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e8f5e8 0%, #f0f8f0 100%);
+  text-align: left;
+}
+
+.mobile-info h3 {
+  margin-top: 0;
+  color: #2e7d32;
+}
+
+.mobile-info p {
+  margin: 0.5rem 0;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.touch-area {
+  margin: 2rem 0;
+  padding: 2rem;
+  border: 2px dashed #2196F3;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #e3f2fd 0%, #f0f7ff 100%);
+  cursor: pointer;
+  user-select: none;
+  min-height: 200px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.touch-area:active {
+  background: linear-gradient(135deg, #bbdefb 0%, #e1f5fe 100%);
+  transform: scale(0.98);
+  transition: all 0.1s ease;
+}
+
+.touch-feedback {
+  margin-top: 1rem;
+  padding: 0.5rem;
+  background: rgba(33, 150, 243, 0.1);
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  min-height: 20px;
+}
+
+.deploy-info {
+  margin: 2rem 0;
+  padding: 1.5rem;
+  border: 2px solid #FF9800;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #fff3e0 0%, #fdf7f0 100%);
+  text-align: left;
+}
+
+.deploy-info h3 {
+  margin-top: 0;
+  color: #f57c00;
+}
+
+.deploy-info p {
+  margin: 0.5rem 0;
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+button {
+  border-radius: 8px;
+  border: 1px solid transparent;
+  padding: 0.6em 1.2em;
+  font-size: 1em;
+  font-weight: 500;
+  font-family: inherit;
+  background-color: #1a1a1a;
+  color: white;
+  cursor: pointer;
+  transition: border-color 0.25s;
+}
+
+button:hover {
+  border-color: #646cff;
+}
+
+button:focus,
+button:focus-visible {
+  outline: 4px auto -webkit-focus-ring-color;
+}
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  #root {
+    padding: 1rem;
+  }
+  
+  .App {
+    padding: 0.5rem;
+  }
+  
+  .card, .mobile-info, .touch-area, .deploy-info {
+    margin: 1rem 0;
+    padding: 1rem;
+  }
+  
+  .mobile-info p, .deploy-info p {
+    font-size: 0.8rem;
+    word-break: break-all;
+  }
+  
+  .touch-area {
+    min-height: 150px;
+  }
+  
+  button {
+    padding: 1em 1.5em;
+    font-size: 1.1em;
+    min-height: 44px; /* iOS推荐的最小触摸目标 */
+  }
+}
