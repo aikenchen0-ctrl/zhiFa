@@ -1,7 +1,7 @@
 # 气泡组件设计规范
 
-**版本**: 1.0  
-**最后更新**: 2024-09-13  
+**版本**: 2.0  
+**最后更新**: 2025-01-15  
 **标准参考文件**: `bubble-demo.html`
 
 ## ⚠️ 重要说明
@@ -10,16 +10,36 @@
 
 当其他 AI 或开发者需要实现气泡相关功能时，**必须以 `bubble-demo.html` 为标准参考**，而不是重新设计或猜测样式。
 
+## 🚨 关键原则
+
+1. **完全复制bubble-demo.html**: 所有CSS样式、HTML结构、类名必须完全一致
+2. **使用Tailwind CDN**: `<script src="https://cdn.tailwindcss.com"></script>`
+3. **玻璃材质系统**: 必须使用 `.glass-effect`, `.glass-self`, `.glass-other` 类
+4. **发送者名字定位**: 中心线与气泡上边缘对齐，使用 `top: 0` + `transform: translateY(-50%)`
+5. **操作菜单**: 2行4列纯文字按钮，无图标
+
 ---
 
 ## 🎨 基础设计系统
 
-### 色彩和背景
-- **页面背景**: `background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)`
-- **玻璃模糊效果**: `backdrop-filter: blur(20px)` + `-webkit-backdrop-filter: blur(20px)`
+### 必需的CSS类定义（完全基于bubble-demo.html）
 
-### 玻璃材质系统
+#### 页面基础样式
 ```css
+body {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+}
+```
+
+#### 玻璃材质系统
+```css
+/* 玻璃模糊效果 - 基础类 */
+.glass-effect {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
 /* 自己发送的气泡 */
 .glass-self {
   background: rgba(255, 255, 255, 0.25);
@@ -32,7 +52,7 @@
   border: 1px solid rgba(156, 163, 175, 0.4);
 }
 
-/* 更深的自己气泡（备选） */
+/* 备选深色版本 */
 .glass-self-dark {
   background: rgba(255, 255, 255, 0.08);
 }
@@ -145,45 +165,105 @@ border-radius: 4px;                /* 不要圆角 */
 
 ## 🎛️ 操作菜单规范
 
-**布局**: 2行4列 (`grid-cols-4 grid-rows-2`)
+**⚠️ 重要**: 操作菜单通过JavaScript动态创建，**仅文字无图标**
 
-**样式**:
+### 完整CSS样式（基于bubble-demo.html）
 ```css
+/* 操作菜单容器 */
 .action-menu {
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(16px);
   border: 1px solid rgba(255, 255, 255, 0.3);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
   border-radius: 12px;
   padding: 8px;
+  display: none;
+  z-index: 50;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  min-width: 280px;
 }
-```
 
-**8个操作按钮** (顺序固定，仅文字无图标):
-1. 话外音 (aside)
-2. 复制 (copy)  
-3. 转发 (forward)
-4. 收藏 (collect)
-5. 多选 (multi-select)
-6. 引用 (quote)
-7. 放大 (enlarge)  
-8. 删除 (delete)
+.action-menu.show {
+  display: block;
+}
 
-**按钮样式**:
-```css
+/* 2行4列网格布局 */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+/* 操作按钮 - 仅文字，无图标 */
 .action-button {
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px 4px;
-  font-size: 0.75rem;
+  cursor: pointer;
   border-radius: 8px;
-  transition: background-color 150ms ease;
+  transition: background-color 0.2s ease;
+  border: none;
+  background: transparent;
+  font-size: 0.75rem;
   color: #374151;
 }
 
 .action-button:hover {
   background: rgba(255, 255, 255, 0.8);
+}
+
+/* 菜单箭头 */
+.menu-arrow {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 6px solid rgba(255, 255, 255, 0.95);
+}
+```
+
+### 8个操作按钮（顺序固定，仅文字无图标）
+1. 话外音
+2. 复制  
+3. 转发
+4. 收藏
+5. 多选
+6. 引用
+7. 放大  
+8. 删除（红色文字）
+
+### JavaScript实现（基于bubble-demo.html）
+```javascript
+function toggleMenu(element) {
+  // 隐藏其他菜单
+  document.querySelectorAll('.action-menu').forEach(menu => {
+    if (menu.parentNode !== element) {
+      menu.remove();
+    }
+  });
+  
+  // 切换当前菜单
+  const existingMenu = element.querySelector('.action-menu');
+  if (existingMenu) {
+    existingMenu.remove();
+    return;
+  }
+  
+  // 创建新菜单
+  const menu = document.createElement('div');
+  menu.className = 'action-menu show';
+  menu.innerHTML = '...'; // 8个按钮的HTML
+  
+  element.style.position = 'relative';
+  element.appendChild(menu);
 }
 ```
 
@@ -332,20 +412,38 @@ export interface BubbleProps {
 
 实现的气泡组件必须满足以下标准才算合格:
 
-1. ✅ **视觉一致性**: 与 `bubble-demo.html` 视觉效果完全一致
-2. ✅ **发送者名字**: 只有文本阴影，无背景矩形
-3. ✅ **圆角统一**: 所有圆角都是 12px
-4. ✅ **玻璃材质**: 正确的透明度和模糊效果
-5. ✅ **操作菜单**: 2行4列布局，8个按钮顺序正确
-6. ✅ **交互流畅**: hover 和点击效果自然
-7. ✅ **响应式**: 移动端和桌面端都正常显示
+1. ✅ **完全一致性**: 与 `bubble-demo.html` 在视觉和结构上100%一致
+2. ✅ **CSS样式**: 所有 `.glass-effect`, `.glass-self`, `.glass-other` 类完全复制
+3. ✅ **HTML结构**: 容器层次、Tailwind classes、内联样式完全一致
+4. ✅ **发送者名字**: 中心线与气泡上边缘对齐，仅文本阴影无背景
+5. ✅ **操作菜单**: 
+   - 2行4列纯文字按钮，无图标
+   - JavaScript动态创建
+   - 正确的定位和箭头
+6. ✅ **玻璃材质**: 
+   - `.glass-effect` 背景模糊
+   - `.glass-other` 透明背景，灰色边框
+   - `.glass-self` 白色半透明背景
+7. ✅ **简单气泡**: 正确的 `after:` 伪元素小尾巴
+8. ✅ **交互效果**: `hover:scale-[1.01]` 和点击菜单切换
+9. ✅ **Tailwind CDN**: 使用 `https://cdn.tailwindcss.com`
+10. ✅ **代码完整性**: 无JavaScript错误，所有功能正常
 
 ---
 
 ## 🔄 更新历史
 
 - **v1.0** (2024-09-13): 基于 `bubble-demo.html` 创建初始设计规范
+- **v2.0** (2025-01-15): 
+  - 🔧 重新分析并完全重写设计规范，确保与bubble-demo.html 100%一致
+  - 🎨 添加完整的CSS类定义和JavaScript实现
+  - 📝 详细说明发送者名字定位原理（中心对齐上边缘）
+  - 🎛️ 完善操作菜单规范（2行4列纯文字无图标）
+  - ✅ 更新验收标准，增加10项具体检查项
+  - 🚨 添加关键原则，强调完全复制bubble-demo.html的重要性
 
 ---
 
 **⚠️ 重要提醒**: 任何对此规范的修改都必须先更新 `bubble-demo.html`，然后更新此文档。保持 `bubble-demo.html` 作为视觉标准的权威性。
+
+**🎯 实施建议**: 在实现气泡组件时，建议直接复制 `bubble-demo.html` 的相关部分，而不是从零开始编写，这样可以确保100%的一致性。
