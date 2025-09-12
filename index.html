@@ -138,9 +138,8 @@
       background: rgba(255, 255, 255, 0.8);
     }
 
-    .action-icon {
-      font-size: 1.25rem;
-      margin-bottom: 2px;
+    .action-button {
+      justify-content: center;
     }
 
     .menu-arrow {
@@ -181,35 +180,27 @@
         <div class="action-menu">
           <div class="action-grid">
             <button class="action-button" onclick="handleAction('aside', event)">
-              <span class="action-icon">💭</span>
               <span>话外音</span>
             </button>
             <button class="action-button" onclick="handleAction('copy', event)">
-              <span class="action-icon">📋</span>
               <span>复制</span>
             </button>
             <button class="action-button" onclick="handleAction('forward', event)">
-              <span class="action-icon">📤</span>
               <span>转发</span>
             </button>
             <button class="action-button" onclick="handleAction('collect', event)">
-              <span class="action-icon">⭐</span>
               <span>收藏</span>
             </button>
             <button class="action-button" onclick="handleAction('multi-select', event)">
-              <span class="action-icon">✅</span>
               <span>多选</span>
             </button>
             <button class="action-button" onclick="handleAction('quote', event)">
-              <span class="action-icon">💬</span>
               <span>引用</span>
             </button>
             <button class="action-button" onclick="handleAction('enlarge', event)">
-              <span class="action-icon">🔍</span>
               <span>放大</span>
             </button>
             <button class="action-button" onclick="handleAction('delete', event)">
-              <span class="action-icon">🗑️</span>
               <span>删除</span>
             </button>
           </div>
@@ -225,35 +216,27 @@
         <div class="action-menu">
           <div class="action-grid">
             <button class="action-button" onclick="handleAction('aside', event)">
-              <span class="action-icon">💭</span>
               <span>话外音</span>
             </button>
             <button class="action-button" onclick="handleAction('copy', event)">
-              <span class="action-icon">📋</span>
               <span>复制</span>
             </button>
             <button class="action-button" onclick="handleAction('forward', event)">
-              <span class="action-icon">📤</span>
               <span>转发</span>
             </button>
             <button class="action-button" onclick="handleAction('collect', event)">
-              <span class="action-icon">⭐</span>
               <span>收藏</span>
             </button>
             <button class="action-button" onclick="handleAction('multi-select', event)">
-              <span class="action-icon">✅</span>
               <span>多选</span>
             </button>
             <button class="action-button" onclick="handleAction('quote', event)">
-              <span class="action-icon">💬</span>
               <span>引用</span>
             </button>
             <button class="action-button" onclick="handleAction('enlarge', event)">
-              <span class="action-icon">🔍</span>
               <span>放大</span>
             </button>
             <button class="action-button" onclick="handleAction('delete', event)">
-              <span class="action-icon">🗑️</span>
               <span>删除</span>
             </button>
           </div>
@@ -267,42 +250,35 @@
     <h2>👤 详细气泡测试</h2>
     
     <!-- 别人发送的详细气泡 -->
-    <div class="bubble sender-other" onclick="toggleActionMenu(this)">
-      <div class="bubble-content">
-        <div class="sender-name">张三</div>
-        <div class="message-text">这是一个测试消息，点击我应该能看到操作菜单</div>
+    <div class="relative">
+      <span class="sender-name">张三</span>
+      <div class="bubble sender-other" onclick="toggleActionMenu(this)">
+        <div class="bubble-content">
+          <div class="message-text">这是一个测试消息，点击我应该能看到操作菜单</div>
         <div class="action-menu">
           <div class="action-grid">
             <button class="action-button" onclick="handleAction('aside', event)">
-              <span class="action-icon">💭</span>
               <span>话外音</span>
             </button>
             <button class="action-button" onclick="handleAction('copy', event)">
-              <span class="action-icon">📋</span>
               <span>复制</span>
             </button>
             <button class="action-button" onclick="handleAction('forward', event)">
-              <span class="action-icon">📤</span>
               <span>转发</span>
             </button>
             <button class="action-button" onclick="handleAction('collect', event)">
-              <span class="action-icon">⭐</span>
               <span>收藏</span>
             </button>
             <button class="action-button" onclick="handleAction('multi-select', event)">
-              <span class="action-icon">✅</span>
               <span>多选</span>
             </button>
             <button class="action-button" onclick="handleAction('quote', event)">
-              <span class="action-icon">💬</span>
               <span>引用</span>
             </button>
             <button class="action-button" onclick="handleAction('enlarge', event)">
-              <span class="action-icon">🔍</span>
               <span>放大</span>
             </button>
             <button class="action-button" onclick="handleAction('delete', event)">
-              <span class="action-icon">🗑️</span>
               <span>删除</span>
             </button>
           </div>
@@ -312,42 +288,35 @@
     </div>
     
     <!-- 自己发送的详细气泡（带发送者名字示例） -->
-    <div class="bubble sender-self" onclick="toggleActionMenu(this)">
-      <div class="bubble-content">
-        <div class="sender-name">我</div>
-        <div class="message-text">这是我发送的消息</div>
+    <div class="relative">
+      <span class="sender-name">我</span>
+      <div class="bubble sender-self" onclick="toggleActionMenu(this)">
+        <div class="bubble-content">
+          <div class="message-text">这是我发送的消息</div>
         <div class="action-menu">
           <div class="action-grid">
             <button class="action-button" onclick="handleAction('aside', event)">
-              <span class="action-icon">💭</span>
               <span>话外音</span>
             </button>
             <button class="action-button" onclick="handleAction('copy', event)">
-              <span class="action-icon">📋</span>
               <span>复制</span>
             </button>
             <button class="action-button" onclick="handleAction('forward', event)">
-              <span class="action-icon">📤</span>
               <span>转发</span>
             </button>
             <button class="action-button" onclick="handleAction('collect', event)">
-              <span class="action-icon">⭐</span>
               <span>收藏</span>
             </button>
             <button class="action-button" onclick="handleAction('multi-select', event)">
-              <span class="action-icon">✅</span>
               <span>多选</span>
             </button>
             <button class="action-button" onclick="handleAction('quote', event)">
-              <span class="action-icon">💬</span>
               <span>引用</span>
             </button>
             <button class="action-button" onclick="handleAction('enlarge', event)">
-              <span class="action-icon">🔍</span>
               <span>放大</span>
             </button>
             <button class="action-button" onclick="handleAction('delete', event)">
-              <span class="action-icon">🗑️</span>
               <span>删除</span>
             </button>
           </div>

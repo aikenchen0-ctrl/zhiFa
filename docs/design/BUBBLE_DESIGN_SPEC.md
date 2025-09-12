@@ -153,24 +153,22 @@ border-radius: 4px;                /* 不要圆角 */
 }
 ```
 
-**8个操作按钮** (顺序固定):
-1. 💬 话外音 (aside)
-2. 📋 复制 (copy)  
-3. 📤 转发 (forward)
-4. ⭐ 收藏 (collect)
-5. ✅ 多选 (multi-select)
-6. 💬 引用 (quote)
-7. 🔍 放大 (enlarge)  
-8. 🗑️ 删除 (delete)
+**8个操作按钮** (顺序固定，仅文字无图标):
+1. 话外音 (aside)
+2. 复制 (copy)  
+3. 转发 (forward)
+4. 收藏 (collect)
+5. 多选 (multi-select)
+6. 引用 (quote)
+7. 放大 (enlarge)  
+8. 删除 (delete)
 
 **按钮样式**:
 ```css
 .action-button {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
   padding: 8px 4px;
   font-size: 0.75rem;
   border-radius: 8px;

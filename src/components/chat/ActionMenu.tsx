@@ -24,48 +24,48 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
 }) => {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // 8个操作按钮 - 严格按照 bubble-demo.html 标准顺序
+  // 8个操作按钮 - 严格按照 bubble-demo.html 标准顺序，仅文字无图标
   const getAvailableActions = (): ActionButton[] => {
     return [
       {
         type: 'aside',
         label: '话外音',
-        icon: '💭'
+        icon: ''
       },
       {
         type: 'copy',
         label: '复制',
-        icon: '📋'
+        icon: ''
       },
       {
         type: 'forward',
         label: '转发',
-        icon: '📤'
+        icon: ''
       },
       {
         type: 'collect',
         label: '收藏',
-        icon: '⭐'
+        icon: ''
       },
       {
         type: 'multi-select',
         label: '多选',
-        icon: '✅'
+        icon: ''
       },
       {
         type: 'quote',
         label: '引用',
-        icon: '💬'
+        icon: ''
       },
       {
         type: 'enlarge',
         label: '放大',
-        icon: '🔍'
+        icon: ''
       },
       {
         type: 'delete',
         label: '删除',
-        icon: '🗑️',
+        icon: '',
         variant: 'danger'
       }
     ];
@@ -111,14 +111,13 @@ export const ActionMenu: React.FC<ActionMenuProps> = ({
             onClick={() => handleActionClick(action.type)}
             disabled={action.disabled}
             className={cn(
-              'flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg transition-all duration-150',
+              'flex items-center justify-center p-2 text-xs rounded-lg transition-all duration-150',
               action.variant === 'danger' 
                 ? 'text-red-600 hover:bg-red-50/80' 
                 : 'text-gray-700 hover:bg-white/80',
               action.disabled && 'opacity-50 cursor-not-allowed'
             )}
           >
-            <span className="text-base font-medium">{action.icon}</span>
             <span className="font-medium">{action.label}</span>
           </button>
         ))}
