@@ -239,9 +239,9 @@ export interface ActionButton {
 // 气泡组件属性
 export interface BubbleProps {
   message: Message;
-  style: BubbleStyle;
+  style?: BubbleStyle;
   showActions?: boolean;
-  onActionClick?: (action: ActionType) => void;
+  onActionClick?: (action: ActionType, message: Message) => void;
   onBubbleClick?: () => void;
   onBubbleLongPress?: () => void;
   isMultiSelectMode?: boolean;

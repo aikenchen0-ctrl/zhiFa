@@ -5,7 +5,7 @@ import { MultiSelectCheckbox } from './MultiSelectMode';
 import { ActionMenu } from './ActionMenu';
 import { cn } from '../../utils/cn';
 
-export const DetailedBubble: React.FC<BubbleProps> = ({
+export const SimpleDetailedBubble: React.FC<BubbleProps> = ({
   message,
   isMultiSelectMode = false,
   className,
@@ -32,7 +32,7 @@ export const DetailedBubble: React.FC<BubbleProps> = ({
   }
 
   // 计算气泡最大宽度和对齐
-  const maxBubbleWidth = 'max-w-full'; // 统一最大宽度
+  const maxBubbleWidth = 'max-w-full';
   
   const handleBubbleClick = () => {
     if (!isMultiSelectMode) {
@@ -42,7 +42,7 @@ export const DetailedBubble: React.FC<BubbleProps> = ({
 
   return (
     <div className={cn(
-      'flex items-start gap-3 relative',
+      'flex items-start gap-2 relative',
       maxBubbleWidth,
       isSelf ? 'flex-row-reverse ml-auto justify-start' : 'mr-auto justify-start',
       className
@@ -57,27 +57,7 @@ export const DetailedBubble: React.FC<BubbleProps> = ({
         </div>
       )}
 
-
-      {/* 头像 - 只在非自己消息时显示 */}
-      {!isSelf && (
-        <div className="flex-shrink-0">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center overflow-hidden">
-            {message.senderAvatar ? (
-              <img
-                src={message.senderAvatar}
-                alt={message.senderName}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-white text-sm [text-shadow:0_2px_6px_rgba(0,0,0,0.8),0_0_12px_rgba(0,0,0,0.6)]">
-                {message.senderName?.[0] || '?'}
-              </span>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 消息内容区域 */}
+      {/* 消息内容区域（无头像版本）*/}
       <div className={cn(
         'flex flex-col relative',
         isSelf ? 'items-end' : 'items-start'
@@ -110,7 +90,7 @@ export const DetailedBubble: React.FC<BubbleProps> = ({
           </div>
         )}
 
-        {/* 气泡和发送者名字容器 - 重构后的结构 */}
+        {/* 气泡和发送者名字容器 */}
         <div className="relative">
           {/* 发送者名字 - 放在气泡容器外部，避免被内部模糊层裁剪 */}
           {!isSelf && message.senderName && (
