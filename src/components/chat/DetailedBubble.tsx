@@ -4,6 +4,7 @@ import { MessageContent } from './MessageTypes/MessageContent';
 import { MultiSelectCheckbox } from './MultiSelectMode';
 import { ActionMenu } from './ActionMenu';
 import { cn } from '../../utils/cn';
+import '../../styles/bubble-styles.css';
 
 export const DetailedBubble: React.FC<BubbleProps> = ({
   message,
@@ -110,18 +111,15 @@ export const DetailedBubble: React.FC<BubbleProps> = ({
           </div>
         )}
 
-        {/* 气泡和发送者名字容器 - 重构后的结构 */}
+        {/* 气泡和发送者名字容器 - 基于 bubble-demo.html 标准 */}
         <div className="relative">
-          {/* 发送者名字 - 放在气泡容器外部，避免被内部模糊层裁剪 */}
+          {/* 发送者名字 - 只有文本阴影，无背景矩形 */}
           {!isSelf && message.senderName && (
             <span className={cn(
               'absolute left-3 top-0 transform -translate-y-1/2 z-30',
-              'text-xs leading-none',
-              'text-white',
-              // 加强的背景模糊和文字阴影效果
-              'backdrop-blur-2xl',
-              '[text-shadow:0_2px_6px_rgba(0,0,0,1),0_0_16px_rgba(255,255,255,0.9),0_0_8px_rgba(0,0,0,0.8)]'
-            )}>
+              'text-xs leading-none text-white sender-name-shadow'
+            )}
+            style={{ backdropFilter: 'blur(24px)' }}>
               {message.senderName}
             </span>
           )}
@@ -129,35 +127,21 @@ export const DetailedBubble: React.FC<BubbleProps> = ({
           {/* 主气泡 */}
           <div 
             className={cn(
-              'relative backdrop-blur-lg border rounded-xl overflow-hidden cursor-pointer',
-              'shadow-lg shadow-black/10 transition-all duration-200',
-              // 根据内容长度调整宽度，从对应方向扩展
-              'max-w-full w-fit',
-              // 自己的消息 - 半透明白色玻璃材质
-              isSelf && [
-                'bg-white/25 dark:bg-white/8',
-                'border-white/30 dark:border-white/20',
-                'text-white'
-              ],
-              // 别人的消息 - 全透明玻璃质感材质
-              !isSelf && [
-                'bg-transparent dark:bg-gray-900/20',
-                'border-gray-200/40 dark:border-gray-700/40',
-                'text-white'
-              ],
-              // 悬停效果
-              'hover:scale-[1.01] transition-transform',
+              'relative glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer',
+              'hover:scale-[1.01] transition-transform duration-200',
+              // 玻璃材质效果 - 严格按照 bubble-demo.html 标准
+              isSelf ? 'glass-self' : 'glass-other',
               // 选中状态
               message.isSelected && 'ring-2 ring-blue-500/50'
             )}
             onClick={handleBubbleClick}
           >
-            {/* 强背景模糊层 - 保持overflow-hidden确保圆角效果 */}
-            <div className="absolute inset-0 backdrop-blur-xl opacity-50 overflow-hidden rounded-xl" />
+            {/* 背景模糊层 */}
+            <div className="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl" />
             
             {/* 内容区域 */}
             <div className="relative z-10 px-2 py-1.5">
-              <div className="text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.6),0_0_6px_rgba(0,0,0,0.4),0_0_10px_rgba(0,0,0,0.25),0_1px_1px_rgba(0,0,0,0.5)]">
+              <div className="text-white text-shadow-enhanced">
                 <MessageContent message={message} />
               </div>
             </div>

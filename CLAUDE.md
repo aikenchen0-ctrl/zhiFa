@@ -1,5 +1,14 @@
 # Claude Code Configuration - SPARC Development Environment
 
+## 🎨 设计规范 (CRITICAL)
+
+### 气泡组件标准参考
+**所有气泡相关实现必须以 `bubble-demo.html` 为标准参考**
+- 设计规范文档: `docs/design/BUBBLE_DESIGN_SPEC.md`
+- 标准参考文件: `bubble-demo.html`
+- 禁止重新设计或猜测样式
+- 必须保持视觉和交互的完全一致性
+
 ## 🚨 CRITICAL: CONCURRENT EXECUTION & FILE MANAGEMENT
 
 **ABSOLUTE RULES**:
