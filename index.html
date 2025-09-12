@@ -73,18 +73,10 @@
       position: relative;
     }
 
-    .sender-name {
-      position: absolute;
-      left: 12px;
-      top: 0;
-      transform: translateY(-50%);
-      z-index: 30;
-      font-size: 0.75rem;
-      color: white;
+    .sender-name-shadow {
       text-shadow: 0 2px 6px rgba(0, 0, 0, 1), 
                    0 0 16px rgba(255, 255, 255, 0.9), 
                    0 0 8px rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(24px);
     }
 
     .message-text {
@@ -250,77 +242,99 @@
     <h2>👤 详细气泡测试</h2>
     
     <!-- 别人发送的详细气泡 -->
-    <div class="relative">
-      <span class="sender-name">张三</span>
-      <div class="bubble sender-other" onclick="toggleActionMenu(this)">
-        <div class="bubble-content">
-          <div class="message-text">这是一个测试消息，点击我应该能看到操作菜单</div>
-        <div class="action-menu">
-          <div class="action-grid">
-            <button class="action-button" onclick="handleAction('aside', event)">
-              <span>话外音</span>
-            </button>
-            <button class="action-button" onclick="handleAction('copy', event)">
-              <span>复制</span>
-            </button>
-            <button class="action-button" onclick="handleAction('forward', event)">
-              <span>转发</span>
-            </button>
-            <button class="action-button" onclick="handleAction('collect', event)">
-              <span>收藏</span>
-            </button>
-            <button class="action-button" onclick="handleAction('multi-select', event)">
-              <span>多选</span>
-            </button>
-            <button class="action-button" onclick="handleAction('quote', event)">
-              <span>引用</span>
-            </button>
-            <button class="action-button" onclick="handleAction('enlarge', event)">
-              <span>放大</span>
-            </button>
-            <button class="action-button" onclick="handleAction('delete', event)">
-              <span>删除</span>
-            </button>
+    <div class="flex items-start gap-2 max-w-full">
+      <!-- 消息内容 -->
+      <div class="flex flex-col">
+        <!-- 气泡和发送者名字容器 -->
+        <div class="relative">
+          <!-- 发送者名字 - 放在气泡容器外部 -->
+          <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+            张三
+          </span>
+          
+          <!-- 主气泡 -->
+          <div class="bubble sender-other" onclick="toggleActionMenu(this)">
+            <div class="bubble-content">
+              <div class="message-text">这是一个测试消息，点击我应该能看到操作菜单</div>
+            <div class="action-menu">
+              <div class="action-grid">
+                <button class="action-button" onclick="handleAction('aside', event)">
+                  <span>话外音</span>
+                </button>
+                <button class="action-button" onclick="handleAction('copy', event)">
+                  <span>复制</span>
+                </button>
+                <button class="action-button" onclick="handleAction('forward', event)">
+                  <span>转发</span>
+                </button>
+                <button class="action-button" onclick="handleAction('collect', event)">
+                  <span>收藏</span>
+                </button>
+                <button class="action-button" onclick="handleAction('multi-select', event)">
+                  <span>多选</span>
+                </button>
+                <button class="action-button" onclick="handleAction('quote', event)">
+                  <span>引用</span>
+                </button>
+                <button class="action-button" onclick="handleAction('enlarge', event)">
+                  <span>放大</span>
+                </button>
+                <button class="action-button" onclick="handleAction('delete', event)">
+                  <span>删除</span>
+                </button>
+              </div>
+              <div class="menu-arrow"></div>
+            </div>
           </div>
-          <div class="menu-arrow"></div>
         </div>
       </div>
     </div>
     
     <!-- 自己发送的详细气泡（带发送者名字示例） -->
-    <div class="relative">
-      <span class="sender-name">我</span>
-      <div class="bubble sender-self" onclick="toggleActionMenu(this)">
-        <div class="bubble-content">
-          <div class="message-text">这是我发送的消息</div>
-        <div class="action-menu">
-          <div class="action-grid">
-            <button class="action-button" onclick="handleAction('aside', event)">
-              <span>话外音</span>
-            </button>
-            <button class="action-button" onclick="handleAction('copy', event)">
-              <span>复制</span>
-            </button>
-            <button class="action-button" onclick="handleAction('forward', event)">
-              <span>转发</span>
-            </button>
-            <button class="action-button" onclick="handleAction('collect', event)">
-              <span>收藏</span>
-            </button>
-            <button class="action-button" onclick="handleAction('multi-select', event)">
-              <span>多选</span>
-            </button>
-            <button class="action-button" onclick="handleAction('quote', event)">
-              <span>引用</span>
-            </button>
-            <button class="action-button" onclick="handleAction('enlarge', event)">
-              <span>放大</span>
-            </button>
-            <button class="action-button" onclick="handleAction('delete', event)">
-              <span>删除</span>
-            </button>
+    <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">
+      <!-- 消息内容 -->
+      <div class="flex flex-col items-end">
+        <!-- 气泡和发送者名字容器 -->
+        <div class="relative">
+          <!-- 发送者名字 - 放在气泡容器外部 -->
+          <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+            我
+          </span>
+          
+          <!-- 主气泡 -->
+          <div class="bubble sender-self" onclick="toggleActionMenu(this)">
+            <div class="bubble-content">
+              <div class="message-text">这是我发送的消息</div>
+            <div class="action-menu">
+              <div class="action-grid">
+                <button class="action-button" onclick="handleAction('aside', event)">
+                  <span>话外音</span>
+                </button>
+                <button class="action-button" onclick="handleAction('copy', event)">
+                  <span>复制</span>
+                </button>
+                <button class="action-button" onclick="handleAction('forward', event)">
+                  <span>转发</span>
+                </button>
+                <button class="action-button" onclick="handleAction('collect', event)">
+                  <span>收藏</span>
+                </button>
+                <button class="action-button" onclick="handleAction('multi-select', event)">
+                  <span>多选</span>
+                </button>
+                <button class="action-button" onclick="handleAction('quote', event)">
+                  <span>引用</span>
+                </button>
+                <button class="action-button" onclick="handleAction('enlarge', event)">
+                  <span>放大</span>
+                </button>
+                <button class="action-button" onclick="handleAction('delete', event)">
+                  <span>删除</span>
+                </button>
+              </div>
+              <div class="menu-arrow"></div>
+            </div>
           </div>
-          <div class="menu-arrow"></div>
         </div>
       </div>
     </div>
