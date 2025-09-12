@@ -486,9 +486,12 @@
       bindEvents() {
         // 事件委托：在document级别监听点击
         document.addEventListener('click', (e) => {
+          console.log('🔍 点击事件:', e.target);
           const bubble = e.target.closest('[data-bubble]');
+          console.log('🎯 找到的气泡:', bubble);
           
           if (bubble) {
+            console.log('✅ 显示菜单');
             e.preventDefault();
             e.stopPropagation();
             this.showMenu(bubble, e);
@@ -516,11 +519,13 @@
       }
       
       showMenu(bubble, event) {
+        console.log('🚀 showMenu被调用', bubble);
         this.currentBubble = bubble;
         
         // 智能定位算法
         const rect = bubble.getBoundingClientRect();
-        const menuRect = this.menu.getBoundingClientRect();
+        console.log('📍 气泡位置:', rect);
+        
         const viewport = {
           width: window.innerWidth,
           height: window.innerHeight
@@ -538,15 +543,19 @@
           y = rect.bottom + 10; // 菜单显示在气泡下方
         }
         
+        console.log('📍 菜单位置:', { x, y });
+        
         // 应用定位
         this.menu.style.left = `${x}px`;
         this.menu.style.top = `${y}px`;
         
         // 显示动画
+        console.log('🎬 开始显示动画');
         this.menu.classList.remove('hidden');
         requestAnimationFrame(() => {
           this.menu.classList.add('opacity-100', 'scale-100');
           this.menu.classList.remove('opacity-0', 'scale-95');
+          console.log('✨ 菜单应该可见了');
         });
       }
       
