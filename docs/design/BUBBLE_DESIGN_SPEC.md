@@ -109,13 +109,17 @@ after:border-b-8 after:border-b-transparent
 
 **⚠️ 关键要点**: 发送者名字**只能有文本阴影，不能有背景矩形**
 
+**🎯 重要的定位原理**: 发送者名字的**中心线**与气泡的**上边缘**对齐，不是整个名字都在气泡上方。这通过以下关键CSS实现：
+- `top: 0` - 定位到容器顶部（气泡上边缘）
+- `transform: translateY(-50%)` - 向上移动自身高度的一半，使名字中心与边缘对齐
+
 **CSS 实现**:
 ```css
 .sender-name {
   position: absolute;
   left: 12px;               /* left-3 = 12px */
-  top: 0;
-  transform: translateY(-50%);
+  top: 0;                   /* 定位到气泡上边缘 */
+  transform: translateY(-50%); /* 关键：向上移动一半高度，实现中心对齐 */
   z-index: 30;
   font-size: 0.75rem;       /* text-xs */
   line-height: 1;           /* leading-none */
@@ -126,6 +130,8 @@ after:border-b-8 after:border-b-transparent
   backdrop-filter: blur(24px);
 }
 ```
+
+**视觉效果**: 发送者名字"跨越"气泡上边缘，一半在上方，一半与边缘重叠，形成自然的视觉层次。
 
 **禁止的样式**:
 ```css
@@ -248,14 +254,76 @@ export interface BubbleProps {
 ```
 
 ### 组件结构
+
+#### 有头像详细气泡结构
+```html
+<div class="flex items-start gap-3 max-w-full">
+  <!-- 头像 -->
+  <div class="flex-shrink-0">
+    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500">
+      <span class="text-white text-sm sender-name-shadow">张</span>
+    </div>
+  </div>
+  
+  <!-- 消息内容 -->
+  <div class="flex flex-col">
+    <!-- 气泡和发送者名字容器 - 关键的定位参照容器 -->
+    <div class="relative">
+      <!-- 发送者名字 - 相对于此容器定位 -->
+      <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+        张三
+      </span>
+      
+      <!-- 主气泡 -->
+      <div class="relative glass-other glass-effect rounded-xl...">
+        <div class="relative z-10 px-2 py-1.5">
+          <div class="text-white text-shadow-enhanced">消息内容</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 ```
-BubbleContainer
-├── Avatar (可选)
-├── BubbleContent
-│   ├── SenderName (详细气泡)
-│   ├── MessageText
-│   └── ActionMenu (点击显示)
-└── Tail (简单气泡)
+
+#### 无头像详细气泡结构
+```html
+<div class="flex items-start gap-2 max-w-full">
+  <!-- 消息内容 -->
+  <div class="flex flex-col">
+    <!-- 气泡和发送者名字容器 - 关键的定位参照容器 -->
+    <div class="relative">
+      <!-- 发送者名字 - 相对于此容器定位 -->
+      <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+        李四
+      </span>
+      
+      <!-- 主气泡 -->
+      <div class="relative glass-other glass-effect rounded-xl...">
+        <div class="relative z-10 px-2 py-1.5">
+          <div class="text-white text-shadow-enhanced">消息内容</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+#### 自己发送的详细气泡结构（注意：无发送者名字）
+```html
+<div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">
+  <!-- 消息内容 -->
+  <div class="flex flex-col items-end">
+    <!-- 气泡容器（注意：自己发送的不需要发送者名字） -->
+    <div class="relative">
+      <!-- 主气泡 -->
+      <div class="relative glass-self glass-effect rounded-xl...">
+        <div class="relative z-10 px-2 py-1.5">
+          <div class="text-white text-shadow-enhanced">消息内容</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 ```
 
 ---
