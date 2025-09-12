@@ -1,11 +1,165 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <title>Test Page</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🚀 移动端IM系统 - 部署成功</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      color: white;
+    }
+    
+    .container {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(20px);
+      border-radius: 20px;
+      padding: 40px;
+      text-align: center;
+      max-width: 600px;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+    
+    h1 {
+      font-size: 2.5em;
+      margin-bottom: 20px;
+      font-weight: 300;
+    }
+    
+    p {
+      font-size: 1.2em;
+      margin-bottom: 30px;
+      opacity: 0.9;
+    }
+    
+    .links {
+      display: grid;
+      gap: 15px;
+      margin-top: 30px;
+    }
+    
+    .link {
+      display: flex;
+      align-items: center;
+      padding: 15px 25px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 15px;
+      text-decoration: none;
+      color: white;
+      transition: all 0.3s ease;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .link:hover {
+      background: rgba(255,255,255,0.25);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    
+    .link-icon {
+      font-size: 1.5em;
+      margin-right: 15px;
+    }
+    
+    .link-text {
+      flex: 1;
+      text-align: left;
+    }
+    
+    .link-title {
+      font-weight: 600;
+      font-size: 1.1em;
+    }
+    
+    .link-desc {
+      opacity: 0.8;
+      font-size: 0.9em;
+      margin-top: 5px;
+    }
+    
+    .status {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4caf50;
+      padding: 10px 20px;
+      border-radius: 25px;
+      display: inline-block;
+      margin-bottom: 20px;
+      border: 1px solid rgba(76, 175, 80, 0.3);
+    }
+    
+    @media (max-width: 768px) {
+      .container { padding: 30px 20px; }
+      h1 { font-size: 2em; }
+      .link { padding: 12px 20px; }
+    }
+  </style>
 </head>
 <body>
-    <h1>Hello World - Simple Test</h1>
-    <p>If you can see this, GitHub Pages is working!</p>
-    <p>Time: <script>document.write(new Date().toLocaleString());</script></p>
+  <div class="container">
+    <div class="status">✅ 部署成功</div>
+    <h1>🚀 移动端IM系统</h1>
+    <p>高性能即时通讯系统已成功部署到GitHub Pages</p>
+    
+    <div class="links">
+      <a href="docs/" class="link">
+        <span class="link-icon">📚</span>
+        <div class="link-text">
+          <div class="link-title">技术文档</div>
+          <div class="link-desc">完整的API文档、架构说明和开发指南</div>
+        </div>
+      </a>
+      
+      <a href="examples/glass-components-demo.html" class="link">
+        <span class="link-icon">🎨</span>
+        <div class="link-text">
+          <div class="link-title">Liquid Glass UI演示</div>
+          <div class="link-desc">交互式组件演示和视觉效果展示</div>
+        </div>
+      </a>
+      
+      <a href="src/" class="link">
+        <span class="link-icon">💻</span>
+        <div class="link-text">
+          <div class="link-title">源码浏览</div>
+          <div class="link-desc">查看完整的项目源代码和组件实现</div>
+        </div>
+      </a>
+      
+      <a href="tests/" class="link">
+        <span class="link-icon">🧪</span>
+        <div class="link-text">
+          <div class="link-title">测试套件</div>
+          <div class="link-desc">移动端兼容性测试和性能测试</div>
+        </div>
+      </a>
+    </div>
+    
+    <div style="margin-top: 40px; opacity: 0.7; font-size: 0.9em;">
+      <p>📱 扫码在移动设备上体验</p>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=https%3A//aikenchen0-ctrl.github.io/zhiFa/" 
+           alt="移动端访问二维码" 
+           style="margin: 10px; border: 2px solid rgba(255,255,255,0.3); border-radius: 10px; padding: 10px; background: rgba(255,255,255,0.1);">
+    </div>
+  </div>
+
+  <script>
+    document.querySelectorAll('.link').forEach(link => {
+      link.addEventListener('mouseenter', () => {
+        link.style.transform = 'translateY(-3px)';
+      });
+      
+      link.addEventListener('mouseleave', () => {
+        link.style.transform = 'translateY(0)';
+      });
+    });
+  </script>
 </body>
 </html>
