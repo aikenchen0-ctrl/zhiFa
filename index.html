@@ -283,11 +283,168 @@
         </div>
       </div>
     </div>
+    </div>
+
+    <!-- 实际聊天场景测试 -->
+    <div class="bg-white/10 rounded-2xl p-6 glass-effect border border-white/20">
+      <h2 class="text-xl font-bold text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        💬 真实聊天场景测试
+      </h2>
+      <p class="text-white/80 mb-4 text-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+        混合展示各种气泡类型，测试滚动、交互和视觉一致性
+      </p>
+
+      <!-- 可滚动的聊天容器 -->
+      <div class="h-96 overflow-y-auto bg-black/20 rounded-xl p-4 space-y-4" id="realChatContainer">
+        
+        <!-- 别人发送的有头像详细气泡 -->
+        <div class="flex items-start gap-3 max-w-full">
+          <div class="flex-shrink-0">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center overflow-hidden">
+              <span class="text-white text-sm sender-name-shadow">张</span>
+            </div>
+          </div>
+          <div class="flex flex-col">
+            <div class="relative">
+              <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                张三
+              </span>
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    大家好！这是一个有头像的详细气泡，用于重要的群聊场景。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 别人发送的简单气泡 -->
+        <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
+          <div class="relative flex flex-col">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-left-1 after:w-0 after:h-0 after:border-r-8 after:border-r-transparent after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleMenu(this)">
+              <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+              <div class="relative z-10 px-2 py-1">
+                <div class="text-white text-shadow-enhanced">
+                  这是一个简单气泡，适合快速聊天 😊
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自己发送的详细气泡 -->
+        <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">
+          <div class="flex flex-col items-end">
+            <div class="relative">
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    我发送的详细气泡，注意没有发送者名字，这符合一般聊天应用的设计习惯。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 别人发送的无头像详细气泡 -->
+        <div class="flex items-start gap-2 max-w-full">
+          <div class="flex flex-col">
+            <div class="relative">
+              <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                李四
+              </span>
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    无头像的详细气泡，节省空间但仍显示发送者信息，适合正式群聊。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自己发送的简单气泡 -->
+        <div class="flex items-end gap-2 relative max-w-full flex-row-reverse ml-auto justify-start">
+          <div class="relative flex flex-col">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-self max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-right-1 after:w-0 after:h-0 after:border-l-8 after:border-l-white/25 after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleMenu(this)" style="background: rgba(255, 255, 255, 0.25);">
+              <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+              <div class="relative z-10 px-2 py-1">
+                <div class="text-white text-shadow-enhanced">
+                  我的简单回复，很好！👍
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 更多消息测试滚动效果 -->
+        <div class="flex items-start gap-3 max-w-full">
+          <div class="flex-shrink-0">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center overflow-hidden">
+              <span class="text-white text-sm sender-name-shadow">王</span>
+            </div>
+          </div>
+          <div class="flex flex-col">
+            <div class="relative">
+              <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                王五
+              </span>
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    这条消息用于测试长文本换行效果和滚动时的稳定性。在实际聊天应用中，用户经常会发送比较长的消息，我们需要确保气泡能够正确处理这种情况。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
+          <div class="relative flex flex-col">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-left-1 after:w-0 after:h-0 after:border-r-8 after:border-r-transparent after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleMenu(this)">
+              <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+              <div class="relative z-10 px-2 py-1">
+                <div class="text-white text-shadow-enhanced">
+                  简单气泡也要测试滚动
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">
+          <div class="flex flex-col items-end">
+            <div class="relative">
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    最后一条消息，确保滚动到底部时各种气泡类型都能正常显示和交互。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 
   <div class="text-center mt-8">
-    <p class="text-white/60 text-sm">✅ 如果你能看到操作菜单并且点击有响应，说明组件工作正常</p>
-    <p class="text-white/60 text-sm">❌ 如果点击气泡没有反应，说明还有问题需要修复</p>
+    <p class="text-white/60 text-sm">✅ 真实聊天场景测试：混合展示各种气泡类型</p>
+    <p class="text-white/60 text-sm">🔄 滚动聊天容器，测试所有气泡的稳定性和交互效果</p>
+    <p class="text-white/60 text-sm">🎛️ 点击任意气泡查看操作菜单，验证功能一致性</p>
   </div>
 
   <script>
