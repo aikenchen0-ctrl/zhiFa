@@ -246,7 +246,7 @@
         💭 简单气泡样式
       </h2>
       <p class="text-white/80 mb-4 text-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
-        特点：圆角边框、小尾巴、增强文本阴影、修复换行
+        特点：干净圆角边框、增强文本阴影、无尾巴设计
       </p>
 
       <div class="space-y-6">
@@ -254,12 +254,12 @@
         <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
           <div class="relative flex flex-col">
             <!-- 主气泡 -->
-            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-left-1 after:w-0 after:h-0 after:border-r-8 after:border-r-transparent after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleMenu(this)">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" onclick="toggleMenu(this)">
               <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
               
               <div class="relative z-10 px-2 py-1">
                 <div class="text-white text-shadow-enhanced">
-                  简单气泡样式，有左侧小尾巴
+                  简单气泡样式，无尾巴设计
                 </div>
               </div>
             </div>
@@ -270,12 +270,12 @@
         <div class="flex items-end gap-2 relative max-w-full flex-row-reverse ml-auto justify-start">
           <div class="relative flex flex-col">
             <!-- 主气泡 -->
-            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-self max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-right-1 after:w-0 after:h-0 after:border-l-8 after:border-l-white/25 after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleMenu(this)" style="background: rgba(255, 255, 255, 0.25);">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-self max-w-full w-fit hover:scale-[1.01]" onclick="toggleMenu(this)" style="background: rgba(255, 255, 255, 0.25);">
               <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
               
               <div class="relative z-10 px-2 py-1">
                 <div class="text-white text-shadow-enhanced">
-                  我的简单气泡，更透明的白色玻璃材质，右侧小尾巴
+                  我的简单气泡，无尾巴的干净设计
                 </div>
               </div>
             </div>
@@ -291,7 +291,7 @@
         💬 真实聊天场景测试
       </h2>
       <p class="text-white/80 mb-4 text-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
-        混合展示各种气泡类型，测试滚动、交互和视觉一致性
+        混合展示各种气泡类型，包括新增的"自己发送但有发送者名字"的特殊组件，测试滚动、交互和视觉一致性
       </p>
 
       <!-- 可滚动的聊天容器 -->
@@ -324,7 +324,7 @@
         <!-- 别人发送的简单气泡 -->
         <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
           <div class="relative flex flex-col">
-            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-left-1 after:w-0 after:h-0 after:border-r-8 after:border-r-transparent after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleMenu(this)">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" onclick="toggleMenu(this)">
               <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
               <div class="relative z-10 px-2 py-1">
                 <div class="text-white text-shadow-enhanced">
@@ -373,11 +373,30 @@
         <!-- 自己发送的简单气泡 -->
         <div class="flex items-end gap-2 relative max-w-full flex-row-reverse ml-auto justify-start">
           <div class="relative flex flex-col">
-            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-self max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-right-1 after:w-0 after:h-0 after:border-l-8 after:border-l-white/25 after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleMenu(this)" style="background: rgba(255, 255, 255, 0.25);">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-self max-w-full w-fit hover:scale-[1.01]" onclick="toggleMenu(this)" style="background: rgba(255, 255, 255, 0.25);">
               <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
               <div class="relative z-10 px-2 py-1">
                 <div class="text-white text-shadow-enhanced">
                   我的简单回复，很好！👍
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 特殊组件：自己发送但有发送者名字的详细气泡 -->
+        <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">
+          <div class="flex flex-col items-end">
+            <div class="relative">
+              <span class="absolute right-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                我（管理员）
+              </span>
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    这是一个特殊的气泡：自己发送但显示发送者名字。可能用于管理员身份、多账户切换、或特殊场景标识。
+                  </div>
                 </div>
               </div>
             </div>
@@ -410,7 +429,7 @@
 
         <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
           <div class="relative flex flex-col">
-            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-left-1 after:w-0 after:h-0 after:border-r-8 after:border-r-transparent after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleMenu(this)">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" onclick="toggleMenu(this)">
               <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
               <div class="relative z-10 px-2 py-1">
                 <div class="text-white text-shadow-enhanced">
