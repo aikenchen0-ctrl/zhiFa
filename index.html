@@ -166,73 +166,93 @@
     <h2>📱 简单气泡测试</h2>
     
     <!-- 别人发送的简单气泡 -->
-    <div class="bubble sender-other" onclick="toggleActionMenu(this)">
-      <div class="bubble-content">
-        <div class="message-text">这是一个测试消息，点击我应该能看到操作菜单</div>
-        <div class="action-menu">
-          <div class="action-grid">
-            <button class="action-button" onclick="handleAction('aside', event)">
-              <span>话外音</span>
-            </button>
-            <button class="action-button" onclick="handleAction('copy', event)">
-              <span>复制</span>
-            </button>
-            <button class="action-button" onclick="handleAction('forward', event)">
-              <span>转发</span>
-            </button>
-            <button class="action-button" onclick="handleAction('collect', event)">
-              <span>收藏</span>
-            </button>
-            <button class="action-button" onclick="handleAction('multi-select', event)">
-              <span>多选</span>
-            </button>
-            <button class="action-button" onclick="handleAction('quote', event)">
-              <span>引用</span>
-            </button>
-            <button class="action-button" onclick="handleAction('enlarge', event)">
-              <span>放大</span>
-            </button>
-            <button class="action-button" onclick="handleAction('delete', event)">
-              <span>删除</span>
-            </button>
+    <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
+      <div class="relative flex flex-col">
+        <!-- 主气泡 -->
+        <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-left-1 after:w-0 after:h-0 after:border-r-8 after:border-r-transparent after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleActionMenu(this)">
+          <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+          
+          <div class="relative z-10 px-2 py-1">
+            <div class="text-white text-shadow-enhanced">
+              简单气泡样式，有左侧小尾巴
+            </div>
           </div>
-          <div class="menu-arrow"></div>
+          
+          <div class="action-menu">
+            <div class="action-grid">
+              <button class="action-button" onclick="handleAction('aside', event)">
+                <span>话外音</span>
+              </button>
+              <button class="action-button" onclick="handleAction('copy', event)">
+                <span>复制</span>
+              </button>
+              <button class="action-button" onclick="handleAction('forward', event)">
+                <span>转发</span>
+              </button>
+              <button class="action-button" onclick="handleAction('collect', event)">
+                <span>收藏</span>
+              </button>
+              <button class="action-button" onclick="handleAction('multi-select', event)">
+                <span>多选</span>
+              </button>
+              <button class="action-button" onclick="handleAction('quote', event)">
+                <span>引用</span>
+              </button>
+              <button class="action-button" onclick="handleAction('enlarge', event)">
+                <span>放大</span>
+              </button>
+              <button class="action-button" onclick="handleAction('delete', event)">
+                <span>删除</span>
+              </button>
+            </div>
+            <div class="menu-arrow"></div>
+          </div>
         </div>
       </div>
     </div>
     
     <!-- 自己发送的简单气泡 -->
-    <div class="bubble sender-self" onclick="toggleActionMenu(this)">
-      <div class="bubble-content">
-        <div class="message-text">这是我发送的消息</div>
-        <div class="action-menu">
-          <div class="action-grid">
-            <button class="action-button" onclick="handleAction('aside', event)">
-              <span>话外音</span>
-            </button>
-            <button class="action-button" onclick="handleAction('copy', event)">
-              <span>复制</span>
-            </button>
-            <button class="action-button" onclick="handleAction('forward', event)">
-              <span>转发</span>
-            </button>
-            <button class="action-button" onclick="handleAction('collect', event)">
-              <span>收藏</span>
-            </button>
-            <button class="action-button" onclick="handleAction('multi-select', event)">
-              <span>多选</span>
-            </button>
-            <button class="action-button" onclick="handleAction('quote', event)">
-              <span>引用</span>
-            </button>
-            <button class="action-button" onclick="handleAction('enlarge', event)">
-              <span>放大</span>
-            </button>
-            <button class="action-button" onclick="handleAction('delete', event)">
-              <span>删除</span>
-            </button>
+    <div class="flex items-end gap-2 relative max-w-full flex-row-reverse ml-auto justify-start">
+      <div class="relative flex flex-col">
+        <!-- 主气泡 -->
+        <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-self max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-right-1 after:w-0 after:h-0 after:border-l-8 after:border-l-white/25 after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleActionMenu(this)" style="background: rgba(255, 255, 255, 0.25);">
+          <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+          
+          <div class="relative z-10 px-2 py-1">
+            <div class="text-white text-shadow-enhanced">
+              我的简单气泡，更透明的白色玻璃材质，右侧小尾巴
+            </div>
           </div>
-          <div class="menu-arrow"></div>
+          
+          <div class="action-menu">
+            <div class="action-grid">
+              <button class="action-button" onclick="handleAction('aside', event)">
+                <span>话外音</span>
+              </button>
+              <button class="action-button" onclick="handleAction('copy', event)">
+                <span>复制</span>
+              </button>
+              <button class="action-button" onclick="handleAction('forward', event)">
+                <span>转发</span>
+              </button>
+              <button class="action-button" onclick="handleAction('collect', event)">
+                <span>收藏</span>
+              </button>
+              <button class="action-button" onclick="handleAction('multi-select', event)">
+                <span>多选</span>
+              </button>
+              <button class="action-button" onclick="handleAction('quote', event)">
+                <span>引用</span>
+              </button>
+              <button class="action-button" onclick="handleAction('enlarge', event)">
+                <span>放大</span>
+              </button>
+              <button class="action-button" onclick="handleAction('delete', event)">
+                <span>删除</span>
+              </button>
+            </div>
+            <div class="menu-arrow"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -253,9 +273,15 @@
           </span>
           
           <!-- 主气泡 -->
-          <div class="bubble sender-other" onclick="toggleActionMenu(this)">
-            <div class="bubble-content">
-              <div class="message-text">这是一个测试消息，点击我应该能看到操作菜单</div>
+          <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleActionMenu(this)">
+            <!-- 背景模糊层 -->
+            <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+            
+            <!-- 内容区域 -->
+            <div class="relative z-10 px-2 py-1.5">
+              <div class="text-white text-shadow-enhanced">这是一个测试消息，点击我应该能看到操作菜单</div>
+            </div>
+            
             <div class="action-menu">
               <div class="action-grid">
                 <button class="action-button" onclick="handleAction('aside', event)">
@@ -297,9 +323,15 @@
         <!-- 气泡容器 -->
         <div class="relative">
           <!-- 主气泡 -->
-          <div class="bubble sender-self" onclick="toggleActionMenu(this)">
-            <div class="bubble-content">
-              <div class="message-text">这是我发送的消息</div>
+          <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleActionMenu(this)">
+            <!-- 背景模糊层 -->
+            <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+            
+            <!-- 内容区域 -->
+            <div class="relative z-10 px-2 py-1.5">
+              <div class="text-white text-shadow-enhanced">这是我发送的消息</div>
+            </div>
+            
             <div class="action-menu">
               <div class="action-grid">
                 <button class="action-button" onclick="handleAction('aside', event)">
