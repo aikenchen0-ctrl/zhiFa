@@ -41,61 +41,14 @@
       min-height: 100vh;
     }
     
-    /* 操作菜单样式 */
-    .action-menu {
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      position: absolute;
-      bottom: calc(100% + 8px);
-      left: 50%;
-      transform: translateX(-50%);
-      border-radius: 12px;
-      padding: 8px;
-      display: none;
-      z-index: 50;
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-      min-width: 280px;
-    }
-
-    .action-menu.show {
-      display: block;
-    }
-
-    .action-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 4px;
-    }
-
-    .action-button {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 4px;
+    /* 气泡交互样式 - 单例菜单优化 */
+    [data-bubble] {
       cursor: pointer;
-      border-radius: 8px;
-      transition: background-color 0.2s ease;
-      border: none;
-      background: transparent;
-      font-size: 0.75rem;
-      color: #374151;
+      user-select: none;
     }
-
-    .action-button:hover {
-      background: rgba(255, 255, 255, 0.8);
-    }
-
-    .menu-arrow {
-      position: absolute;
-      top: 100%;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 0;
-      height: 0;
-      border-left: 6px solid transparent;
-      border-right: 6px solid transparent;
-      border-top: 6px solid rgba(255, 255, 255, 0.95);
+    
+    [data-bubble]:active {
+      transform: scale(0.98);
     }
   </style>
 </head>
@@ -140,7 +93,7 @@
               </span>
               
               <!-- 主气泡 -->
-              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
                 <!-- 背景模糊层 -->
                 <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
                 
@@ -162,7 +115,7 @@
             <!-- 气泡和发送者名字容器 -->
             <div class="relative">
               <!-- 主气泡 -->
-              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
                 <!-- 背景模糊层 -->
                 <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
                 
@@ -201,7 +154,7 @@
               </span>
               
               <!-- 主气泡 -->
-              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
                 <!-- 背景模糊层 -->
                 <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
                 
@@ -223,7 +176,7 @@
             <!-- 气泡和发送者名字容器 -->
             <div class="relative">
               <!-- 主气泡 -->
-              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
                 <!-- 背景模糊层 -->
                 <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
                 
@@ -254,7 +207,7 @@
         <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
           <div class="relative flex flex-col">
             <!-- 主气泡 -->
-            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" onclick="toggleMenu(this)">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" data-bubble>
               <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
               
               <div class="relative z-10 px-2 py-1">
@@ -270,7 +223,7 @@
         <div class="flex items-end gap-2 relative max-w-full flex-row-reverse ml-auto justify-start">
           <div class="relative flex flex-col">
             <!-- 主气泡 -->
-            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-self max-w-full w-fit hover:scale-[1.01]" onclick="toggleMenu(this)" style="background: rgba(255, 255, 255, 0.25);">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 glass-effect border glass-self max-w-full w-fit hover:scale-[1.01]" data-bubble style="background: rgba(255, 255, 255, 0.25);">
               <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
               
               <div class="relative z-10 px-2 py-1">
@@ -309,7 +262,7 @@
               <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
                 张三
               </span>
-              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
                 <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
                 <div class="relative z-10 px-2 py-1.5">
                   <div class="text-white text-shadow-enhanced">
@@ -324,7 +277,7 @@
         <!-- 别人发送的简单气泡 -->
         <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
           <div class="relative flex flex-col">
-            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" onclick="toggleMenu(this)">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" data-bubble>
               <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
               <div class="relative z-10 px-2 py-1">
                 <div class="text-white text-shadow-enhanced">
@@ -339,7 +292,7 @@
         <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">
           <div class="flex flex-col items-end">
             <div class="relative">
-              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
                 <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
                 <div class="relative z-10 px-2 py-1.5">
                   <div class="text-white text-shadow-enhanced">
@@ -358,7 +311,7 @@
               <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
                 李四
               </span>
-              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
                 <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
                 <div class="relative z-10 px-2 py-1.5">
                   <div class="text-white text-shadow-enhanced">
@@ -373,7 +326,7 @@
         <!-- 自己发送的简单气泡 -->
         <div class="flex items-end gap-2 relative max-w-full flex-row-reverse ml-auto justify-start">
           <div class="relative flex flex-col">
-            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-self max-w-full w-fit hover:scale-[1.01]" onclick="toggleMenu(this)" style="background: rgba(255, 255, 255, 0.25);">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 glass-effect border glass-self max-w-full w-fit hover:scale-[1.01]" data-bubble style="background: rgba(255, 255, 255, 0.25);">
               <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
               <div class="relative z-10 px-2 py-1">
                 <div class="text-white text-shadow-enhanced">
@@ -391,7 +344,7 @@
               <span class="absolute right-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
                 我（管理员）
               </span>
-              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
                 <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
                 <div class="relative z-10 px-2 py-1.5">
                   <div class="text-white text-shadow-enhanced">
@@ -415,7 +368,7 @@
               <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
                 王五
               </span>
-              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
                 <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
                 <div class="relative z-10 px-2 py-1.5">
                   <div class="text-white text-shadow-enhanced">
@@ -429,7 +382,7 @@
 
         <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
           <div class="relative flex flex-col">
-            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" onclick="toggleMenu(this)">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" data-bubble>
               <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
               <div class="relative z-10 px-2 py-1">
                 <div class="text-white text-shadow-enhanced">
@@ -443,7 +396,7 @@
         <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">
           <div class="flex flex-col items-end">
             <div class="relative">
-              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
                 <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
                 <div class="relative z-10 px-2 py-1.5">
                   <div class="text-white text-shadow-enhanced">
@@ -467,64 +420,167 @@
   </div>
 
   <script>
-    function toggleMenu(element) {
-      // 隐藏所有其他菜单
-      document.querySelectorAll('.action-menu').forEach(menu => {
-        if (menu.parentNode !== element) {
-          menu.remove();
+    /**
+     * 单例操作菜单管理器 - Web端最佳实践
+     * 特点：全局唯一实例、Portal渲染、智能定位、事件委托
+     */
+    class ActionMenuManager {
+      constructor() {
+        this.menu = null;
+        this.currentBubble = null;
+        this.actions = [
+          { id: 'aside', label: '话外音' },
+          { id: 'copy', label: '复制' },
+          { id: 'forward', label: '转发' },
+          { id: 'collect', label: '收藏' },
+          { id: 'multi-select', label: '多选' },
+          { id: 'quote', label: '引用' },
+          { id: 'enlarge', label: '放大' },
+          { id: 'delete', label: '删除', variant: 'danger' }
+        ];
+        
+        this.init();
+      }
+      
+      init() {
+        // 创建全局菜单元素，Portal渲染到body
+        this.createMenu();
+        this.bindEvents();
+      }
+      
+      createMenu() {
+        const menu = document.createElement('div');
+        menu.id = 'global-action-menu';
+        menu.className = 'fixed z-[9999] hidden transition-all duration-200 ease-out transform opacity-0 scale-95';
+        menu.style.cssText = `
+          background: rgba(255, 255, 255, 0.95);
+          backdrop-filter: blur(16px);
+          border: 1px solid rgba(255, 255, 255, 0.3);
+          border-radius: 12px;
+          padding: 8px;
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+          min-width: 280px;
+        `;
+        
+        // 2行4列网格布局
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-4 gap-1';
+        
+        this.actions.forEach(action => {
+          const button = document.createElement('button');
+          button.className = `action-btn px-2 py-2 text-xs font-medium rounded-lg transition-colors duration-150 flex items-center justify-center ${
+            action.variant === 'danger' 
+              ? 'text-red-600 hover:bg-red-50' 
+              : 'text-gray-700 hover:bg-white/80'
+          }`;
+          button.dataset.action = action.id;
+          button.textContent = action.label;
+          grid.appendChild(button);
+        });
+        
+        menu.appendChild(grid);
+        document.body.appendChild(menu);
+        this.menu = menu;
+      }
+      
+      bindEvents() {
+        // 事件委托：在document级别监听点击
+        document.addEventListener('click', (e) => {
+          const bubble = e.target.closest('[data-bubble]');
+          
+          if (bubble) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.showMenu(bubble, e);
+          } else if (!e.target.closest('#global-action-menu')) {
+            this.hideMenu();
+          }
+        });
+        
+        // 菜单项点击处理
+        this.menu.addEventListener('click', (e) => {
+          const actionBtn = e.target.closest('.action-btn');
+          if (actionBtn) {
+            const action = actionBtn.dataset.action;
+            this.handleAction(action);
+            this.hideMenu();
+          }
+        });
+        
+        // ESC键关闭菜单
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            this.hideMenu();
+          }
+        });
+      }
+      
+      showMenu(bubble, event) {
+        this.currentBubble = bubble;
+        
+        // 智能定位算法
+        const rect = bubble.getBoundingClientRect();
+        const menuRect = this.menu.getBoundingClientRect();
+        const viewport = {
+          width: window.innerWidth,
+          height: window.innerHeight
+        };
+        
+        let x = rect.left + rect.width / 2 - 140; // 居中对齐
+        let y = rect.top - 10; // 气泡上方10px
+        
+        // 水平边界检测
+        if (x < 8) x = 8; // 左边界
+        if (x + 280 > viewport.width - 8) x = viewport.width - 288; // 右边界
+        
+        // 垂直边界检测
+        if (y < 8) {
+          y = rect.bottom + 10; // 菜单显示在气泡下方
         }
-      });
-      
-      // 检查是否已有菜单
-      const existingMenu = element.querySelector('.action-menu');
-      if (existingMenu) {
-        existingMenu.remove();
-        return;
+        
+        // 应用定位
+        this.menu.style.left = `${x}px`;
+        this.menu.style.top = `${y}px`;
+        
+        // 显示动画
+        this.menu.classList.remove('hidden');
+        requestAnimationFrame(() => {
+          this.menu.classList.add('opacity-100', 'scale-100');
+          this.menu.classList.remove('opacity-0', 'scale-95');
+        });
       }
       
-      // 创建新菜单
-      const menu = document.createElement('div');
-      menu.className = 'action-menu show';
-      menu.innerHTML = `
-        <div class="action-grid">
-          <button class="action-button">
-            <span class="font-medium">话外音</span>
-          </button>
-          <button class="action-button">
-            <span class="font-medium">复制</span>
-          </button>
-          <button class="action-button">
-            <span class="font-medium">转发</span>
-          </button>
-          <button class="action-button">
-            <span class="font-medium">收藏</span>
-          </button>
-          <button class="action-button">
-            <span class="font-medium">多选</span>
-          </button>
-          <button class="action-button">
-            <span class="font-medium">引用</span>
-          </button>
-          <button class="action-button">
-            <span class="font-medium">放大</span>
-          </button>
-          <button class="action-button" style="color: #dc2626;">
-            <span class="font-medium">删除</span>
-          </button>
-        </div>
-        <div class="menu-arrow"></div>
-      `;
+      hideMenu() {
+        if (!this.menu.classList.contains('hidden')) {
+          this.menu.classList.add('opacity-0', 'scale-95');
+          this.menu.classList.remove('opacity-100', 'scale-100');
+          
+          setTimeout(() => {
+            this.menu.classList.add('hidden');
+          }, 200);
+        }
+        this.currentBubble = null;
+      }
       
-      element.style.position = 'relative';
-      element.appendChild(menu);
+      handleAction(action) {
+        console.log(`执行操作: ${action}`, this.currentBubble);
+        // 这里可以根据action类型执行具体逻辑
+        switch(action) {
+          case 'copy':
+            // 复制消息内容
+            break;
+          case 'delete':
+            // 删除消息
+            break;
+          // ... 其他操作
+        }
+      }
     }
-
-    // 点击外部关闭菜单
-    document.addEventListener('click', function(e) {
-      if (!e.target.closest('.cursor-pointer')) {
-        document.querySelectorAll('.action-menu').forEach(menu => menu.remove());
-      }
-    });
+    
+    // 初始化全局菜单管理器
+    const menuManager = new ActionMenuManager();
+    
+    console.log('🎯 单例操作菜单系统初始化完成');
   </script>
 </body>
 </html>
