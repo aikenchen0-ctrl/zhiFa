@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧪 气泡组件操作菜单测试</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ================================
+     * 玻璃材质气泡系统样式定义
+     * ================================ */
+    
+    /* 基础玻璃效果 - 背景模糊滤镜 */
+    .glass-effect {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px); /* Safari兼容 */
+    }
+    
+    /* 自己发送的气泡样式 - 白色半透明 */
+    .glass-self {
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    /* 自己发送气泡暗色模式 */
+    .glass-self-dark {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    
+    /* 他人发送的气泡样式 - 完全透明带边框 */
+    .glass-other {
+      background: transparent;
+      border: 1px solid rgba(156, 163, 175, 0.4);
+    }
+    
+    /* ================================
+     * 文本阴影效果系统
+     * ================================ */
+    
+    /* 气泡内容文本阴影 - 多层叠加增强可读性 */
+    .text-shadow-enhanced {
+      text-shadow: 
+        0 1px 3px rgba(0, 0, 0, 0.6),  /* 主要阴影 */
+        0 0 6px rgba(0, 0, 0, 0.4),    /* 外围模糊 */
+        0 0 10px rgba(0, 0, 0, 0.25),  /* 更大范围模糊 */
+        0 1px 1px rgba(0, 0, 0, 0.5);  /* 边缘锐化 */
+    }
+    
+    /* 发送者名字文本阴影 - 强对比度确保可读性 */
+    .sender-name-shadow {
+      text-shadow: 
+        0 2px 6px rgba(0, 0, 0, 1),      /* 强阴影 */
+        0 0 16px rgba(255, 255, 255, 0.9), /* 白色光晕 */
+        0 0 8px rgba(0, 0, 0, 0.8);      /* 边缘加强 */
+    }
+    
+    /* ================================
+     * 页面基础样式
+     * ================================ */
+    
+    /* 页面背景渐变 */
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    
+    /* ================================
+     * 气泡交互样式 - 单例菜单系统
+     * ================================ */
+    
+    /* 气泡基础交互状态 */
+    [data-bubble] {
+      cursor: pointer;      /* 指针样式表明可点击 */
+      user-select: none;    /* 禁止文本选择 */
+    }
+    
+    /* 气泡点击反馈 - 轻微缩放表明交互 */
+    [data-bubble]:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body class="p-6">
+  <div class="max-w-4xl mx-auto">
+    <!-- 标题 -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-white mb-2" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        🧪 气泡组件操作菜单测试
+      </h1>
+      <p class="text-white/80" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+        展示有头像详细气泡和无头像详细气泡，头像为圆角正方形与气泡圆角一致
+      </p>
+    </div>
+
+    <!-- 有头像详细气泡演示 -->
+    <div class="bg-white/10 rounded-2xl p-6 mb-8 glass-effect border border-white/20">
+      <h2 class="text-xl font-bold text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        👤 有头像详细气泡样式
+      </h2>
+      <p class="text-white/80 mb-4 text-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+        特点：圆角正方形头像、左上角发送者名字、强背景模糊效果、增强文本阴影
+      </p>
+
+      <div class="space-y-6">
+        <!-- ==========================================
+             * 别人发送的有头像详细气泡 - 完整结构示例
+             * 特点：左对齐、圆角头像、发送者名字、玻璃材质
+             ========================================== -->
+        <div class="flex items-start gap-3 max-w-full">
+          
+          <!-- 头像容器 - 圆角正方形设计 -->
+          <div class="flex-shrink-0">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center overflow-hidden">
+              <!-- 头像内文字 - 用作头像占位 -->
+              <span class="text-white text-sm sender-name-shadow">张</span>
+            </div>
+          </div>
+          
+          <!-- 消息主体区域 -->
+          <div class="flex flex-col">
+            <!-- 气泡定位容器 - 用于发送者名字的绝对定位 -->
+            <div class="relative">
+              
+              <!-- 发送者名字 - 绝对定位在气泡上边缘中心 -->
+              <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" 
+                    style="backdrop-filter: blur(24px);">
+                张三
+              </span>
+              
+              <!-- 主气泡容器 - data-bubble属性用于单例菜单系统 -->
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" 
+                   data-bubble>
+                
+                <!-- 背景模糊层 - 增强玻璃材质效果 -->
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                
+                <!-- 内容区域 - z-index确保文本在模糊层之上 -->
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    这是有头像的详细气泡，注意头像是圆角正方形，圆角程度与气泡一致。发送者名字显示在左上角，文本有强化阴影效果。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自己发送的有头像详细气泡（通常不显示头像，但作为演示） -->
+        <div class="flex items-start gap-3 max-w-full flex-row-reverse ml-auto justify-start">          
+          <!-- 消息内容 -->
+          <div class="flex flex-col items-end">
+            <!-- 气泡和发送者名字容器 -->
+            <div class="relative">
+              <!-- 主气泡 -->
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
+                <!-- 背景模糊层 -->
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                
+                <!-- 内容区域 -->
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    我发送的有头像详细气泡，透明度更低，玻璃效果更明显。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 无头像详细气泡演示 -->
+    <div class="bg-white/10 rounded-2xl p-6 mb-8 glass-effect border border-white/20">
+      <h2 class="text-xl font-bold text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        📝 无头像详细气泡样式
+      </h2>
+      <p class="text-white/80 mb-4 text-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+        特点：仅左上角发送者名字、强背景模糊效果、增强文本阴影、修复换行问题
+      </p>
+
+      <div class="space-y-6">
+        <!-- 别人发送的无头像详细气泡 -->
+        <div class="flex items-start gap-2 max-w-full">          
+          <!-- 消息内容 -->
+          <div class="flex flex-col">
+            <!-- 气泡和发送者名字容器 -->
+            <div class="relative">
+              <!-- 发送者名字 - 放在气泡容器外部 -->
+              <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                李四
+              </span>
+              
+              <!-- 主气泡 -->
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
+                <!-- 背景模糊层 -->
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                
+                <!-- 内容区域 -->
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    这是无头像的详细气泡样式，更加简洁，只显示发送者名字在左上角，没有头像占用空间。这种样式适合空间较小的场景或者不需要显示头像的群聊场景。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自己发送的无头像详细气泡 -->
+        <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">          
+          <!-- 消息内容 -->
+          <div class="flex flex-col items-end">
+            <!-- 气泡和发送者名字容器 -->
+            <div class="relative">
+              <!-- 主气泡 -->
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
+                <!-- 背景模糊层 -->
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                
+                <!-- 内容区域 -->
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    我发送的无头像详细气泡，更紧凑的布局。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 简单气泡演示 -->
+    <div class="bg-white/10 rounded-2xl p-6 mb-8 glass-effect border border-white/20">
+      <h2 class="text-xl font-bold text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        💭 简单气泡样式
+      </h2>
+      <p class="text-white/80 mb-4 text-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+        特点：干净圆角边框、增强文本阴影、无尾巴设计
+      </p>
+
+      <div class="space-y-6">
+        <!-- 别人发送的简单气泡 -->
+        <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
+          <div class="relative flex flex-col">
+            <!-- 主气泡 -->
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" data-bubble>
+              <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+              
+              <div class="relative z-10 px-2 py-1">
+                <div class="text-white text-shadow-enhanced">
+                  简单气泡样式，无尾巴设计
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自己发送的简单气泡 -->
+        <div class="flex items-end gap-2 relative max-w-full flex-row-reverse ml-auto justify-start">
+          <div class="relative flex flex-col">
+            <!-- 主气泡 -->
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 glass-effect border glass-self max-w-full w-fit hover:scale-[1.01]" data-bubble style="background: rgba(255, 255, 255, 0.25);">
+              <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+              
+              <div class="relative z-10 px-2 py-1">
+                <div class="text-white text-shadow-enhanced">
+                  我的简单气泡，无尾巴的干净设计
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    </div>
+
+    <!-- 实际聊天场景测试 -->
+    <div class="bg-white/10 rounded-2xl p-6 glass-effect border border-white/20">
+      <h2 class="text-xl font-bold text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        💬 真实聊天场景测试
+      </h2>
+      <p class="text-white/80 mb-4 text-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+        混合展示各种气泡类型，包括新增的"自己发送但有发送者名字"的特殊组件，测试滚动、交互和视觉一致性
+      </p>
+
+      <!-- 可滚动的聊天容器 -->
+      <div class="h-96 overflow-y-auto bg-black/20 rounded-xl p-4 space-y-4" id="realChatContainer">
+        
+        <!-- 别人发送的有头像详细气泡 -->
+        <div class="flex items-start gap-3 max-w-full">
+          <div class="flex-shrink-0">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center overflow-hidden">
+              <span class="text-white text-sm sender-name-shadow">张</span>
+            </div>
+          </div>
+          <div class="flex flex-col">
+            <div class="relative">
+              <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                张三
+              </span>
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    大家好！这是一个有头像的详细气泡，用于重要的群聊场景。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 别人发送的简单气泡 -->
+        <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
+          <div class="relative flex flex-col">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" data-bubble>
+              <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+              <div class="relative z-10 px-2 py-1">
+                <div class="text-white text-shadow-enhanced">
+                  这是一个简单气泡，适合快速聊天 😊
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自己发送的详细气泡 -->
+        <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">
+          <div class="flex flex-col items-end">
+            <div class="relative">
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    我发送的详细气泡，注意没有发送者名字，这符合一般聊天应用的设计习惯。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 别人发送的无头像详细气泡 -->
+        <div class="flex items-start gap-2 max-w-full">
+          <div class="flex flex-col">
+            <div class="relative">
+              <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                李四
+              </span>
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    无头像的详细气泡，节省空间但仍显示发送者信息，适合正式群聊。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自己发送的简单气泡 -->
+        <div class="flex items-end gap-2 relative max-w-full flex-row-reverse ml-auto justify-start">
+          <div class="relative flex flex-col">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 glass-effect border glass-self max-w-full w-fit hover:scale-[1.01]" data-bubble style="background: rgba(255, 255, 255, 0.25);">
+              <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+              <div class="relative z-10 px-2 py-1">
+                <div class="text-white text-shadow-enhanced">
+                  我的简单回复，很好！👍
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 特殊组件：自己发送但有发送者名字的详细气泡 -->
+        <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">
+          <div class="flex flex-col items-end">
+            <div class="relative">
+              <span class="absolute right-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                我（管理员）
+              </span>
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    这是一个特殊的气泡：自己发送但显示发送者名字。可能用于管理员身份、多账户切换、或特殊场景标识。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 更多消息测试滚动效果 -->
+        <div class="flex items-start gap-3 max-w-full">
+          <div class="flex-shrink-0">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center overflow-hidden">
+              <span class="text-white text-sm sender-name-shadow">王</span>
+            </div>
+          </div>
+          <div class="flex flex-col">
+            <div class="relative">
+              <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                王五
+              </span>
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    这条消息用于测试长文本换行效果和滚动时的稳定性。在实际聊天应用中，用户经常会发送比较长的消息，我们需要确保气泡能够正确处理这种情况。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
+          <div class="relative flex flex-col">
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 glass-effect border glass-other max-w-full w-fit hover:scale-[1.01]" data-bubble>
+              <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+              <div class="relative z-10 px-2 py-1">
+                <div class="text-white text-shadow-enhanced">
+                  简单气泡也要测试滚动
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">
+          <div class="flex flex-col items-end">
+            <div class="relative">
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit hover:scale-[1.01] transition-transform duration-200" data-bubble>
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    最后一条消息，确保滚动到底部时各种气泡类型都能正常显示和交互。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <div class="text-center mt-8">
+    <p class="text-white/60 text-sm">✅ 真实聊天场景测试：混合展示各种气泡类型</p>
+    <p class="text-white/60 text-sm">🔄 滚动聊天容器，测试所有气泡的稳定性和交互效果</p>
+    <p class="text-white/60 text-sm">🎛️ 点击任意气泡查看操作菜单，验证功能一致性</p>
+  </div>
+
+  <script>
+    /**
+     * =====================================
+     * 单例操作菜单管理器 - Web端聊天应用最佳实践
+     * =====================================
+     * 
+     * 核心优势：
+     * • 单例模式：全局唯一菜单实例，避免DOM污染
+     * • Portal渲染：菜单渲染到document.body，解决overflow裁剪
+     * • 事件委托：容器级事件监听，无需给每个气泡绑定事件
+     * • 智能定位：边界检测，自动调整菜单显示位置
+     * • 性能优化：从O(n)个菜单优化为O(1)个菜单
+     */
+    class ActionMenuManager {
+      constructor() {
+        this.menu = null;              // 全局唯一菜单DOM元素
+        this.currentBubble = null;     // 当前激活的气泡元素
+        
+        // 菜单操作配置 - 2行4列布局
+        this.actions = [
+          { id: 'aside', label: '话外音' },
+          { id: 'copy', label: '复制' },
+          { id: 'forward', label: '转发' },
+          { id: 'collect', label: '收藏' },
+          { id: 'multi-select', label: '多选' },
+          { id: 'quote', label: '引用' },
+          { id: 'enlarge', label: '放大' },
+          { id: 'delete', label: '删除', variant: 'danger' }
+        ];
+        
+        this.init();
+      }
+      
+      init() {
+        // 系统初始化：创建菜单DOM + 绑定全局事件
+        this.createMenu();
+        this.bindEvents();
+      }
+      
+      createMenu() {
+        // ===================================
+        // 创建全局单例菜单DOM结构
+        // ===================================
+        
+        // 主菜单容器 - Portal渲染到body，避免overflow裁剪
+        const menu = document.createElement('div');
+        menu.id = 'global-action-menu';
+        menu.className = 'fixed z-[9999] hidden transition-all duration-200 ease-out transform opacity-0 scale-95';
+        
+        // 菜单视觉样式 - 玻璃材质效果
+        menu.style.cssText = `
+          background: rgba(255, 255, 255, 0.95);  /* 半透明白色背景 */
+          backdrop-filter: blur(16px);             /* 背景模糊效果 */
+          border: 1px solid rgba(255, 255, 255, 0.3); /* 边框 */
+          border-radius: 12px;                     /* 圆角 */
+          padding: 8px;                            /* 内边距 */
+          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12); /* 阴影 */
+          min-width: 280px;                        /* 最小宽度 */
+        `;
+        
+        // 网格容器 - 2行4列布局
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-4 gap-1';
+        
+        // 动态生成操作按钮
+        this.actions.forEach(action => {
+          const button = document.createElement('button');
+          
+          // 按钮样式 - 区分普通操作和危险操作
+          button.className = `action-btn px-2 py-2 text-xs font-medium rounded-lg transition-colors duration-150 flex items-center justify-center ${
+            action.variant === 'danger' 
+              ? 'text-red-600 hover:bg-red-50'     // 删除按钮 - 红色主题
+              : 'text-gray-700 hover:bg-white/80'  // 普通按钮 - 灰色主题
+          }`;
+          
+          // 数据属性 - 用于操作识别
+          button.dataset.action = action.id;
+          button.textContent = action.label;
+          
+          grid.appendChild(button);
+        });
+        
+        // DOM挂载 - 将菜单添加到页面body
+        menu.appendChild(grid);
+        document.body.appendChild(menu);
+        this.menu = menu;
+      }
+      
+      bindEvents() {
+        // 事件委托：在document级别监听点击，避免给每个气泡绑定事件
+        document.addEventListener('click', (e) => {
+          // 向上查找最近的气泡元素
+          const bubble = e.target.closest('[data-bubble]');
+          
+          if (bubble) {
+            // 点击气泡：阻止冒泡并显示菜单
+            e.preventDefault();
+            e.stopPropagation();
+            this.showMenu(bubble, e);
+          } else if (!e.target.closest('#global-action-menu')) {
+            // 点击其他区域：隐藏菜单
+            this.hideMenu();
+          }
+        });
+        
+        // 菜单项点击处理
+        this.menu.addEventListener('click', (e) => {
+          const actionBtn = e.target.closest('.action-btn');
+          if (actionBtn) {
+            const action = actionBtn.dataset.action;
+            this.handleAction(action);
+            this.hideMenu();
+          }
+        });
+        
+        // ESC键关闭菜单
+        document.addEventListener('keydown', (e) => {
+          if (e.key === 'Escape') {
+            this.hideMenu();
+          }
+        });
+      }
+      
+      showMenu(bubble, event) {
+        this.currentBubble = bubble;
+        
+        // 智能定位算法：计算菜单最佳显示位置
+        const rect = bubble.getBoundingClientRect();
+        const viewport = {
+          width: window.innerWidth,
+          height: window.innerHeight
+        };
+        
+        // 默认位置：气泡水平居中，上方10px
+        let x = rect.left + rect.width / 2 - 140; // 菜单宽280px，所以-140居中
+        let y = rect.top - 10; 
+        
+        // 水平边界检测：防止菜单超出屏幕
+        if (x < 8) x = 8; // 左边界保护
+        if (x + 280 > viewport.width - 8) x = viewport.width - 288; // 右边界保护
+        
+        // 垂直边界检测：上方空间不足时显示在下方
+        if (y < 8) {
+          y = rect.bottom + 10; // 菜单显示在气泡下方
+        }
+        
+        // 应用定位：使用fixed定位，相对于viewport
+        this.menu.style.left = `${x}px`;
+        this.menu.style.top = `${y}px`;
+        
+        // 显示动画：先移除hidden，再在下一帧应用过渡效果
+        this.menu.classList.remove('hidden');
+        requestAnimationFrame(() => {
+          this.menu.classList.add('opacity-100', 'scale-100');
+          this.menu.classList.remove('opacity-0', 'scale-95');
+        });
+      }
+      
+      hideMenu() {
+        if (!this.menu.classList.contains('hidden')) {
+          this.menu.classList.add('opacity-0', 'scale-95');
+          this.menu.classList.remove('opacity-100', 'scale-100');
+          
+          setTimeout(() => {
+            this.menu.classList.add('hidden');
+          }, 200);
+        }
+        this.currentBubble = null;
+      }
+      
+      handleAction(action) {
+        console.log(`执行操作: ${action}`, this.currentBubble);
+        // 这里可以根据action类型执行具体逻辑
+        switch(action) {
+          case 'copy':
+            // 复制消息内容
+            break;
+          case 'delete':
+            // 删除消息
+            break;
+          // ... 其他操作
+        }
+      }
+    }
+    
+    // 初始化全局菜单管理器
+    const menuManager = new ActionMenuManager();
+    
+    console.log('🎯 单例操作菜单系统初始化完成');
+  </script>
+</body>
+</html>
