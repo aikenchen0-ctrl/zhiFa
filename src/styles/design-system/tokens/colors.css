@@ -1,0 +1,71 @@
+:root {
+  /* Glass Material Color Tokens */
+  
+  /* Primary Glass Colors */
+  --glass-white-10: rgba(255, 255, 255, 0.10);
+  --glass-white-20: rgba(255, 255, 255, 0.20);
+  --glass-white-30: rgba(255, 255, 255, 0.30);
+  --glass-white-40: rgba(255, 255, 255, 0.40);
+  --glass-white-50: rgba(255, 255, 255, 0.50);
+  --glass-white-60: rgba(255, 255, 255, 0.60);
+  --glass-white-70: rgba(255, 255, 255, 0.70);
+  --glass-white-80: rgba(255, 255, 255, 0.80);
+  --glass-white-90: rgba(255, 255, 255, 0.90);
+
+  /* Tinted Glass Colors */
+  --glass-blue-10: rgba(59, 130, 246, 0.10);
+  --glass-blue-20: rgba(59, 130, 246, 0.20);
+  --glass-blue-30: rgba(59, 130, 246, 0.30);
+  --glass-blue-40: rgba(59, 130, 246, 0.40);
+  --glass-blue-50: rgba(59, 130, 246, 0.50);
+
+  --glass-purple-10: rgba(147, 51, 234, 0.10);
+  --glass-purple-20: rgba(147, 51, 234, 0.20);
+  --glass-purple-30: rgba(147, 51, 234, 0.30);
+  --glass-purple-40: rgba(147, 51, 234, 0.40);
+  --glass-purple-50: rgba(147, 51, 234, 0.50);
+
+  --glass-pink-10: rgba(236, 72, 153, 0.10);
+  --glass-pink-20: rgba(236, 72, 153, 0.20);
+  --glass-pink-30: rgba(236, 72, 153, 0.30);
+  --glass-pink-40: rgba(236, 72, 153, 0.40);
+  --glass-pink-50: rgba(236, 72, 153, 0.50);
+
+  /* Dark Glass Colors */
+  --glass-dark-10: rgba(0, 0, 0, 0.10);
+  --glass-dark-20: rgba(0, 0, 0, 0.20);
+  --glass-dark-30: rgba(0, 0, 0, 0.30);
+  --glass-dark-40: rgba(0, 0, 0, 0.40);
+  --glass-dark-50: rgba(0, 0, 0, 0.50);
+
+  /* Border Colors */
+  --glass-border-light: rgba(255, 255, 255, 0.18);
+  --glass-border-medium: rgba(255, 255, 255, 0.25);
+  --glass-border-strong: rgba(255, 255, 255, 0.35);
+  --glass-border-dark: rgba(0, 0, 0, 0.12);
+
+  /* Text Colors on Glass */
+  --glass-text-primary: rgba(255, 255, 255, 0.95);
+  --glass-text-secondary: rgba(255, 255, 255, 0.75);
+  --glass-text-tertiary: rgba(255, 255, 255, 0.55);
+  --glass-text-disabled: rgba(255, 255, 255, 0.35);
+
+  --glass-text-dark-primary: rgba(0, 0, 0, 0.85);
+  --glass-text-dark-secondary: rgba(0, 0, 0, 0.65);
+  --glass-text-dark-tertiary: rgba(0, 0, 0, 0.45);
+  --glass-text-dark-disabled: rgba(0, 0, 0, 0.25);
+
+  /* Shadow Colors for Depth */
+  --glass-shadow-soft: rgba(0, 0, 0, 0.05);
+  --glass-shadow-medium: rgba(0, 0, 0, 0.10);
+  --glass-shadow-strong: rgba(0, 0, 0, 0.15);
+  --glass-shadow-deep: rgba(0, 0, 0, 0.25);
+
+  /* Accent Colors */
+  --accent-primary: #3b82f6;
+  --accent-secondary: #8b5cf6;
+  --accent-success: #10b981;
+  --accent-warning: #f59e0b;
+  --accent-error: #ef4444;
+  --accent-info: #06b6d4;
+}

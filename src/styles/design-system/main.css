@@ -1,0 +1,270 @@
+/* Liquid Glass UI Design System - Main Entry Point */
+
+/* Import Design Tokens */
+@import './tokens/colors.css';
+@import './tokens/spacing.css';
+@import './tokens/typography.css';
+
+/* Import Glass Effects */
+@import './effects/glass.css';
+@import './effects/interactions.css';
+
+/* Import Themes */
+@import './themes/glass-theme.css';
+
+/* Import Component Hierarchy */
+@import './components/component-hierarchy.css';
+
+/* Import Utilities */
+@import './utils/utilities.css';
+
+/* CSS Reset and Base Styles */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  color: var(--theme-text-primary);
+  background: var(--theme-bg-primary);
+  background-attachment: fixed;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Remove default button styles */
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
+/* Remove default input styles */
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+}
+
+/* Remove default list styles */
+ul,
+ol {
+  list-style: none;
+}
+
+/* Remove default link styles */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Focus styles for accessibility */
+:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Root container for the glass design system */
+.glass-app {
+  min-height: 100vh;
+  background: var(--theme-bg-primary);
+  background-attachment: fixed;
+}
+
+/* Main content container */
+.glass-main {
+  position: relative;
+  z-index: var(--z-base);
+  min-height: 100vh;
+  padding: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .glass-main {
+    padding: var(--space-6);
+  }
+}
+
+@media (min-width: 1024px) {
+  .glass-main {
+    padding: var(--space-8);
+  }
+}
+
+/* Glass page wrapper */
+.glass-page {
+  max-width: var(--container-xl);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+/* Screen reader only text */
+.sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Skip to content link */
+.skip-to-content {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  z-index: 10000;
+  padding: 8px;
+  background: var(--glass-white-90);
+  color: var(--glass-text-dark-primary);
+  border-radius: var(--radius-md);
+  text-decoration: underline;
+  font-weight: var(--font-medium);
+  transform: translateY(-100%);
+  transition: transform var(--glass-transition-fast) var(--glass-ease-out);
+}
+
+.skip-to-content:focus {
+  transform: translateY(0);
+}
+
+/* Print styles */
+@media print {
+  * {
+    background: transparent !important;
+    color: black !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .glass-app,
+  .glass-main {
+    background: white !important;
+  }
+
+  .glass-component,
+  .glass-container,
+  .glass-overlay {
+    border: 1px solid #ccc !important;
+    background: white !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --glass-text-primary: #000000;
+    --glass-text-secondary: #333333;
+    --glass-border-light: #000000;
+    --glass-border-medium: #000000;
+    --glass-border-strong: #000000;
+  }
+
+  [data-theme="dark"] {
+    --glass-text-primary: #ffffff;
+    --glass-text-secondary: #cccccc;
+    --glass-border-light: #ffffff;
+    --glass-border-medium: #ffffff;
+    --glass-border-strong: #ffffff;
+  }
+
+  .glass-component,
+  .glass-container,
+  .glass-overlay {
+    border-width: 2px;
+    background: rgba(255, 255, 255, 0.95) !important;
+  }
+
+  [data-theme="dark"] .glass-component,
+  [data-theme="dark"] .glass-container,
+  [data-theme="dark"] .glass-overlay {
+    background: rgba(0, 0, 0, 0.95) !important;
+  }
+}
+
+/* Performance optimizations */
+.glass-component,
+.glass-container,
+.glass-overlay {
+  contain: layout style;
+  transform: translateZ(0);
+  will-change: auto;
+}
+
+/* Reduce motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .glass-app {
+    background-attachment: scroll;
+  }
+}
+
+/* Dark mode media query support */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    /* Apply dark theme when no theme is explicitly set and user prefers dark */
+    --theme-bg-primary: linear-gradient(135deg, #232526 0%, #414345 100%);
+    --theme-bg-secondary: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+    --theme-bg-tertiary: linear-gradient(135deg, #0c0c0c 0%, #333333 100%);
+    
+    --theme-glass-primary: var(--glass-dark-30);
+    --theme-glass-secondary: var(--glass-dark-25);
+    --theme-glass-tertiary: var(--glass-dark-20);
+    
+    --theme-text-primary: var(--glass-text-primary);
+    --theme-text-secondary: var(--glass-text-secondary);
+    --theme-text-tertiary: var(--glass-text-tertiary);
+    --theme-text-disabled: var(--glass-text-disabled);
+    
+    --theme-border-primary: var(--glass-border-light);
+    --theme-border-secondary: rgba(255, 255, 255, 0.1);
+    
+    --theme-shadow: rgba(0, 0, 0, 0.3);
+    --theme-shadow-strong: rgba(0, 0, 0, 0.5);
+  }
+}

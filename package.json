@@ -1,32 +1,286 @@
 {
-  "name": "claude-flow-workspace",
-  "private": true,
-  "version": "0.0.0",
+  "name": "@mobile-im/components",
+  "version": "1.0.0",
+  "description": "Advanced mobile IM floating components with WebGL rendering and Liquid Glass UI",
   "type": "module",
+  
+  "main": "./dist/mobile-im-components.cjs.js",
+  "module": "./dist/mobile-im-components.es.js",
+  "types": "./dist/types/index.d.ts",
+  
+  "exports": {
+    ".": {
+      "import": "./dist/mobile-im-components.es.js",
+      "require": "./dist/mobile-im-components.cjs.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./styles": "./dist/styles/index.css",
+    "./webgl": {
+      "import": "./dist/webgl.es.js",
+      "require": "./dist/webgl.cjs.js",
+      "types": "./dist/types/webgl.d.ts"
+    },
+    "./mobile": {
+      "import": "./dist/mobile.es.js",
+      "require": "./dist/mobile.cjs.js",
+      "types": "./dist/types/mobile.d.ts"
+    }
+  },
+  
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
+  
   "scripts": {
     "dev": "vite",
-    "dev:mobile": "vite --host 0.0.0.0",
-    "build": "tsc && vite build",
+    "build": "npm run type-check && npm run build:lib && npm run build:types",
+    "build:lib": "vite build",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist/types",
+    "build:watch": "vite build --watch",
+    "preview": "vite preview",
+    
+    "docs:dev": "vitepress dev docs --port 3001",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs",
+    "docs:generate-api": "node --loader ts-node/esm scripts/generate-api-docs.ts",
+    
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "storybook:test": "test-storybook",
+    
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui",
+    "test:e2e": "playwright test",
+    
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "preview": "vite preview --host 0.0.0.0",
-    "deploy": "npm run build && gh-pages -d dist"
+    "lint:fix": "eslint . --ext ts,tsx --fix",
+    "lint:css": "stylelint 'src/**/*.css' 'src/**/*.scss'",
+    
+    "type-check": "tsc --noEmit",
+    "format": "prettier --write 'src/**/*.{ts,tsx,css,scss,md}'",
+    "format:check": "prettier --check 'src/**/*.{ts,tsx,css,scss,md}'",
+    
+    "prepare": "husky install",
+    "prepublishOnly": "npm run build && npm run test:run",
+    "postinstall": "node scripts/postinstall.js",
+    
+    "release": "semantic-release",
+    "release:dry": "semantic-release --dry-run",
+    
+    "analyze": "npm run build && npx vite-bundle-analyzer dist",
+    "size-check": "npx size-limit",
+    "lighthouse": "npx lighthouse https://mobile-im.github.io/components --output html --output-path lighthouse-report.html",
+    
+    "clean": "rimraf dist coverage storybook-static docs/.vitepress/dist",
+    "clean:install": "npm run clean && rimraf node_modules package-lock.json && npm install"
   },
+  
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
+  },
+  
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "zustand": "^4.4.7",
+    "clsx": "^2.0.0"
   },
+  
   "devDependencies": {
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
+    "@types/node": "^20.10.5",
+    
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
-    "@vitejs/plugin-react": "^4.2.1",
     "eslint": "^8.55.0",
+    "eslint-plugin-react": "^7.33.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
-    "gh-pages": "^6.0.0",
+    "eslint-plugin-storybook": "^0.6.15",
+    
+    "stylelint": "^16.1.0",
+    "stylelint-config-standard": "^36.0.0",
+    "stylelint-config-css-modules": "^4.4.0",
+    
+    "prettier": "^3.1.1",
+    "husky": "^8.0.3",
+    "lint-staged": "^15.2.0",
+    
     "typescript": "^5.2.2",
+    "ts-node": "^10.9.2",
+    
     "vite": "^5.0.8",
-    "vconsole": "^3.15.0"
+    "vite-plugin-dts": "^3.6.4",
+    "vite-plugin-eslint": "^1.8.1",
+    "@vitejs/plugin-react": "^4.2.1",
+    
+    "vitepress": "^1.0.0-rc.36",
+    "markdown-it-container": "^4.0.0",
+    
+    "vitest": "^1.1.0",
+    "@vitest/ui": "^1.1.0",
+    "@vitest/coverage-v8": "^1.1.0",
+    "jsdom": "^23.0.1",
+    
+    "@testing-library/react": "^14.1.2",
+    "@testing-library/jest-dom": "^6.1.6",
+    "@testing-library/user-event": "^14.5.1",
+    
+    "playwright": "^1.40.1",
+    "@playwright/test": "^1.40.1",
+    
+    "@storybook/react": "^7.6.6",
+    "@storybook/react-vite": "^7.6.6",
+    "@storybook/addon-essentials": "^7.6.6",
+    "@storybook/addon-interactions": "^7.6.6",
+    "@storybook/addon-links": "^7.6.6",
+    "@storybook/addon-docs": "^7.6.6",
+    "@storybook/addon-controls": "^7.6.6",
+    "@storybook/addon-viewport": "^7.6.6",
+    "@storybook/addon-backgrounds": "^7.6.6",
+    "@storybook/addon-measure": "^7.6.6",
+    "@storybook/addon-outline": "^7.6.6",
+    "@storybook/addon-a11y": "^7.6.6",
+    "@storybook/test": "^7.6.6",
+    "@storybook/test-runner": "^0.16.0",
+    
+    "@semantic-release/changelog": "^6.0.3",
+    "@semantic-release/git": "^10.0.1",
+    "semantic-release": "^22.0.12",
+    
+    "size-limit": "^11.0.1",
+    "@size-limit/preset-small-lib": "^11.0.1",
+    
+    "rimraf": "^5.0.5",
+    "glob": "^10.3.10",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0"
+  },
+  
+  "lint-staged": {
+    "*.{ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{css,scss}": [
+      "stylelint --fix",
+      "prettier --write"
+    ],
+    "*.{md,json}": [
+      "prettier --write"
+    ]
+  },
+  
+  "size-limit": [
+    {
+      "name": "Core Bundle",
+      "path": "dist/mobile-im-components.es.js",
+      "limit": "50 KB",
+      "webpack": false
+    },
+    {
+      "name": "WebGL Renderer",
+      "path": "dist/webgl.es.js",
+      "limit": "30 KB",
+      "webpack": false
+    },
+    {
+      "name": "Mobile Utils",
+      "path": "dist/mobile.es.js",
+      "limit": "20 KB",
+      "webpack": false
+    },
+    {
+      "name": "Styles",
+      "path": "dist/styles/index.css",
+      "limit": "25 KB"
+    }
+  ],
+  
+  "browserslist": {
+    "production": [
+      "> 1%",
+      "last 2 versions",
+      "not dead",
+      "iOS >= 12",
+      "Android >= 8"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  
+  "keywords": [
+    "react",
+    "typescript", 
+    "mobile",
+    "im",
+    "chat",
+    "messaging",
+    "components",
+    "ui-library",
+    "webgl",
+    "liquid-glass",
+    "floating",
+    "overlay",
+    "touch",
+    "gestures",
+    "animations",
+    "performance",
+    "responsive"
+  ],
+  
+  "author": {
+    "name": "Mobile IM Components Team",
+    "email": "team@mobile-im-components.com",
+    "url": "https://mobile-im-components.com"
+  },
+  
+  "contributors": [
+    {
+      "name": "Claude Code",
+      "email": "claude@anthropic.com",
+      "role": "AI Assistant"
+    }
+  ],
+  
+  "license": "MIT",
+  "homepage": "https://mobile-im.github.io/components",
+  
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mobile-im/components.git"
+  },
+  
+  "bugs": {
+    "url": "https://github.com/mobile-im/components/issues"
+  },
+  
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/mobile-im-components"
+  },
+  
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  
+  "volta": {
+    "node": "20.10.0",
+    "npm": "10.2.3"
   }
 }

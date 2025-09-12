@@ -1,0 +1,196 @@
+/* Glass Theme System */
+
+/* Light Theme (Default) */
+:root,
+[data-theme="light"] {
+  /* Background Layers */
+  --theme-bg-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --theme-bg-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --theme-bg-tertiary: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  
+  /* Glass Theme Colors */
+  --theme-glass-primary: var(--glass-white-25);
+  --theme-glass-secondary: var(--glass-white-20);
+  --theme-glass-tertiary: var(--glass-white-15);
+  
+  /* Text Colors */
+  --theme-text-primary: var(--glass-text-primary);
+  --theme-text-secondary: var(--glass-text-secondary);
+  --theme-text-tertiary: var(--glass-text-tertiary);
+  --theme-text-disabled: var(--glass-text-disabled);
+  
+  /* Border Colors */
+  --theme-border-primary: var(--glass-border-medium);
+  --theme-border-secondary: var(--glass-border-light);
+  
+  /* Shadow Colors */
+  --theme-shadow: var(--glass-shadow-medium);
+  --theme-shadow-strong: var(--glass-shadow-strong);
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+  /* Background Layers */
+  --theme-bg-primary: linear-gradient(135deg, #232526 0%, #414345 100%);
+  --theme-bg-secondary: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  --theme-bg-tertiary: linear-gradient(135deg, #0c0c0c 0%, #333333 100%);
+  
+  /* Glass Theme Colors */
+  --theme-glass-primary: var(--glass-dark-30);
+  --theme-glass-secondary: var(--glass-dark-25);
+  --theme-glass-tertiary: var(--glass-dark-20);
+  
+  /* Text Colors */
+  --theme-text-primary: var(--glass-text-primary);
+  --theme-text-secondary: var(--glass-text-secondary);
+  --theme-text-tertiary: var(--glass-text-tertiary);
+  --theme-text-disabled: var(--glass-text-disabled);
+  
+  /* Border Colors */
+  --theme-border-primary: var(--glass-border-light);
+  --theme-border-secondary: rgba(255, 255, 255, 0.1);
+  
+  /* Shadow Colors */
+  --theme-shadow: rgba(0, 0, 0, 0.3);
+  --theme-shadow-strong: rgba(0, 0, 0, 0.5);
+}
+
+/* Aurora Theme */
+[data-theme="aurora"] {
+  --theme-bg-primary: linear-gradient(135deg, 
+    #667eea 0%, 
+    #764ba2 25%, 
+    #f093fb 50%, 
+    #f5576c 75%, 
+    #4facfe 100%);
+  
+  --theme-glass-primary: var(--glass-white-30);
+  --theme-glass-secondary: var(--glass-white-25);
+  --theme-glass-tertiary: var(--glass-white-20);
+}
+
+/* Ocean Theme */
+[data-theme="ocean"] {
+  --theme-bg-primary: linear-gradient(135deg, 
+    #2E3192 0%, 
+    #1BFFFF 100%);
+  
+  --theme-glass-primary: var(--glass-blue-30);
+  --theme-glass-secondary: var(--glass-blue-25);
+  --theme-glass-tertiary: var(--glass-blue-20);
+}
+
+/* Sunset Theme */
+[data-theme="sunset"] {
+  --theme-bg-primary: linear-gradient(135deg, 
+    #ff9a9e 0%, 
+    #fecfef 50%, 
+    #fecfef 100%);
+  
+  --theme-glass-primary: var(--glass-pink-30);
+  --theme-glass-secondary: var(--glass-pink-25);
+  --theme-glass-tertiary: var(--glass-pink-20);
+}
+
+/* Forest Theme */
+[data-theme="forest"] {
+  --theme-bg-primary: linear-gradient(135deg, 
+    #134e5e 0%, 
+    #71b280 100%);
+  
+  --theme-glass-primary: rgba(113, 178, 128, 0.3);
+  --theme-glass-secondary: rgba(113, 178, 128, 0.25);
+  --theme-glass-tertiary: rgba(113, 178, 128, 0.2);
+}
+
+/* High Contrast Theme for Accessibility */
+[data-theme="high-contrast"] {
+  --theme-bg-primary: #000000;
+  --theme-bg-secondary: #000000;
+  --theme-bg-tertiary: #000000;
+  
+  --theme-glass-primary: rgba(255, 255, 255, 0.9);
+  --theme-glass-secondary: rgba(255, 255, 255, 0.8);
+  --theme-glass-tertiary: rgba(255, 255, 255, 0.7);
+  
+  --theme-text-primary: #000000;
+  --theme-text-secondary: #333333;
+  --theme-text-tertiary: #666666;
+  
+  --theme-border-primary: #ffffff;
+  --theme-border-secondary: #cccccc;
+}
+
+/* Base Theme Application */
+body {
+  background: var(--theme-bg-primary);
+  background-attachment: fixed;
+  color: var(--theme-text-primary);
+  font-family: var(--font-sans);
+  line-height: var(--leading-normal);
+  transition: all var(--glass-transition-normal) var(--glass-ease-out);
+}
+
+/* Glass Component Theme Integration */
+.glass-themed {
+  background: var(--theme-glass-primary);
+  border-color: var(--theme-border-primary);
+  color: var(--theme-text-primary);
+}
+
+.glass-themed-secondary {
+  background: var(--theme-glass-secondary);
+  border-color: var(--theme-border-secondary);
+  color: var(--theme-text-secondary);
+}
+
+.glass-themed-tertiary {
+  background: var(--theme-glass-tertiary);
+  border-color: var(--theme-border-secondary);
+  color: var(--theme-text-tertiary);
+}
+
+/* Theme Transition Animation */
+* {
+  transition: 
+    background-color var(--glass-transition-normal) var(--glass-ease-out),
+    border-color var(--glass-transition-normal) var(--glass-ease-out),
+    color var(--glass-transition-normal) var(--glass-ease-out);
+}
+
+/* Reduce Motion for Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+  
+  body {
+    background-attachment: scroll;
+  }
+}
+
+/* Theme Utilities */
+.theme-bg-primary {
+  background: var(--theme-bg-primary);
+}
+
+.theme-bg-secondary {
+  background: var(--theme-bg-secondary);
+}
+
+.theme-bg-tertiary {
+  background: var(--theme-bg-tertiary);
+}
+
+.theme-text-primary {
+  color: var(--theme-text-primary);
+}
+
+.theme-text-secondary {
+  color: var(--theme-text-secondary);
+}
+
+.theme-text-tertiary {
+  color: var(--theme-text-tertiary);
+}

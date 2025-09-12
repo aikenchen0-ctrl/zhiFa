@@ -1,39 +1,36 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import { resolve } from 'path';
 
+// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
-  
-  // GitHub Pages部署配置
-  base: process.env.NODE_ENV === 'production' 
-    ? '/zhiFa/' // 用户的仓库名
-    : '/',
-    
-  server: {
-    host: '0.0.0.0', // 允许外部访问
-    port: 5173,
-    hmr: {
-      port: 5173,
-    },
+  resolve: {
+    alias: {
+      '@': resolve(__dirname, 'src'),
+      '@/components': resolve(__dirname, 'src/components'),
+      '@/stores': resolve(__dirname, 'src/stores'),
+      '@/types': resolve(__dirname, 'src/types'),
+      '@/styles': resolve(__dirname, 'src/styles')
+    }
   },
-  
+  css: {
+    postcss: './postcss.config.js'
+  },
   build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
-    // 移动端优化
-    target: 'es2015',
+    target: 'esnext',
+    minify: 'esbuild',
     rollupOptions: {
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
-        },
-      },
-    },
+          'react-vendor': ['react', 'react-dom'],
+          'state-vendor': ['zustand']
+        }
+      }
+    }
   },
-  
-  // 预览服务器配置
-  preview: {
-    host: '0.0.0.0',
-    port: 4173,
-  },
-})
+  server: {
+    port: 3000,
+    open: true
+  }
+});

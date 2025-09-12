@@ -1,0 +1,76 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+
+# Security policy configuration
+ignore:
+  # Example: Ignore specific vulnerabilities with reason
+  # SNYK-JS-LODASH-567746:
+  #   - '*':
+  #       reason: 'Not vulnerable in our use case - only using safe methods'
+  #       expires: '2024-12-31T23:59:59.999Z'
+
+# Language-specific settings
+language-settings:
+  javascript:
+    # Package manager settings
+    packageManager: npm
+    
+    # Dependency scanning options
+    dev-dependencies: true
+    
+    # Severity threshold
+    severity-threshold: medium
+    
+    # Exclude development dependencies from monitoring
+    exclude-dev-deps: false
+
+# Patch settings
+patch:
+  # Auto-patch minor vulnerabilities
+  auto-patch: true
+  
+  # Patch level (major, minor, patch)
+  patch-level: patch
+
+# License policy
+license-policy:
+  # Allowed licenses
+  allow:
+    - MIT
+    - Apache-2.0
+    - BSD-2-Clause
+    - BSD-3-Clause
+    - ISC
+    - CC0-1.0
+  
+  # Disallowed licenses
+  disallow:
+    - GPL-2.0
+    - GPL-3.0
+    - AGPL-1.0
+    - AGPL-3.0
+    - LGPL-2.0
+    - LGPL-2.1
+    - LGPL-3.0
+
+# Monitoring settings
+monitor:
+  # Monitor production dependencies
+  production: true
+  
+  # Monitor development dependencies
+  development: false
+  
+  # Frequency of monitoring
+  frequency: daily
+
+# Test settings
+test:
+  # Include development dependencies in tests
+  include-dev-deps: true
+  
+  # Fail build on high severity issues
+  fail-on: high
+  
+  # Output format
+  format: json

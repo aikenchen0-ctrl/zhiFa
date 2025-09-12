@@ -1,83 +1,92 @@
-import { useState, useEffect } from 'react'
-import './App.css'
+import React, { useEffect } from 'react';
+import { useChatStore } from './stores/simpleChatStore';
+import { TopBar } from './components/layout/TopBar';
+import { BottomBar } from './components/layout/BottomBar';
+import { LeftSidebar } from './components/layout/LeftSidebar';
+import { RightSidebar } from './components/layout/RightSidebar';
+import { ChatArea } from './components/chat/ChatArea';
+import { OverlayContainer } from './components/layout/OverlayContainer';
+import { ConnectionLayer } from './components/layout/ConnectionLayer';
+import { PopupLayer } from './components/layout/PopupLayer';
+import { Chat, Message, User } from './types';
 
 function App() {
-  const [count, setCount] = useState(0)
-  const [touchInfo, setTouchInfo] = useState<string>('')
-  const [networkInfo, setNetworkInfo] = useState<any>(null)
-
+  const { 
+    sidebarCollapsed, 
+    rightSidebarVisible,
+    onChatSelect
+  } = useChatStore();
+  
+  // Initialize mock data
   useEffect(() => {
-    // 获取网络信息
-    const connection = (navigator as any).connection
-    if (connection) {
-      setNetworkInfo({
-        effectiveType: connection.effectiveType,
-        downlink: connection.downlink,
-        saveData: connection.saveData
-      })
-    }
-  }, [])
+    // Create mock users
+    const mockUsers: User[] = [
+      { id: '1', name: '张三', avatar: 'https://ui-avatars.com/api/?name=张三&background=0066cc&color=fff', status: 'online' },
+      { id: '2', name: '李四', avatar: 'https://ui-avatars.com/api/?name=李四&background=ff6b6b&color=fff', status: 'offline' },
+      { id: '3', name: '王五', avatar: 'https://ui-avatars.com/api/?name=王五&background=4ecdc4&color=fff', status: 'away' },
+      { id: '4', name: '赵六', avatar: 'https://ui-avatars.com/api/?name=赵六&background=45b7d1&color=fff', status: 'online' },
+    ];
 
-  // 触摸事件处理
-  const handleTouch = (e: React.TouchEvent, type: string) => {
-    const touch = e.touches[0] || e.changedTouches[0]
-    if (touch) {
-      setTouchInfo(`${type}: ${touch.clientX.toFixed(0)}, ${touch.clientY.toFixed(0)} | 触摸点数: ${e.touches.length}`)
-    }
-  }
+    // Create mock chats
+    const mockChats: Chat[] = [
+      {
+        id: 'chat_1',
+        name: '张三',
+        type: 'private',
+        participants: [mockUsers[0]],
+        unreadCount: 3,
+        avatar: mockUsers[0].avatar,
+        isOnline: true,
+        lastActivity: new Date(Date.now() - 1000 * 60 * 5), // 5 minutes ago
+        lastMessage: {
+          id: 'msg_1',
+          chatId: 'chat_1',
+          senderId: '1',
+          content: '你好，最近怎么样？',
+          timestamp: new Date(Date.now() - 1000 * 60 * 5),
+          type: 'text',
+          status: 'read'
+        }
+      },
+    ];
+
+    const mockMessages: Message[] = [
+      {
+        id: 'msg_1_1',
+        chatId: 'chat_1',
+        senderId: '1',
+        content: '嗨！今天天气真不错呢',
+        timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
+        type: 'text',
+        status: 'read'
+      },
+    ];
+
+    // Update store with mock data
+    const store = useChatStore.getState();
+    store.chats = mockChats;
+    store.messages = { 'chat_1': mockMessages };
+    onChatSelect('chat_1');
+  }, [onChatSelect]);
 
   return (
-    <div className="App">
-      <h1>📱 Claude Flow + GitHub Pages 演示</h1>
-      
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          点击计数: {count}
-        </button>
-        <p>
-          每次代码修改都会自动提交到Git，然后GitHub Pages自动部署！
-        </p>
-      </div>
-
-      {/* 移动端信息面板 */}
-      <div className="mobile-info">
-        <h3>📊 移动端信息</h3>
-        <div>
-          <p><strong>屏幕尺寸:</strong> {window.innerWidth} × {window.innerHeight}</p>
-          <p><strong>设备像素比:</strong> {window.devicePixelRatio}</p>
-          {networkInfo && (
-            <>
-              <p><strong>网络类型:</strong> {networkInfo.effectiveType}</p>
-              <p><strong>下行速度:</strong> {networkInfo.downlink}Mbps</p>
-              <p><strong>省流量模式:</strong> {networkInfo.saveData ? '开启' : '关闭'}</p>
-            </>
-          )}
+    <div className="h-screen w-screen overflow-hidden bg-gray-100 flex flex-col">
+      <TopBar />
+      <div className="flex-1 flex overflow-hidden">
+        <LeftSidebar collapsed={sidebarCollapsed} />
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <ChatArea className="flex-1" />
+          <BottomBar />
         </div>
+        {rightSidebarVisible && (
+          <RightSidebar visible={rightSidebarVisible} />
+        )}
       </div>
-
-      {/* 触摸测试区域 */}
-      <div 
-        className="touch-area"
-        onTouchStart={(e) => handleTouch(e, '开始触摸')}
-        onTouchMove={(e) => handleTouch(e, '触摸移动')}
-        onTouchEnd={(e) => handleTouch(e, '结束触摸')}
-      >
-        <h3>👆 触摸测试区域</h3>
-        <p>在这里测试触摸、手势操作</p>
-        <div className="touch-feedback">
-          {touchInfo && <p>{touchInfo}</p>}
-        </div>
-      </div>
-
-      {/* 部署信息 */}
-      <div className="deploy-info">
-        <h3>🚀 部署信息</h3>
-        <p>当前环境: {import.meta.env.MODE}</p>
-        <p>构建时间: {new Date().toLocaleString('zh-CN')}</p>
-        <p>GitHub Pages URL: https://aikenchen0-ctrl.github.io/zhiFa/</p>
-      </div>
+      <OverlayContainer />
+      <ConnectionLayer />
+      <PopupLayer />
     </div>
-  )
+  );
 }
 
-export default App
+export default App;

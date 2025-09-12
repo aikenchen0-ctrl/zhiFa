@@ -1,0 +1,94 @@
+:root {
+  /* Font Families */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+  --font-mono: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', 'Courier New', monospace;
+
+  /* Font Sizes */
+  --text-xs: 0.75rem;    /* 12px */
+  --text-sm: 0.875rem;   /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg: 1.125rem;   /* 18px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+  --text-3xl: 1.875rem;  /* 30px */
+  --text-4xl: 2.25rem;   /* 36px */
+  --text-5xl: 3rem;      /* 48px */
+  --text-6xl: 3.75rem;   /* 60px */
+
+  /* Line Heights */
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+
+  /* Font Weights */
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+
+  /* Letter Spacing */
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+
+  /* Text Styles for Glass UI */
+  --glass-text-shadow-light: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --glass-text-shadow-medium: 0 2px 4px rgba(0, 0, 0, 0.15);
+  --glass-text-shadow-strong: 0 4px 8px rgba(0, 0, 0, 0.2);
+
+  /* Semantic Text Sizes */
+  --text-caption: var(--text-xs);
+  --text-body-sm: var(--text-sm);
+  --text-body: var(--text-base);
+  --text-body-lg: var(--text-lg);
+  --text-subtitle: var(--text-xl);
+  --text-title: var(--text-2xl);
+  --text-heading: var(--text-3xl);
+  --text-display: var(--text-4xl);
+  --text-hero: var(--text-5xl);
+}
+
+/* Typography Utility Classes */
+.text-glass {
+  color: var(--glass-text-primary);
+  text-shadow: var(--glass-text-shadow-light);
+}
+
+.text-glass-secondary {
+  color: var(--glass-text-secondary);
+  text-shadow: var(--glass-text-shadow-light);
+}
+
+.text-glass-tertiary {
+  color: var(--glass-text-tertiary);
+}
+
+.text-glass-dark {
+  color: var(--glass-text-dark-primary);
+  text-shadow: none;
+}
+
+.text-glass-dark-secondary {
+  color: var(--glass-text-dark-secondary);
+  text-shadow: none;
+}
+
+/* Glass Text Effects */
+.text-frosted {
+  color: var(--glass-text-primary);
+  text-shadow: var(--glass-text-shadow-medium);
+  backdrop-filter: blur(1px);
+}
+
+.text-glow {
+  color: var(--glass-text-primary);
+  text-shadow: 
+    0 0 10px rgba(255, 255, 255, 0.3),
+    0 0 20px rgba(255, 255, 255, 0.2),
+    var(--glass-text-shadow-light);
+}

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liquid Glass UI - 组件演示</title>
+    <link rel="stylesheet" href="../src/styles/design-system/main.css">
+    <style>
+        /* 演示页面特定样式 */
+        .demo-section {
+            margin-bottom: 3rem;
+        }
+        
+        .demo-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .theme-switcher {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 5000;
+        }
+        
+        .component-showcase {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            align-items: center;
+        }
+    </style>
+</head>
+<body class="glass-app" data-theme="light">
+    <div class="theme-switcher">
+        <select class="glass-input" id="themeSelector">
+            <option value="light">明亮主题</option>
+            <option value="dark">深色主题</option>
+            <option value="aurora">极光主题</option>
+            <option value="ocean">海洋主题</option>
+            <option value="sunset">日落主题</option>
+            <option value="forest">森林主题</option>
+        </select>
+    </div>
+
+    <main class="glass-main">
+        <div class="glass-page">
+            <header class="glass-container text-center mb-8">
+                <h1 class="text-4xl font-bold mb-4 text-glow">Liquid Glass UI</h1>
+                <p class="text-lg text-glass-secondary">现代化半透明玻璃材质设计系统</p>
+            </header>
+
+            <!-- 玻璃效果演示 -->
+            <section class="demo-section">
+                <h2 class="text-2xl font-semibold mb-6 text-glass">玻璃材质效果</h2>
+                <div class="demo-grid">
+                    <div class="glass p-6 rounded-lg">
+                        <h3 class="text-lg font-medium mb-2">标准玻璃</h3>
+                        <p class="text-glass-secondary">20% 透明度，8px 模糊效果</p>
+                    </div>
+                    <div class="glass-light p-6 rounded-lg">
+                        <h3 class="text-lg font-medium mb-2">轻量玻璃</h3>
+                        <p class="text-glass-secondary">10% 透明度，4px 模糊效果</p>
+                    </div>
+                    <div class="glass-heavy p-6 rounded-lg">
+                        <h3 class="text-lg font-medium mb-2">厚重玻璃</h3>
+                        <p class="text-glass-secondary">50% 透明度，12px 模糊效果</p>
+                    </div>
+                    <div class="glass-transparent p-6 rounded-lg">
+                        <h3 class="text-lg font-medium mb-2">透明玻璃</h3>
+                        <p class="text-glass-secondary">完全透明，强模糊效果</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 气泡样式演示 -->
+            <section class="demo-section">
+                <h2 class="text-2xl font-semibold mb-6 text-glass">气泡样式</h2>
+                <div class="demo-grid">
+                    <div class="glass-bubble-simple p-6">
+                        <h3 class="text-lg font-medium mb-2">简单气泡</h3>
+                        <p class="text-glass-secondary">16px 圆角，轻量玻璃效果</p>
+                    </div>
+                    <div class="glass-bubble p-6">
+                        <h3 class="text-lg font-medium mb-2">标准气泡</h3>
+                        <p class="text-glass-secondary">24px 圆角，顶部高光效果</p>
+                    </div>
+                    <div class="glass-bubble-detailed p-6">
+                        <h3 class="text-lg font-medium mb-2">详细气泡</h3>
+                        <p class="text-glass-secondary">32px 圆角，径向渐变背景</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 有色玻璃演示 -->
+            <section class="demo-section">
+                <h2 class="text-2xl font-semibold mb-6 text-glass">有色玻璃</h2>
+                <div class="demo-grid">
+                    <div class="glass-blue p-6 rounded-lg">
+                        <h3 class="text-lg font-medium mb-2">蓝色玻璃</h3>
+                        <p class="text-glass-secondary">蓝色调玻璃材质</p>
+                    </div>
+                    <div class="glass-purple p-6 rounded-lg">
+                        <h3 class="text-lg font-medium mb-2">紫色玻璃</h3>
+                        <p class="text-glass-secondary">紫色调玻璃材质</p>
+                    </div>
+                    <div class="glass-pink p-6 rounded-lg">
+                        <h3 class="text-lg font-medium mb-2">粉色玻璃</h3>
+                        <p class="text-glass-secondary">粉色调玻璃材质</p>
+                    </div>
+                    <div class="glass-dark p-6 rounded-lg">
+                        <h3 class="text-lg font-medium mb-2">深色玻璃</h3>
+                        <p class="text-glass-secondary">深色调玻璃材质</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 按钮组件 -->
+            <section class="demo-section">
+                <h2 class="text-2xl font-semibold mb-6 text-glass">按钮组件</h2>
+                <div class="glass-container p-6">
+                    <div class="component-showcase">
+                        <button class="glass-button glass-interactive">标准按钮</button>
+                        <button class="glass-button-sm glass-interactive">小按钮</button>
+                        <button class="glass-button-lg glass-interactive">大按钮</button>
+                        <button class="glass-button glass-interactive glass-blue">蓝色按钮</button>
+                        <button class="glass-button glass-interactive glass-purple">紫色按钮</button>
+                        <button class="glass-button glass-interactive" disabled>禁用按钮</button>
+                        <button class="glass-button glass-interactive glass-ripple">涟漪效果</button>
+                        <button class="glass-button glass-interactive glass-glow">发光效果</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 输入框组件 -->
+            <section class="demo-section">
+                <h2 class="text-2xl font-semibold mb-6 text-glass">输入框组件</h2>
+                <div class="glass-container p-6">
+                    <div class="grid-cols-2 demo-grid">
+                        <div>
+                            <label class="block text-sm font-medium mb-2 text-glass">标准输入框</label>
+                            <input type="text" class="glass-input w-full" placeholder="请输入内容">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2 text-glass">密码输入框</label>
+                            <input type="password" class="glass-input w-full" placeholder="请输入密码">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2 text-glass">邮箱输入框</label>
+                            <input type="email" class="glass-input w-full" placeholder="user@example.com">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium mb-2 text-glass">文本域</label>
+                            <textarea class="glass-input w-full" rows="3" placeholder="请输入多行文本"></textarea>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 卡片组件 -->
+            <section class="demo-section">
+                <h2 class="text-2xl font-semibold mb-6 text-glass">卡片组件</h2>
+                <div class="demo-grid">
+                    <div class="glass-card-compact">
+                        <h3 class="text-lg font-semibold">紧凑卡片</h3>
+                        <p class="text-glass-secondary">这是一个紧凑样式的玻璃卡片，适用于信息密度较高的场景。</p>
+                        <div class="flex gap-2 mt-4">
+                            <button class="glass-button-sm glass-interactive">操作</button>
+                            <button class="glass-button-sm glass-interactive">更多</button>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card">
+                        <h3 class="text-lg font-semibold">标准卡片</h3>
+                        <p class="text-glass-secondary">这是一个标准样式的玻璃卡片，提供良好的内容展示空间。</p>
+                        <div class="flex gap-2 mt-4">
+                            <button class="glass-button glass-interactive">主要操作</button>
+                            <button class="glass-button glass-interactive glass-blue">次要操作</button>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-card-spacious">
+                        <h3 class="text-xl font-semibold">宽松卡片</h3>
+                        <p class="text-glass-secondary">这是一个宽松样式的玻璃卡片，适用于重要内容的突出展示。</p>
+                        <div class="flex gap-3 mt-6">
+                            <button class="glass-button-lg glass-interactive glass-purple">重要操作</button>
+                            <button class="glass-button-lg glass-interactive">取消</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 导航组件 -->
+            <section class="demo-section">
+                <h2 class="text-2xl font-semibold mb-6 text-glass">导航组件</h2>
+                <nav class="glass-nav">
+                    <div class="flex items-center gap-4 flex-1">
+                        <div class="text-lg font-semibold">Logo</div>
+                        <div class="flex gap-2">
+                            <a href="#" class="glass-nav-item active">首页</a>
+                            <a href="#" class="glass-nav-item">产品</a>
+                            <a href="#" class="glass-nav-item">服务</a>
+                            <a href="#" class="glass-nav-item">关于</a>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button class="glass-button-sm glass-interactive">登录</button>
+                        <button class="glass-button-sm glass-interactive glass-blue">注册</button>
+                    </div>
+                </nav>
+            </section>
+
+            <!-- 层次演示 -->
+            <section class="demo-section">
+                <h2 class="text-2xl font-semibold mb-6 text-glass">组件层次</h2>
+                <div class="glass-container-elevated p-8">
+                    <h3 class="text-lg font-semibold mb-4">提升容器层 (z-index: 200)</h3>
+                    <div class="glass-component-elevated p-4 mb-4">
+                        <h4 class="font-medium mb-2">提升组件层 (z-index: 20)</h4>
+                        <div class="glass-component p-3">
+                            <span>标准组件层 (z-index: 10)</span>
+                        </div>
+                    </div>
+                    <button class="glass-button glass-interactive" onclick="showModal()">打开模态框 (z-index: 2000)</button>
+                </div>
+            </section>
+
+            <!-- 特效演示 -->
+            <section class="demo-section">
+                <h2 class="text-2xl font-semibold mb-6 text-glass">特殊效果</h2>
+                <div class="glass-container p-6">
+                    <div class="component-showcase">
+                        <button class="glass-button glass-interactive glass-pulse">脉冲动画</button>
+                        <button class="glass-button glass-interactive glass-glow">发光效果</button>
+                        <button class="glass-button glass-interactive glass-elevated">悬浮效果</button>
+                        <div class="glass-frosted p-4 rounded-lg">
+                            <span>磨砂玻璃效果</span>
+                        </div>
+                        <div class="glass-morphism p-4 rounded-lg">
+                            <span>玻璃拟态效果</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- 模态框演示 -->
+    <div id="modal" class="fixed inset-0 hidden items-center justify-center z-2000">
+        <div class="glass-modal-backdrop" onclick="hideModal()"></div>
+        <div class="glass-modal p-6 max-w-md">
+            <h3 class="text-xl font-semibold mb-4">模态框标题</h3>
+            <p class="text-glass-secondary mb-6">这是一个玻璃材质的模态框，展示了最高层级的覆盖效果。</p>
+            <div class="flex gap-3 justify-end">
+                <button class="glass-button glass-interactive" onclick="hideModal()">取消</button>
+                <button class="glass-button glass-interactive glass-blue">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 主题切换
+        const themeSelector = document.getElementById('themeSelector');
+        const body = document.body;
+        
+        themeSelector.addEventListener('change', function() {
+            body.setAttribute('data-theme', this.value);
+        });
+
+        // 模态框控制
+        function showModal() {
+            const modal = document.getElementById('modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function hideModal() {
+            const modal = document.getElementById('modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        // 添加键盘支持
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideModal();
+            }
+        });
+
+        // 涟漪效果
+        document.querySelectorAll('.glass-ripple').forEach(element => {
+            element.addEventListener('click', function(e) {
+                // 涟漪效果已通过CSS实现
+            });
+        });
+
+        // 演示错误状态
+        setTimeout(() => {
+            const buttons = document.querySelectorAll('button:not([disabled])');
+            buttons[Math.floor(Math.random() * buttons.length)].classList.add('glass-shake');
+            setTimeout(() => {
+                buttons.forEach(btn => btn.classList.remove('glass-shake'));
+            }, 500);
+        }, 5000);
+    </script>
+</body>
+</html>
