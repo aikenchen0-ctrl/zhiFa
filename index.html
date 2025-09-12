@@ -290,17 +290,12 @@
       </div>
     </div>
     
-    <!-- 自己发送的详细气泡（带发送者名字示例） -->
+    <!-- 自己发送的详细气泡（无发送者名字） -->
     <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">
       <!-- 消息内容 -->
       <div class="flex flex-col items-end">
-        <!-- 气泡和发送者名字容器 -->
+        <!-- 气泡容器 -->
         <div class="relative">
-          <!-- 发送者名字 - 放在气泡容器外部 -->
-          <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
-            我
-          </span>
-          
           <!-- 主气泡 -->
           <div class="bubble sender-self" onclick="toggleActionMenu(this)">
             <div class="bubble-content">
