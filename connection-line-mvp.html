@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connection Line MVP - CSS Anchor Positioning</title>
+    <!-- CSS Anchor Positioning Polyfill -->
+    <script type="module">
+        if (!CSS.supports('anchor-name', '--anchor')) {
+            import('https://unpkg.com/@oddbird/css-anchor-positioning').then(() => {
+                document.body.classList.add('polyfill-loaded');
+            });
+        } else {
+            document.body.classList.add('native-anchor-support');
+        }
+    </script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        /* ========== Container Layout ========== */
+        .main-container {
+            display: grid;
+            grid-template-columns: 100px 1fr 100px;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        /* ========== Three Scrolling Containers ========== */
+        .conversation-avatars, .messages, .account-avatars {
+            overflow-x: auto;
+            overflow-y: hidden;
+            white-space: nowrap;
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            height: 100%;
+        }
+
+        .conversation-avatars {
+            background: #e3f2fd;
+        }
+
+        .messages {
+            background: #f3e5f5;
+        }
+
+        .account-avatars {
+            background: #e8f5e8;
+        }
+
+        /* ========== Avatar Elements ========== */
+        .avatar {
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            border-radius: 15px;
+            margin: 0 10px;
+            vertical-align: middle;
+            position: relative;
+        }
+
+        .conv-avatar {
+            background: linear-gradient(45deg, #2196f3, #1976d2);
+            border: 3px solid #1565c0;
+        }
+
+        .account-avatar {
+            background: linear-gradient(45deg, #4caf50, #2e7d32);
+            border: 3px solid #1b5e20;
+        }
+
+        /* ========== Message Bubbles ========== */
+        .message {
+            display: inline-block;
+            margin: 0 15px;
+            padding: 15px 20px;
+            border-radius: 20px;
+            vertical-align: middle;
+            min-width: 120px;
+            max-width: 300px;
+            position: relative;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+
+        .message-self {
+            background: linear-gradient(45deg, #2196f3, #1e88e5);
+            color: white;
+            margin-left: auto;
+        }
+
+        .message-other {
+            background: linear-gradient(45deg, #4caf50, #43a047);
+            color: white;
+        }
+
+        /* ========== CSS Anchor Positioning ========== */
+        .conv-avatar {
+            anchor-name: var(--conv-anchor);
+        }
+
+        .account-avatar {
+            anchor-name: var(--acc-anchor);
+        }
+
+        .message {
+            anchor-name: var(--msg-anchor);
+        }
+
+        /* ========== Connection Overlay ========== */
+        .connection-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 100;
+            overflow: visible;
+        }
+
+        /* ========== CSS Anchor Based Connections ========== */
+        .connection-line {
+            position: fixed;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* Self message connections (right to left) */
+        .connection-self {
+            position: fixed;
+            top: anchor(var(--msg-anchor) center);
+            left: anchor(var(--msg-anchor) right);
+            width: calc(anchor(var(--acc-anchor) left) - anchor(var(--msg-anchor) right));
+            height: calc(anchor(var(--acc-anchor) center) - anchor(var(--msg-anchor) center));
+            
+            /* Create L-shaped path using CSS */
+            background: linear-gradient(90deg, #2196f3 0%, #2196f3 5px, transparent 5px, transparent calc(100% - 5px), #2196f3 calc(100% - 5px)),
+                       linear-gradient(0deg, #2196f3 0%, #2196f3 2px, transparent 2px);
+            background-size: 100% 2px, 2px 100%;
+            background-position: 0 50%, calc(100% - 5px) 0;
+            background-repeat: no-repeat;
+        }
+
+        /* Other message connections (left to right) */
+        .connection-other {
+            position: fixed;
+            top: anchor(var(--msg-anchor) center);
+            right: calc(100vw - anchor(var(--msg-anchor) left));
+            width: calc(anchor(var(--msg-anchor) left) - anchor(var(--conv-anchor) right));
+            height: calc(anchor(var(--conv-anchor) center) - anchor(var(--msg-anchor) center));
+            
+            /* Create L-shaped path using CSS */
+            background: linear-gradient(270deg, #4caf50 0%, #4caf50 5px, transparent 5px, transparent calc(100% - 5px), #4caf50 calc(100% - 5px)),
+                       linear-gradient(0deg, #4caf50 0%, #4caf50 2px, transparent 2px);
+            background-size: 100% 2px, 2px 100%;
+            background-position: 0 50%, 5px 0;
+            background-repeat: no-repeat;
+        }
+
+        /* ========== SVG Alternative for Better Curves ========== */
+        .connection-svg {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            overflow: visible;
+        }
+
+        .connection-path {
+            fill: none;
+            stroke-width: 2px;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            opacity: 0.8;
+        }
+
+        .connection-path-self {
+            stroke: #2196f3;
+        }
+
+        .connection-path-other {
+            stroke: #4caf50;
+        }
+
+        /* ========== Debug Info ========== */
+        .debug-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 200;
+        }
+
+        /* ========== Mobile Optimization ========== */
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 80px 1fr 80px;
+                gap: 5px;
+                padding: 5px;
+            }
+            
+            .avatar {
+                width: 50px;
+                height: 50px;
+            }
+            
+            .message {
+                min-width: 100px;
+                max-width: 250px;
+                padding: 12px 16px;
+            }
+            
+            .connection-path {
+                stroke-width: 1.5px;
+            }
+        }
+
+        /* ========== Scrollbar Styling ========== */
+        .conversation-avatars::-webkit-scrollbar,
+        .messages::-webkit-scrollbar,
+        .account-avatars::-webkit-scrollbar {
+            height: 8px;
+        }
+
+        .conversation-avatars::-webkit-scrollbar-track,
+        .messages::-webkit-scrollbar-track,
+        .account-avatars::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.1);
+            border-radius: 4px;
+        }
+
+        .conversation-avatars::-webkit-scrollbar-thumb,
+        .messages::-webkit-scrollbar-thumb,
+        .account-avatars::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.3);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Debug Info -->
+    <div class="debug-info">
+        <div id="anchor-support">Checking anchor support...</div>
+        <div id="connection-count">Connections: 0</div>
+        <div id="performance">FPS: --</div>
+    </div>
+
+    <!-- Main Container with Three Scrolling Areas -->
+    <div class="main-container">
+        <!-- Conversation Avatars (Left) -->
+        <div class="conversation-avatars" id="conv-container">
+            <!-- Will be populated by JavaScript -->
+        </div>
+
+        <!-- Messages (Center) -->
+        <div class="messages" id="msg-container">
+            <!-- Will be populated by JavaScript -->
+        </div>
+
+        <!-- Account Avatars (Right) -->
+        <div class="account-avatars" id="acc-container">
+            <!-- Will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Connection Overlay -->
+    <div class="connection-overlay">
+        <!-- CSS connection lines will be generated by JavaScript -->
+    </div>
+
+    <script>
+        // ========== Configuration ==========
+        const CONFIG = {
+            ELEMENT_COUNT: 1000,
+            CORNER_RADIUS: 8,
+            HORIZONTAL_OFFSET: 5,
+            UPDATE_INTERVAL: 16 // ~60fps
+        };
+
+        // ========== Global State ==========
+        let connections = [];
+        let animationFrame = null;
+        let performanceStats = {
+            frameCount: 0,
+            lastTime: Date.now()
+        };
+
+        // ========== DOM References ==========
+        const convContainer = document.getElementById('conv-container');
+        const msgContainer = document.getElementById('msg-container');
+        const accContainer = document.getElementById('acc-container');
+        const debugInfo = {
+            anchorSupport: document.getElementById('anchor-support'),
+            connectionCount: document.getElementById('connection-count'),
+            performance: document.getElementById('performance')
+        };
+
+        // ========== Initialize Elements ==========
+        function initializeElements() {
+            console.log('Generating 1000 test elements...');
+            
+            for (let i = 0; i < CONFIG.ELEMENT_COUNT; i++) {
+                // Create conversation avatar
+                const convAvatar = document.createElement('div');
+                convAvatar.className = 'avatar conv-avatar';
+                convAvatar.style.setProperty('--conv-anchor', `--conv-${i}`);
+                convAvatar.id = `conv-${i}`;
+                convAvatar.textContent = i + 1;
+                convContainer.appendChild(convAvatar);
+
+                // Create account avatar  
+                const accAvatar = document.createElement('div');
+                accAvatar.className = 'avatar account-avatar';
+                accAvatar.style.setProperty('--acc-anchor', `--acc-${i}`);
+                accAvatar.id = `acc-${i}`;
+                accAvatar.textContent = i + 1;
+                accContainer.appendChild(accAvatar);
+
+                // Create message (alternate between self and other)
+                const message = document.createElement('div');
+                const isSelf = i % 2 === 0;
+                message.className = `message ${isSelf ? 'message-self' : 'message-other'}`;
+                message.style.setProperty('--msg-anchor', `--msg-${i}`);
+                message.id = `msg-${i}`;
+                message.textContent = `Message ${i + 1}: ${isSelf ? 'Self' : 'Other'} - Lorem ipsum dolor sit amet`;
+                message.dataset.type = isSelf ? 'self' : 'other';
+                message.dataset.targetId = i;
+                msgContainer.appendChild(message);
+
+                // Create connection data
+                connections.push({
+                    id: i,
+                    type: isSelf ? 'self' : 'other',
+                    msgId: `msg-${i}`,
+                    targetId: isSelf ? `acc-${i}` : `conv-${i}`,
+                    pathId: `path-${i}`
+                });
+            }
+
+            updateDebugInfo();
+        }
+
+
+        // ========== Create CSS-based Connection Lines ==========
+        function createConnectionLines() {
+            const overlay = document.querySelector('.connection-overlay');
+            
+            connections.forEach(conn => {
+                // Create CSS connection line element
+                const line = document.createElement('div');
+                line.id = conn.pathId;
+                line.className = `connection-line connection-${conn.type}`;
+                
+                // Set CSS custom properties for anchors
+                line.style.setProperty('--msg-anchor', `--msg-${conn.id}`);
+                if (conn.type === 'self') {
+                    line.style.setProperty('--acc-anchor', `--acc-${conn.id}`);
+                } else {
+                    line.style.setProperty('--conv-anchor', `--conv-${conn.id}`);
+                }
+                
+                overlay.appendChild(line);
+            });
+        }
+
+        // ========== Update Connections ==========
+        function updateConnections() {
+            // CSS Anchor Positioning handles automatic updates
+            // Just trigger reflow for smooth updates
+            const overlay = document.querySelector('.connection-overlay');
+            overlay.style.transform = 'translateZ(0)';
+            updatePerformanceStats();
+        }
+
+        // ========== Performance Monitoring ==========
+        function updatePerformanceStats() {
+            performanceStats.frameCount++;
+            const now = Date.now();
+            const elapsed = now - performanceStats.lastTime;
+            
+            if (elapsed >= 1000) {
+                const fps = Math.round((performanceStats.frameCount * 1000) / elapsed);
+                debugInfo.performance.textContent = `FPS: ${fps}`;
+                performanceStats.frameCount = 0;
+                performanceStats.lastTime = now;
+            }
+        }
+
+        // ========== Update Debug Info ==========
+        function updateDebugInfo() {
+            const hasNativeSupport = CSS.supports('anchor-name', '--test');
+            debugInfo.anchorSupport.textContent = hasNativeSupport 
+                ? 'Native CSS Anchor Support' 
+                : 'Using Polyfill';
+            debugInfo.connectionCount.textContent = `Connections: ${connections.length}`;
+        }
+
+        // ========== Real-time Update Loop ==========
+        function startUpdateLoop() {
+            function update() {
+                updateConnections();
+                animationFrame = requestAnimationFrame(update);
+            }
+            update();
+        }
+
+        // ========== Event Listeners ==========
+        function setupEventListeners() {
+            // Add scroll listeners for debugging (not for positioning)
+            [convContainer, msgContainer, accContainer].forEach(container => {
+                container.addEventListener('scroll', () => {
+                    // Connections will update via RAF loop automatically
+                    console.log(`${container.id} scrolled`);
+                });
+            });
+
+            // Cleanup on page unload
+            window.addEventListener('beforeunload', () => {
+                if (animationFrame) {
+                    cancelAnimationFrame(animationFrame);
+                }
+            });
+        }
+
+        // ========== Initialize Application ==========
+        function init() {
+            console.log('Initializing Connection Line MVP...');
+            
+            // Wait for polyfill to load
+            const checkPolyfillReady = () => {
+                if (document.body.classList.contains('polyfill-loaded') || 
+                    document.body.classList.contains('native-anchor-support')) {
+                    
+                    initializeElements();
+                    createConnectionLines();
+                    setupEventListeners();
+                    startUpdateLoop();
+                    
+                    console.log('MVP initialized with', CONFIG.ELEMENT_COUNT, 'elements');
+                    console.log('Pure CSS Anchor Positioning - No getBoundingClientRect used!');
+                } else {
+                    setTimeout(checkPolyfillReady, 100);
+                }
+            };
+            
+            checkPolyfillReady();
+        }
+
+        // ========== Start Application ==========
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
