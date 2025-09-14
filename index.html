@@ -158,20 +158,27 @@
         </div>
         
         <div class="status">
-            <strong>✅ 部署状态：</strong> MVP已成功部署到GitHub Pages<br>
-            <strong>🌐 技术栈：</strong> CSS Anchor Positioning + @oddbird/css-anchor-positioning<br>
-            <strong>📏 测试规模：</strong> 3000个元素，1000条连接线
+            <strong>✅ 部署状态：</strong> Canvas+Anchor混合方案已部署到GitHub Pages<br>
+            <strong>🌐 技术栈：</strong> CSS Anchor Positioning + Canvas绘制 + 实时监听<br>
+            <strong>📏 测试规模：</strong> 支持1000个元素，L型圆角连接线，完美跨容器跟随
         </div>
         
         <div class="demos">
-            <a href="anchor-connection-refactor.html" class="demo-card primary">
+            <a href="canvas-anchor-connection.html" class="demo-card primary">
+                <span class="icon">🎨</span>
+                <h3>Canvas+Anchor混合系统</h3>
+                <p>CSS Anchor获取位置数据 + Canvas绘制L型圆角连接线，完美解决跨容器实时跟随问题</p>
+                <span class="badge">混合方案</span>
+            </a>
+            
+            <a href="anchor-connection-refactor.html" class="demo-card secondary">
                 <span class="icon">🚀</span>
                 <h3>CSS Anchor重构版</h3>
                 <p>完全重构的CSS Anchor系统，简化代码逻辑，修复所有语法错误，垂直滚动容器</p>
-                <span class="badge">完全重构版</span>
+                <span class="badge">纯CSS方案</span>
             </a>
             
-            <a href="connection-line-mvp.html" class="demo-card secondary">
+            <a href="connection-line-mvp.html" class="demo-card info">
                 <span class="icon">🎯</span>
                 <h3>Connection Line MVP</h3>
                 <p>完整的连接线系统实现，包含三个横向滚动容器，实时跟随的L型连接线</p>
@@ -184,18 +191,11 @@
                 <p>验证CSS Anchor Positioning基础功能，包含详细的调试和验证系统</p>
                 <span class="badge">调试版本</span>
             </a>
-            
-            <a href="test-mvp.html" class="demo-card secondary">
-                <span class="icon">📋</span>
-                <h3>测试说明页面</h3>
-                <p>详细的测试指南和功能说明，包含性能测试方法、技术实现细节和使用说明</p>
-                <span class="badge">测试指南</span>
-            </a>
         </div>
         
         <div class="footer">
-            <p>🎨 核心特性：纯CSS定位 | 实时跟随 | 移动优化 | L型连接 | 大数据测试</p>
-            <p>⚡ 性能优化：120Hz支持 | GPU加速 | 硬件优化 | 响应式设计</p>
+            <p>🎨 核心特性：CSS Anchor定位 | Canvas绘制 | 实时跟随 | L型圆角连接 | 跨容器覆盖</p>
+            <p>⚡ 性能优化：requestAnimationFrame | GPU加速 | 事件优化 | 高DPI支持</p>
             <p>🔗 GitHub: <a href="https://github.com/aikenchen0-ctrl/zhiFa" style="color: #fff; text-decoration: underline;">aikenchen0-ctrl/zhiFa</a></p>
         </div>
     </div>

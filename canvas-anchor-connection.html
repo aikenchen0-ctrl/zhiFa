@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Anchor + Canvas连接线系统</title>
+    
+    <!-- CSS Anchor Positioning Polyfill -->
+    <script type="module">
+        if (!CSS.supports('anchor-name', '--test')) {
+            console.log('📦 Loading CSS Anchor Positioning polyfill...');
+            import('https://unpkg.com/@oddbird/css-anchor-positioning')
+                .then(() => {
+                    console.log('✅ Polyfill loaded successfully');
+                    window.anchorReady = true;
+                })
+                .catch(err => {
+                    console.error('❌ Polyfill failed to load:', err);
+                    window.anchorReady = false;
+                });
+        } else {
+            console.log('✅ Native CSS Anchor Positioning supported');
+            window.anchorReady = true;
+        }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 主布局：三个垂直滚动容器 */
+        .main-layout {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+        
+        /* 会话头像容器 - 左侧，垂直滚动 */
+        .conv-container {
+            width: 80px;
+            background: #ffffff;
+            border-right: 1px solid #e4e6ea;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 10px 8px;
+        }
+        
+        /* 消息气泡容器 - 中间，垂直滚动 */
+        .msg-container {
+            flex: 1;
+            background: #ffffff;
+            border-right: 1px solid #e4e6ea;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 10px 15px;
+        }
+        
+        /* 账号头像容器 - 右侧，垂直滚动 */
+        .acc-container {
+            width: 80px;
+            background: #ffffff;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 10px 8px;
+        }
+        
+        /* Canvas覆盖层 - 关键：显示在所有容器之上 */
+        .canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        #connectionCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        /* 锚点元素样式 + CSS Anchor定义 */
+        .conv-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        .msg-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            margin-bottom: 15px;
+            border-radius: 18px;
+            position: relative;
+        }
+        
+        .msg-bubble.self {
+            background: #0084ff;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .msg-bubble.other {
+            background: #f1f3f5;
+            color: #000;
+        }
+        
+        .acc-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        /* 控制面板 */
+        .controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 9999;
+            max-width: 200px;
+        }
+        
+        .controls h4 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            background: #0084ff;
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: #0066cc;
+        }
+        
+        .controls .status {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .controls .debug-info {
+            margin-top: 10px;
+            font-size: 10px;
+            color: #999;
+            max-height: 100px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h4>🎨 Canvas连接线系统</h4>
+        <button onclick="initSystem()">🚀 初始化系统</button>
+        <button onclick="createElement(20)">📊 生成20个</button>
+        <button onclick="createElement(100)">📈 生成100个</button>
+        <button onclick="testScroll()">🔄 测试滚动</button>
+        <button onclick="debugCanvas()">🔍 Canvas调试</button>
+        <button onclick="checkAnchors()">⚓ 锚点检查</button>
+        
+        <div class="status" id="statusDisplay">准备初始化...</div>
+        <div class="debug-info" id="debugInfo"></div>
+    </div>
+    
+    <div class="main-layout">
+        <!-- 会话头像容器 -->
+        <div class="conv-container" id="convContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- 消息气泡容器 -->
+        <div class="msg-container" id="msgContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- 账号头像容器 -->
+        <div class="acc-container" id="accContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- Canvas连接线覆盖层 -->
+        <div class="canvas-overlay">
+            <canvas id="connectionCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // ========== 系统状态管理 ==========
+        const SystemState = {
+            ready: false,
+            elementCount: 0,
+            canvas: null,
+            ctx: null,
+            connections: [],
+            debugMode: true,
+            animationId: null
+        };
+        
+        // ========== 日志和调试系统 ==========
+        function log(category, message, data = null) {
+            if (!SystemState.debugMode) return;
+            const time = new Date().toLocaleTimeString();
+            const logMessage = `[${time}] [${category}] ${message}`;
+            console.log(logMessage, data || '');
+            
+            // 显示调试信息
+            const debugDiv = document.getElementById('debugInfo');
+            debugDiv.innerHTML += `<div>${category}: ${message}</div>`;
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+        }
+        
+        function updateStatus(message) {
+            document.getElementById('statusDisplay').textContent = message;
+            log('STATUS', message);
+        }
+        
+        // ========== CSS Anchor位置数据获取系统 ==========
+        function getAnchorPosition(element) {
+            try {
+                const rect = element.getBoundingClientRect();
+                const containerRect = document.querySelector('.main-layout').getBoundingClientRect();
+                
+                // 🔍 检查点1：元素位置数据获取
+                const position = {
+                    left: rect.left - containerRect.left,
+                    top: rect.top - containerRect.top,
+                    right: rect.right - containerRect.left,
+                    bottom: rect.bottom - containerRect.top,
+                    width: rect.width,
+                    height: rect.height,
+                    centerX: rect.left - containerRect.left + rect.width / 2,
+                    centerY: rect.top - containerRect.top + rect.height / 2
+                };
+                
+                log('ANCHOR-POS', `元素${element.dataset.id}位置`, position);
+                return position;
+            } catch (error) {
+                log('ERROR', 'Anchor位置获取失败', error);
+                return null;
+            }
+        }
+        
+        // ========== Canvas连接线绘制系统 ==========
+        function initCanvas() {
+            SystemState.canvas = document.getElementById('connectionCanvas');
+            SystemState.ctx = SystemState.canvas.getContext('2d');
+            
+            // 设置Canvas分辨率
+            function resizeCanvas() {
+                const rect = SystemState.canvas.getBoundingClientRect();
+                SystemState.canvas.width = rect.width * window.devicePixelRatio;
+                SystemState.canvas.height = rect.height * window.devicePixelRatio;
+                SystemState.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+                log('CANVAS', 'Canvas已初始化', { width: rect.width, height: rect.height });
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            return true;
+        }
+        
+        // ========== L型圆角连接线绘制算法 ==========
+        function drawLShapedConnection(startPos, endPos, isSelf = false) {
+            if (!SystemState.ctx) return;
+            
+            const ctx = SystemState.ctx;
+            const radius = 8; // 圆角半径
+            const extension = 5; // 延伸5px
+            
+            // 🔍 检查点2：连接线路径计算
+            let pathData;
+            
+            if (isSelf) {
+                // 自己的消息：从消息气泡右边到账号头像左边
+                const startX = startPos.right;
+                const startY = startPos.centerY;
+                const endX = endPos.left;
+                const endY = endPos.centerY;
+                
+                pathData = {
+                    start: { x: startX, y: startY },
+                    p1: { x: startX + extension, y: startY },
+                    p2: { x: startX + extension, y: endY },
+                    end: { x: endX, y: endY },
+                    color: '#0084ff'
+                };
+            } else {
+                // 他人的消息：从会话头像右边到消息气泡左边
+                const startX = startPos.right;
+                const startY = startPos.centerY;
+                const endX = endPos.left;
+                const endY = endPos.centerY;
+                
+                pathData = {
+                    start: { x: startX, y: startY },
+                    p1: { x: startX + extension, y: startY },
+                    p2: { x: startX + extension, y: endY },
+                    end: { x: endX, y: endY },
+                    color: '#667eea'
+                };
+            }
+            
+            // 🔍 检查点3：Canvas路径绘制
+            ctx.beginPath();
+            ctx.strokeStyle = pathData.color;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // 起点
+            ctx.moveTo(pathData.start.x, pathData.start.y);
+            
+            // 第一段：水平延伸
+            ctx.lineTo(pathData.p1.x - radius, pathData.p1.y);
+            
+            // 第一个圆角转折
+            if (pathData.p2.y !== pathData.p1.y) {
+                const direction = pathData.p2.y > pathData.p1.y ? 1 : -1;
+                ctx.arcTo(pathData.p1.x, pathData.p1.y, pathData.p1.x, pathData.p1.y + direction * radius, radius);
+            }
+            
+            // 第二段：垂直延伸
+            ctx.lineTo(pathData.p2.x, pathData.p2.y - Math.sign(pathData.end.x - pathData.p2.x) * radius);
+            
+            // 第二个圆角转折
+            if (pathData.end.x !== pathData.p2.x) {
+                const direction = pathData.end.x > pathData.p2.x ? 1 : -1;
+                ctx.arcTo(pathData.p2.x, pathData.p2.y, pathData.p2.x + direction * radius, pathData.p2.y, radius);
+            }
+            
+            // 第三段：水平延伸到终点
+            ctx.lineTo(pathData.end.x, pathData.end.y);
+            
+            ctx.stroke();
+            
+            log('DRAW', `绘制连接线 ${isSelf ? '自己' : '他人'}`, pathData);
+        }
+        
+        // ========== 连接线更新和重绘系统 ==========
+        function updateConnections() {
+            if (!SystemState.ctx || !SystemState.ready) return;
+            
+            // 清除Canvas
+            SystemState.ctx.clearRect(0, 0, SystemState.canvas.width / window.devicePixelRatio, SystemState.canvas.height / window.devicePixelRatio);
+            
+            let drawnCount = 0;
+            
+            // 🔍 检查点4：连接关系建立
+            for (let i = 0; i < SystemState.elementCount; i++) {
+                const isSelf = i % 2 === 0;
+                
+                const convElement = document.querySelector(`.conv-avatar[data-id="${i}"]`);
+                const msgElement = document.querySelector(`.msg-bubble[data-id="${i}"]`);
+                const accElement = document.querySelector(`.acc-avatar[data-id="${i}"]`);
+                
+                if (!convElement || !msgElement || !accElement) continue;
+                
+                const convPos = getAnchorPosition(convElement);
+                const msgPos = getAnchorPosition(msgElement);
+                const accPos = getAnchorPosition(accElement);
+                
+                if (!convPos || !msgPos || !accPos) continue;
+                
+                // 绘制连接线
+                if (isSelf) {
+                    // 自己的消息：消息气泡 -> 账号头像
+                    drawLShapedConnection(msgPos, accPos, true);
+                } else {
+                    // 他人的消息：会话头像 -> 消息气泡
+                    drawLShapedConnection(convPos, msgPos, false);
+                }
+                
+                drawnCount++;
+            }
+            
+            log('UPDATE', `连接线更新完成`, { 绘制数量: drawnCount, 总元素: SystemState.elementCount });
+        }
+        
+        // ========== 滚动事件监听和实时更新 ==========
+        function setupScrollListeners() {
+            const containers = ['convContainer', 'msgContainer', 'accContainer'];
+            
+            containers.forEach(containerId => {
+                const container = document.getElementById(containerId);
+                container.addEventListener('scroll', () => {
+                    // 🔍 检查点5：滚动事件触发
+                    log('SCROLL', `${containerId}滚动`, { scrollTop: container.scrollTop });
+                    
+                    // 立即更新连接线
+                    if (SystemState.animationId) {
+                        cancelAnimationFrame(SystemState.animationId);
+                    }
+                    
+                    SystemState.animationId = requestAnimationFrame(updateConnections);
+                });
+            });
+            
+            log('SETUP', '滚动监听器已设置');
+        }
+        
+        // ========== 元素生成系统 ==========
+        function generateCSS(count) {
+            let css = '';
+            for (let i = 0; i < count; i++) {
+                css += `
+                .conv-avatar[data-id="${i}"] { anchor-name: --conv-${i}; }
+                .msg-bubble[data-id="${i}"] { anchor-name: --msg-${i}; }
+                .acc-avatar[data-id="${i}"] { anchor-name: --acc-${i}; }
+                `;
+            }
+            
+            const oldStyle = document.getElementById('anchor-css');
+            if (oldStyle) oldStyle.remove();
+            
+            const style = document.createElement('style');
+            style.id = 'anchor-css';
+            style.textContent = css;
+            document.head.appendChild(style);
+            
+            log('CSS', `生成${count}个元素的CSS锚点规则`);
+        }
+        
+        function createElement(count) {
+            if (!SystemState.ready) {
+                updateStatus('请先初始化系统');
+                return;
+            }
+            
+            updateStatus(`创建${count}个元素...`);
+            
+            // 生成CSS锚点规则
+            generateCSS(count);
+            
+            // 清空容器
+            ['convContainer', 'msgContainer', 'accContainer'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            
+            // 创建元素
+            for (let i = 0; i < count; i++) {
+                const isSelf = i % 2 === 0;
+                
+                // 会话头像
+                const conv = document.createElement('div');
+                conv.className = 'conv-avatar';
+                conv.setAttribute('data-id', i);
+                conv.textContent = `C${i}`;
+                document.getElementById('convContainer').appendChild(conv);
+                
+                // 消息气泡
+                const msg = document.createElement('div');
+                msg.className = `msg-bubble ${isSelf ? 'self' : 'other'}`;
+                msg.setAttribute('data-id', i);
+                msg.textContent = `消息${i} - ${isSelf ? '我发送' : '他人发送'}`;
+                document.getElementById('msgContainer').appendChild(msg);
+                
+                // 账号头像
+                const acc = document.createElement('div');
+                acc.className = 'acc-avatar';
+                acc.setAttribute('data-id', i);
+                acc.textContent = `A${i}`;
+                document.getElementById('accContainer').appendChild(acc);
+            }
+            
+            SystemState.elementCount = count;
+            
+            // 延迟绘制连接线
+            setTimeout(() => {
+                updateConnections();
+                updateStatus(`✅ ${count}个元素创建完成`);
+            }, 500);
+        }
+        
+        // ========== 调试和测试功能 ==========
+        function testScroll() {
+            updateStatus('测试滚动效果...');
+            const containers = ['convContainer', 'msgContainer', 'accContainer'];
+            let step = 0;
+            
+            function scrollNext() {
+                if (step >= 9) {
+                    updateStatus('✅ 滚动测试完成');
+                    return;
+                }
+                
+                const container = document.getElementById(containers[step % 3]);
+                const maxScroll = container.scrollHeight - container.clientHeight;
+                const targetScroll = Math.random() * maxScroll;
+                
+                container.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                step++;
+                setTimeout(scrollNext, 1000);
+            }
+            
+            scrollNext();
+        }
+        
+        function debugCanvas() {
+            const info = {
+                Canvas就绪: !!SystemState.canvas,
+                Canvas尺寸: SystemState.canvas ? `${SystemState.canvas.width}x${SystemState.canvas.height}` : 'N/A',
+                元素数量: SystemState.elementCount,
+                系统状态: SystemState.ready
+            };
+            
+            console.log('🔍 Canvas调试信息:', info);
+            updateConnections();
+        }
+        
+        function checkAnchors() {
+            const elements = document.querySelectorAll('[data-id]');
+            elements.forEach((el, i) => {
+                if (i < 5) {
+                    const pos = getAnchorPosition(el);
+                    console.log(`锚点${i}:`, pos);
+                }
+            });
+        }
+        
+        // ========== 系统初始化 ==========
+        function initSystem() {
+            updateStatus('系统初始化中...');
+            
+            function waitForAnchor() {
+                if (window.anchorReady !== undefined) {
+                    if (window.anchorReady && initCanvas()) {
+                        SystemState.ready = true;
+                        setupScrollListeners();
+                        updateStatus('✅ 系统初始化完成');
+                        
+                        // 自动创建测试元素
+                        setTimeout(() => createElement(15), 1000);
+                    } else {
+                        updateStatus('❌ 系统初始化失败');
+                    }
+                } else {
+                    setTimeout(waitForAnchor, 200);
+                }
+            }
+            
+            waitForAnchor();
+        }
+        
+        // ========== 自动启动 ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            log('INIT', '页面加载完成，开始初始化');
+            setTimeout(initSystem, 500);
+        });
+    </script>
+</body>
+</html>
