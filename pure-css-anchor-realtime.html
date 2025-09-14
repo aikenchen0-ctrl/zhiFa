@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>纯CSS Anchor实时连接线系统</title>
+    
+    <!-- CSS Anchor Positioning Polyfill -->
+    <script type="module">
+        if (!CSS.supports('anchor-name', '--test')) {
+            console.log('📦 Loading CSS Anchor Positioning polyfill...');
+            import('https://unpkg.com/@oddbird/css-anchor-positioning')
+                .then(() => {
+                    console.log('✅ Polyfill loaded successfully');
+                    window.anchorReady = true;
+                })
+                .catch(err => {
+                    console.error('❌ Polyfill failed to load:', err);
+                    window.anchorReady = false;
+                });
+        } else {
+            console.log('✅ Native CSS Anchor Positioning supported');
+            window.anchorReady = true;
+        }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 主布局：三个垂直滚动容器 */
+        .main-layout {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .conv-container {
+            width: 80px;
+            background: #ffffff;
+            border-right: 1px solid #e4e6ea;
+            overflow-y: auto;
+            padding: 10px 8px;
+        }
+        
+        .msg-container {
+            flex: 1;
+            background: #ffffff;
+            border-right: 1px solid #e4e6ea;
+            overflow-y: auto;
+            padding: 10px 15px;
+        }
+        
+        .acc-container {
+            width: 80px;
+            background: #ffffff;
+            overflow-y: auto;
+            padding: 10px 8px;
+        }
+        
+        /* 纯CSS连接线覆盖层 - 关键：不需要JavaScript */
+        .connection-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            background: rgba(255, 0, 0, 0.02); /* 轻微调试背景 */
+        }
+        
+        /* 锚点元素样式 */
+        .conv-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        .msg-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            margin-bottom: 15px;
+            border-radius: 18px;
+            position: relative;
+        }
+        
+        .msg-bubble.self {
+            background: #0084ff;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .msg-bubble.other {
+            background: #f1f3f5;
+            color: #000;
+        }
+        
+        .acc-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        /* 纯CSS连接线基础样式 */
+        .connection-line {
+            position: absolute;
+            height: 3px;
+            background: #ff4444;
+            border-radius: 1.5px;
+            z-index: 50;
+            /* 关键：这里将通过CSS Anchor实时定位，无需JavaScript */
+        }
+        
+        /* L型连接线的水平段 */
+        .connection-horizontal {
+            position: absolute;
+            height: 3px;
+            border-radius: 1.5px;
+            z-index: 51;
+        }
+        
+        /* L型连接线的垂直段 */
+        .connection-vertical {
+            position: absolute;
+            width: 3px;
+            border-radius: 1.5px;
+            z-index: 51;
+        }
+        
+        /* L型连接线的圆角转折点 */
+        .connection-corner {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            z-index: 52;
+        }
+        
+        /* 控制面板 */
+        .controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 9999;
+            max-width: 200px;
+        }
+        
+        .controls h4 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .controls button {
+            margin: 3px;
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            background: #0084ff;
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: #0066cc;
+        }
+        
+        .controls .status {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .controls .realtime-indicator {
+            background: #4CAF50;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-size: 10px;
+            text-align: center;
+        }
+        
+        .controls .realtime-indicator.active {
+            background: #2196F3;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h4>🔥 纯CSS Anchor实时系统</h4>
+        <button onclick="initSystem()">🚀 初始化</button>
+        <button onclick="createElement(20)">📊 生成20个</button>
+        <button onclick="createElement(100)">📈 生成100个</button>
+        <button onclick="testScroll()">🔄 测试滚动</button>
+        <button onclick="showRealtime()">⚡ 实时状态</button>
+        
+        <div class="realtime-indicator" id="realtimeIndicator">CSS Anchor实时跟随</div>
+        <div class="status" id="statusDisplay">准备初始化...</div>
+    </div>
+    
+    <div class="main-layout">
+        <!-- 会话头像容器 -->
+        <div class="conv-container" id="convContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- 消息气泡容器 -->
+        <div class="msg-container" id="msgContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- 账号头像容器 -->
+        <div class="acc-container" id="accContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- 纯CSS连接线覆盖层 -->
+        <div class="connection-overlay" id="connectionOverlay">
+            <!-- 动态生成连接线 - 纯CSS Anchor定位 -->
+        </div>
+    </div>
+
+    <script>
+        // ========== 极简系统状态（无需复杂监听） ==========
+        const SystemState = {
+            ready: false,
+            elementCount: 0,
+            debugMode: true
+        };
+        
+        // ========== 简化日志 ==========
+        function log(message, data = null) {
+            if (SystemState.debugMode) {
+                console.log(`[CSS-ANCHOR] ${message}`, data || '');
+            }
+        }
+        
+        function updateStatus(message) {
+            document.getElementById('statusDisplay').textContent = message;
+            log(message);
+        }
+        
+        // ========== 纯CSS Anchor规则生成 - 实现L型连接线 ==========
+        function generatePureCSSConnections(count) {
+            log(`生成${count}个纯CSS实时连接线`);
+            
+            let css = '';
+            
+            for (let i = 0; i < count; i++) {
+                // 锚点定义
+                css += `
+                .conv-avatar[data-id="${i}"] { anchor-name: --conv-${i}; }
+                .msg-bubble[data-id="${i}"] { anchor-name: --msg-${i}; }
+                .acc-avatar[data-id="${i}"] { anchor-name: --acc-${i}; }
+                `;
+                
+                const isSelf = i % 2 === 0;
+                
+                if (isSelf) {
+                    // 自己的消息：消息气泡 -> 账号头像 (L型路径)
+                    css += `
+                    /* 水平段：从消息气泡右边延伸 */
+                    .connection-h-${i} {
+                        position: absolute;
+                        position-anchor: --msg-${i};
+                        left: anchor(right);
+                        top: anchor(center);
+                        width: 15px; /* 固定延伸15px */
+                        height: 3px;
+                        background: #0084ff;
+                        border-radius: 0 1.5px 1.5px 0;
+                    }
+                    
+                    /* 垂直段：从延伸点到账号头像高度 */
+                    .connection-v-${i} {
+                        position: absolute;
+                        position-anchor: --msg-${i};
+                        left: calc(anchor(right) + 15px);
+                        top: min(anchor(center), anchor(--acc-${i} center));
+                        width: 3px;
+                        height: abs(anchor(--acc-${i} center) - anchor(center));
+                        background: #0084ff;
+                    }
+                    
+                    /* 最终水平段：到账号头像 */
+                    .connection-f-${i} {
+                        position: absolute;
+                        position-anchor: --acc-${i};
+                        right: anchor(left);
+                        top: anchor(center);
+                        left: calc(anchor(--msg-${i} right) + 15px);
+                        height: 3px;
+                        background: #0084ff;
+                        border-radius: 1.5px 0 0 1.5px;
+                    }
+                    
+                    /* 圆角转折点 */
+                    .connection-c1-${i} {
+                        position: absolute;
+                        position-anchor: --msg-${i};
+                        left: calc(anchor(right) + 12px);
+                        top: calc(anchor(center) - 1.5px);
+                        width: 6px;
+                        height: 6px;
+                        background: #0084ff;
+                        border-radius: 50%;
+                    }
+                    
+                    .connection-c2-${i} {
+                        position: absolute;
+                        position-anchor: --acc-${i};
+                        left: calc(anchor(left) - 18px);
+                        top: calc(anchor(center) - 1.5px);
+                        width: 6px;
+                        height: 6px;
+                        background: #0084ff;
+                        border-radius: 50%;
+                    }
+                    `;
+                } else {
+                    // 他人的消息：会话头像 -> 消息气泡 (L型路径)
+                    css += `
+                    /* 水平段：从会话头像右边延伸 */
+                    .connection-h-${i} {
+                        position: absolute;
+                        position-anchor: --conv-${i};
+                        left: anchor(right);
+                        top: anchor(center);
+                        width: 15px;
+                        height: 3px;
+                        background: #667eea;
+                        border-radius: 0 1.5px 1.5px 0;
+                    }
+                    
+                    /* 垂直段：从延伸点到消息气泡高度 */
+                    .connection-v-${i} {
+                        position: absolute;
+                        position-anchor: --conv-${i};
+                        left: calc(anchor(right) + 15px);
+                        top: min(anchor(center), anchor(--msg-${i} center));
+                        width: 3px;
+                        height: abs(anchor(--msg-${i} center) - anchor(center));
+                        background: #667eea;
+                    }
+                    
+                    /* 最终水平段：到消息气泡 */
+                    .connection-f-${i} {
+                        position: absolute;
+                        position-anchor: --msg-${i};
+                        right: anchor(left);
+                        top: anchor(center);
+                        left: calc(anchor(--conv-${i} right) + 15px);
+                        height: 3px;
+                        background: #667eea;
+                        border-radius: 1.5px 0 0 1.5px;
+                    }
+                    
+                    /* 圆角转折点 */
+                    .connection-c1-${i} {
+                        position: absolute;
+                        position-anchor: --conv-${i};
+                        left: calc(anchor(right) + 12px);
+                        top: calc(anchor(center) - 1.5px);
+                        width: 6px;
+                        height: 6px;
+                        background: #667eea;
+                        border-radius: 50%;
+                    }
+                    
+                    .connection-c2-${i} {
+                        position: absolute;
+                        position-anchor: --msg-${i};
+                        left: calc(anchor(left) - 18px);
+                        top: calc(anchor(center) - 1.5px);
+                        width: 6px;
+                        height: 6px;
+                        background: #667eea;
+                        border-radius: 50%;
+                    }
+                    `;
+                }
+            }
+            
+            // 插入CSS规则
+            const oldStyle = document.getElementById('pure-css-connections');
+            if (oldStyle) oldStyle.remove();
+            
+            const style = document.createElement('style');
+            style.id = 'pure-css-connections';
+            style.textContent = css;
+            document.head.appendChild(style);
+            
+            log('纯CSS连接线规则生成完成', { cssLength: css.length });
+        }
+        
+        // ========== 元素和连接线生成 ==========
+        function createElement(count) {
+            if (!SystemState.ready) {
+                updateStatus('请先初始化系统');
+                return;
+            }
+            
+            updateStatus(`创建${count}个元素...`);
+            
+            // 生成纯CSS连接规则
+            generatePureCSSConnections(count);
+            
+            // 清空容器
+            ['convContainer', 'msgContainer', 'accContainer', 'connectionOverlay'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            
+            // 创建元素和连接线
+            for (let i = 0; i < count; i++) {
+                const isSelf = i % 2 === 0;
+                
+                // 会话头像
+                const conv = document.createElement('div');
+                conv.className = 'conv-avatar';
+                conv.setAttribute('data-id', i);
+                conv.textContent = `C${i}`;
+                document.getElementById('convContainer').appendChild(conv);
+                
+                // 消息气泡
+                const msg = document.createElement('div');
+                msg.className = `msg-bubble ${isSelf ? 'self' : 'other'}`;
+                msg.setAttribute('data-id', i);
+                msg.textContent = `消息${i}`;
+                document.getElementById('msgContainer').appendChild(msg);
+                
+                // 账号头像
+                const acc = document.createElement('div');
+                acc.className = 'acc-avatar';
+                acc.setAttribute('data-id', i);
+                acc.textContent = `A${i}`;
+                document.getElementById('accContainer').appendChild(acc);
+                
+                // 创建L型连接线的各个段（纯CSS定位，无需JavaScript）
+                const overlay = document.getElementById('connectionOverlay');
+                
+                // 水平段
+                const horizontal = document.createElement('div');
+                horizontal.className = `connection-horizontal connection-h-${i}`;
+                overlay.appendChild(horizontal);
+                
+                // 垂直段  
+                const vertical = document.createElement('div');
+                vertical.className = `connection-vertical connection-v-${i}`;
+                overlay.appendChild(vertical);
+                
+                // 最终水平段
+                const final = document.createElement('div');
+                final.className = `connection-horizontal connection-f-${i}`;
+                overlay.appendChild(final);
+                
+                // 圆角转折点
+                const corner1 = document.createElement('div');
+                corner1.className = `connection-corner connection-c1-${i}`;
+                overlay.appendChild(corner1);
+                
+                const corner2 = document.createElement('div');
+                corner2.className = `connection-corner connection-c2-${i}`;
+                overlay.appendChild(corner2);
+            }
+            
+            SystemState.elementCount = count;
+            
+            setTimeout(() => {
+                updateStatus(`✅ ${count}个元素创建完成 - 纯CSS实时跟随`);
+                showRealtime();
+            }, 500);
+        }
+        
+        // ========== 测试功能 ==========
+        function testScroll() {
+            updateStatus('测试纯CSS实时跟随...');
+            const containers = ['convContainer', 'msgContainer', 'accContainer'];
+            let step = 0;
+            
+            function scrollNext() {
+                if (step >= 9) {
+                    updateStatus('✅ 纯CSS实时跟随测试完成');
+                    return;
+                }
+                
+                const container = document.getElementById(containers[step % 3]);
+                const maxScroll = container.scrollHeight - container.clientHeight;
+                const targetScroll = Math.random() * maxScroll;
+                
+                container.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                step++;
+                setTimeout(scrollNext, 1000);
+            }
+            
+            scrollNext();
+        }
+        
+        function showRealtime() {
+            const indicator = document.getElementById('realtimeIndicator');
+            indicator.classList.add('active');
+            indicator.textContent = '⚡ CSS Anchor实时跟随中...';
+            
+            setTimeout(() => {
+                indicator.classList.remove('active');
+                indicator.textContent = '✅ CSS Anchor实时跟随';
+            }, 3000);
+        }
+        
+        // ========== 系统初始化 ==========
+        function initSystem() {
+            updateStatus('系统初始化中...');
+            
+            function waitForAnchor() {
+                if (window.anchorReady !== undefined) {
+                    if (window.anchorReady) {
+                        SystemState.ready = true;
+                        updateStatus('✅ 纯CSS Anchor系统就绪');
+                        
+                        log('系统特点：无JavaScript监听，纯CSS实时跟随');
+                        
+                        setTimeout(() => createElement(10), 500);
+                    } else {
+                        updateStatus('❌ CSS Anchor Positioning不支持');
+                    }
+                } else {
+                    setTimeout(waitForAnchor, 200);
+                }
+            }
+            
+            waitForAnchor();
+        }
+        
+        // ========== 自动启动 ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            log('纯CSS Anchor实时系统启动');
+            setTimeout(initSystem, 500);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高性能Canvas连接线系统 - 120Hz优化</title>
+    
+    <!-- CSS Anchor Positioning Polyfill -->
+    <script type="module">
+        if (!CSS.supports('anchor-name', '--test')) {
+            console.log('📦 Loading CSS Anchor Positioning polyfill...');
+            import('https://unpkg.com/@oddbird/css-anchor-positioning')
+                .then(() => {
+                    console.log('✅ Polyfill loaded successfully');
+                    window.anchorReady = true;
+                })
+                .catch(err => {
+                    console.error('❌ Polyfill failed to load:', err);
+                    window.anchorReady = false;
+                });
+        } else {
+            console.log('✅ Native CSS Anchor Positioning supported');
+            window.anchorReady = true;
+        }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 主布局：三个垂直滚动容器 */
+        .main-layout {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+        
+        /* 容器样式 - 优化滚动性能 */
+        .conv-container, .msg-container, .acc-container {
+            background: #ffffff;
+            overflow-y: auto;
+            overflow-x: hidden;
+            /* 滚动性能优化 */
+            -webkit-overflow-scrolling: touch;
+            will-change: scroll-position;
+            contain: layout style paint;
+        }
+        
+        .conv-container {
+            width: 80px;
+            border-right: 1px solid #e4e6ea;
+            padding: 10px 8px;
+        }
+        
+        .msg-container {
+            flex: 1;
+            border-right: 1px solid #e4e6ea;
+            padding: 10px 15px;
+        }
+        
+        .acc-container {
+            width: 80px;
+            padding: 10px 8px;
+        }
+        
+        /* Canvas覆盖层 - GPU加速 */
+        .canvas-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            /* GPU加速 */
+            will-change: contents;
+            transform: translateZ(0);
+        }
+        
+        #connectionCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        
+        /* 锚点元素样式 - 性能优化 */
+        .conv-avatar, .msg-bubble, .acc-avatar {
+            /* GPU加速优化 */
+            will-change: transform;
+            contain: layout;
+        }
+        
+        .conv-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        .msg-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            margin-bottom: 15px;
+            border-radius: 18px;
+            position: relative;
+        }
+        
+        .msg-bubble.self {
+            background: #0084ff;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .msg-bubble.other {
+            background: #f1f3f5;
+            color: #000;
+        }
+        
+        .acc-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        /* 控制面板 */
+        .controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 9999;
+            max-width: 220px;
+        }
+        
+        .controls h4 {
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 13px;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 5px 8px;
+            border: none;
+            border-radius: 4px;
+            background: #0084ff;
+            color: white;
+            cursor: pointer;
+            font-size: 10px;
+        }
+        
+        .controls button:hover {
+            background: #0066cc;
+        }
+        
+        .controls .metrics {
+            margin-top: 10px;
+            font-size: 10px;
+            color: #666;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .controls .fps-display {
+            background: #000;
+            color: #0f0;
+            padding: 4px 8px;
+            border-radius: 4px;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h4>⚡ 高性能Canvas系统</h4>
+        <button onclick="initSystem()">🚀 初始化</button>
+        <button onclick="createElement(20)">📊 生成20个</button>
+        <button onclick="createElement(100)">📈 生成100个</button>
+        <button onclick="testScroll()">🔄 测试滚动</button>
+        <button onclick="toggleFPS()">📊 帧率监控</button>
+        <button onclick="toggleDebug()">🔍 性能调试</button>
+        
+        <div class="fps-display" id="fpsDisplay">FPS: --</div>
+        <div class="metrics" id="metricsDisplay">准备初始化...</div>
+    </div>
+    
+    <div class="main-layout">
+        <!-- 会话头像容器 -->
+        <div class="conv-container" id="convContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- 消息气泡容器 -->
+        <div class="msg-container" id="msgContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- 账号头像容器 -->
+        <div class="acc-container" id="accContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- Canvas连接线覆盖层 -->
+        <div class="canvas-overlay">
+            <canvas id="connectionCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+        // ========== 高性能系统状态管理 ==========
+        const SystemState = {
+            ready: false,
+            elementCount: 0,
+            canvas: null,
+            ctx: null,
+            
+            // 性能监控
+            fps: 0,
+            frameCount: 0,
+            lastFrameTime: 0,
+            lastFpsUpdate: 0,
+            showFPS: true,
+            showDebug: false,
+            
+            // 渲染优化
+            needsRedraw: false,
+            isRendering: false,
+            lastScrollTime: 0,
+            renderQueue: new Set(),
+            
+            // 缓存系统
+            positionCache: new Map(),
+            connectionCache: new Map(),
+            
+            debugMode: true
+        };
+        
+        // ========== 性能监控系统 ==========
+        function updateFPS() {
+            const now = performance.now();
+            SystemState.frameCount++;
+            
+            if (now - SystemState.lastFpsUpdate >= 1000) {
+                SystemState.fps = Math.round(SystemState.frameCount * 1000 / (now - SystemState.lastFpsUpdate));
+                SystemState.frameCount = 0;
+                SystemState.lastFpsUpdate = now;
+                
+                if (SystemState.showFPS) {
+                    document.getElementById('fpsDisplay').textContent = `FPS: ${SystemState.fps}`;
+                }
+            }
+        }
+        
+        function updateMetrics() {
+            if (!SystemState.showDebug) return;
+            
+            const metrics = `
+Elements: ${SystemState.elementCount}
+Cache: ${SystemState.positionCache.size}
+Render: ${SystemState.isRendering ? 'YES' : 'NO'}
+Queue: ${SystemState.renderQueue.size}
+            `.trim();
+            
+            document.getElementById('metricsDisplay').textContent = metrics;
+        }
+        
+        // ========== 高性能日志系统 ==========
+        function log(category, message, data = null) {
+            if (!SystemState.debugMode) return;
+            console.log(`[${category}] ${message}`, data || '');
+        }
+        
+        // ========== 优化的位置获取系统 ==========
+        function getAnchorPositionCached(element) {
+            const id = element.dataset.id;
+            const cacheKey = `${id}-${element.scrollTop || 0}`;
+            
+            if (SystemState.positionCache.has(cacheKey)) {
+                return SystemState.positionCache.get(cacheKey);
+            }
+            
+            try {
+                const rect = element.getBoundingClientRect();
+                const containerRect = document.querySelector('.main-layout').getBoundingClientRect();
+                
+                const position = {
+                    left: rect.left - containerRect.left,
+                    top: rect.top - containerRect.top,
+                    right: rect.right - containerRect.left,
+                    bottom: rect.bottom - containerRect.top,
+                    width: rect.width,
+                    height: rect.height,
+                    centerX: rect.left - containerRect.left + rect.width / 2,
+                    centerY: rect.top - containerRect.top + rect.height / 2
+                };
+                
+                // 缓存位置数据
+                SystemState.positionCache.set(cacheKey, position);
+                return position;
+            } catch (error) {
+                log('ERROR', 'Position获取失败', error);
+                return null;
+            }
+        }
+        
+        // ========== 高性能Canvas初始化 ==========
+        function initCanvas() {
+            SystemState.canvas = document.getElementById('connectionCanvas');
+            SystemState.ctx = SystemState.canvas.getContext('2d', {
+                alpha: true,
+                desynchronized: true,  // 提升性能
+                powerPreference: 'high-performance'
+            });
+            
+            function resizeCanvas() {
+                const rect = SystemState.canvas.getBoundingClientRect();
+                const dpr = window.devicePixelRatio || 1;
+                
+                SystemState.canvas.width = rect.width * dpr;
+                SystemState.canvas.height = rect.height * dpr;
+                SystemState.ctx.scale(dpr, dpr);
+                
+                // 清除缓存
+                SystemState.positionCache.clear();
+                SystemState.connectionCache.clear();
+                
+                log('CANVAS', 'Canvas初始化完成', { 
+                    width: rect.width, 
+                    height: rect.height, 
+                    dpr 
+                });
+                
+                // 标记需要重绘
+                SystemState.needsRedraw = true;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            return true;
+        }
+        
+        // ========== 优化的连接线绘制 ==========
+        function drawLShapedConnectionOptimized(startPos, endPos, isSelf = false, connectionId) {
+            if (!SystemState.ctx) return;
+            
+            const ctx = SystemState.ctx;
+            const radius = 8;
+            const extension = 5;
+            
+            // 检查缓存
+            const cacheKey = `${connectionId}-${startPos.centerX}-${startPos.centerY}-${endPos.centerX}-${endPos.centerY}`;
+            if (SystemState.connectionCache.has(cacheKey)) {
+                const cached = SystemState.connectionCache.get(cacheKey);
+                ctx.stroke(cached);
+                return;
+            }
+            
+            // 计算路径
+            let pathData;
+            if (isSelf) {
+                pathData = {
+                    start: { x: startPos.right, y: startPos.centerY },
+                    p1: { x: startPos.right + extension, y: startPos.centerY },
+                    p2: { x: startPos.right + extension, y: endPos.centerY },
+                    end: { x: endPos.left, y: endPos.centerY },
+                    color: '#0084ff'
+                };
+            } else {
+                pathData = {
+                    start: { x: startPos.right, y: startPos.centerY },
+                    p1: { x: startPos.right + extension, y: startPos.centerY },
+                    p2: { x: startPos.right + extension, y: endPos.centerY },
+                    end: { x: endPos.left, y: endPos.centerY },
+                    color: '#667eea'
+                };
+            }
+            
+            // 绘制优化路径
+            ctx.beginPath();
+            ctx.strokeStyle = pathData.color;
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            ctx.moveTo(pathData.start.x, pathData.start.y);
+            ctx.lineTo(pathData.p1.x - radius, pathData.p1.y);
+            
+            if (pathData.p2.y !== pathData.p1.y) {
+                const direction = pathData.p2.y > pathData.p1.y ? 1 : -1;
+                ctx.arcTo(pathData.p1.x, pathData.p1.y, pathData.p1.x, pathData.p1.y + direction * radius, radius);
+            }
+            
+            ctx.lineTo(pathData.p2.x, pathData.p2.y - Math.sign(pathData.end.x - pathData.p2.x) * radius);
+            
+            if (pathData.end.x !== pathData.p2.x) {
+                const direction = pathData.end.x > pathData.p2.x ? 1 : -1;
+                ctx.arcTo(pathData.p2.x, pathData.p2.y, pathData.p2.x + direction * radius, pathData.p2.y, radius);
+            }
+            
+            ctx.lineTo(pathData.end.x, pathData.end.y);
+            ctx.stroke();
+            
+            // 缓存路径
+            SystemState.connectionCache.set(cacheKey, ctx.getImageData(0, 0, SystemState.canvas.width, SystemState.canvas.height));
+        }
+        
+        // ========== 高性能渲染循环 ==========
+        function renderLoop() {
+            if (!SystemState.ready) return;
+            
+            updateFPS();
+            updateMetrics();
+            
+            if (SystemState.needsRedraw && !SystemState.isRendering) {
+                SystemState.isRendering = true;
+                
+                // 清除Canvas
+                SystemState.ctx.clearRect(0, 0, SystemState.canvas.width / window.devicePixelRatio, SystemState.canvas.height / window.devicePixelRatio);
+                
+                let drawnCount = 0;
+                
+                // 渲染连接线
+                for (let i = 0; i < SystemState.elementCount; i++) {
+                    const isSelf = i % 2 === 0;
+                    
+                    const convElement = document.querySelector(`.conv-avatar[data-id="${i}"]`);
+                    const msgElement = document.querySelector(`.msg-bubble[data-id="${i}"]`);
+                    const accElement = document.querySelector(`.acc-avatar[data-id="${i}"]`);
+                    
+                    if (!convElement || !msgElement || !accElement) continue;
+                    
+                    const convPos = getAnchorPositionCached(convElement);
+                    const msgPos = getAnchorPositionCached(msgElement);
+                    const accPos = getAnchorPositionCached(accElement);
+                    
+                    if (!convPos || !msgPos || !accPos) continue;
+                    
+                    if (isSelf) {
+                        drawLShapedConnectionOptimized(msgPos, accPos, true, `self-${i}`);
+                    } else {
+                        drawLShapedConnectionOptimized(convPos, msgPos, false, `other-${i}`);
+                    }
+                    
+                    drawnCount++;
+                }
+                
+                SystemState.needsRedraw = false;
+                SystemState.isRendering = false;
+                
+                log('RENDER', `渲染完成 - 连接线: ${drawnCount}`);
+            }
+            
+            requestAnimationFrame(renderLoop);
+        }
+        
+        // ========== 优化的滚动监听 ==========
+        function setupOptimizedScrollListeners() {
+            const containers = ['convContainer', 'msgContainer', 'accContainer'];
+            
+            containers.forEach(containerId => {
+                const container = document.getElementById(containerId);
+                let scrollTimeout;
+                
+                // 使用节流的滚动监听
+                container.addEventListener('scroll', () => {
+                    const now = performance.now();
+                    SystemState.lastScrollTime = now;
+                    
+                    // 清除缓存
+                    SystemState.positionCache.clear();
+                    
+                    // 立即标记需要重绘
+                    SystemState.needsRedraw = true;
+                    
+                    // 清除之前的超时
+                    if (scrollTimeout) {
+                        clearTimeout(scrollTimeout);
+                    }
+                    
+                    // 设置滚动结束后的额外重绘
+                    scrollTimeout = setTimeout(() => {
+                        SystemState.needsRedraw = true;
+                    }, 16); // ~60fps
+                    
+                }, { passive: true });
+            });
+            
+            log('SETUP', '优化滚动监听器已设置');
+        }
+        
+        // ========== 元素生成系统 ==========
+        function generateCSS(count) {
+            let css = '';
+            for (let i = 0; i < count; i++) {
+                css += `
+                .conv-avatar[data-id="${i}"] { anchor-name: --conv-${i}; }
+                .msg-bubble[data-id="${i}"] { anchor-name: --msg-${i}; }
+                .acc-avatar[data-id="${i}"] { anchor-name: --acc-${i}; }
+                `;
+            }
+            
+            const oldStyle = document.getElementById('anchor-css');
+            if (oldStyle) oldStyle.remove();
+            
+            const style = document.createElement('style');
+            style.id = 'anchor-css';
+            style.textContent = css;
+            document.head.appendChild(style);
+            
+            log('CSS', `生成${count}个元素的CSS锚点规则`);
+        }
+        
+        function createElement(count) {
+            if (!SystemState.ready) {
+                document.getElementById('metricsDisplay').textContent = '请先初始化系统';
+                return;
+            }
+            
+            document.getElementById('metricsDisplay').textContent = `创建${count}个元素...`;
+            
+            // 清除缓存
+            SystemState.positionCache.clear();
+            SystemState.connectionCache.clear();
+            
+            generateCSS(count);
+            
+            ['convContainer', 'msgContainer', 'accContainer'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            
+            for (let i = 0; i < count; i++) {
+                const isSelf = i % 2 === 0;
+                
+                const conv = document.createElement('div');
+                conv.className = 'conv-avatar';
+                conv.setAttribute('data-id', i);
+                conv.textContent = `C${i}`;
+                document.getElementById('convContainer').appendChild(conv);
+                
+                const msg = document.createElement('div');
+                msg.className = `msg-bubble ${isSelf ? 'self' : 'other'}`;
+                msg.setAttribute('data-id', i);
+                msg.textContent = `消息${i}`;
+                document.getElementById('msgContainer').appendChild(msg);
+                
+                const acc = document.createElement('div');
+                acc.className = 'acc-avatar';
+                acc.setAttribute('data-id', i);
+                acc.textContent = `A${i}`;
+                document.getElementById('accContainer').appendChild(acc);
+            }
+            
+            SystemState.elementCount = count;
+            
+            setTimeout(() => {
+                SystemState.needsRedraw = true;
+                document.getElementById('metricsDisplay').textContent = `✅ ${count}个元素创建完成`;
+            }, 300);
+        }
+        
+        // ========== 测试和调试功能 ==========
+        function testScroll() {
+            document.getElementById('metricsDisplay').textContent = '测试滚动性能...';
+            const containers = ['convContainer', 'msgContainer', 'accContainer'];
+            let step = 0;
+            
+            function scrollNext() {
+                if (step >= 12) {
+                    document.getElementById('metricsDisplay').textContent = '✅ 滚动测试完成';
+                    return;
+                }
+                
+                const container = document.getElementById(containers[step % 3]);
+                const maxScroll = container.scrollHeight - container.clientHeight;
+                const targetScroll = Math.random() * maxScroll;
+                
+                container.scrollTo({ top: targetScroll, behavior: 'smooth' });
+                step++;
+                setTimeout(scrollNext, 500);
+            }
+            
+            scrollNext();
+        }
+        
+        function toggleFPS() {
+            SystemState.showFPS = !SystemState.showFPS;
+            document.getElementById('fpsDisplay').style.display = SystemState.showFPS ? 'block' : 'none';
+        }
+        
+        function toggleDebug() {
+            SystemState.showDebug = !SystemState.showDebug;
+            updateMetrics();
+        }
+        
+        // ========== 系统初始化 ==========
+        function initSystem() {
+            document.getElementById('metricsDisplay').textContent = '系统初始化中...';
+            
+            function waitForAnchor() {
+                if (window.anchorReady !== undefined) {
+                    if (window.anchorReady && initCanvas()) {
+                        SystemState.ready = true;
+                        setupOptimizedScrollListeners();
+                        
+                        // 启动渲染循环
+                        renderLoop();
+                        
+                        document.getElementById('metricsDisplay').textContent = '✅ 系统就绪 - 120Hz优化';
+                        
+                        setTimeout(() => createElement(15), 500);
+                    } else {
+                        document.getElementById('metricsDisplay').textContent = '❌ 系统初始化失败';
+                    }
+                } else {
+                    setTimeout(waitForAnchor, 100);
+                }
+            }
+            
+            waitForAnchor();
+        }
+        
+        // ========== 自动启动 ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            log('INIT', '页面加载完成，开始高性能初始化');
+            setTimeout(initSystem, 300);
+        });
+    </script>
+</body>
+</html>
