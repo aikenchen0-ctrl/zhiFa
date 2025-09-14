@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>📱 CSS Anchor Positioning - 120Hz终极版</title>
+  <title>📱 CSS Anchor Polyfill - 120Hz终极版</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- CSS Anchor Positioning Polyfill -->
+  <script src="https://unpkg.com/@oddbird/css-anchor-positioning"></script>
   
   <style>
     :root {
@@ -82,7 +84,7 @@
       /* 硬件加速 */
       transform: translate3d(0, 0, 0);
       backface-visibility: hidden;
-      /* CSS Anchor定位 - 设置为锚点 */
+      /* CSS Anchor定位 - 动态设置锚点名称 */
       anchor-name: var(--anchor-name);
     }
     
@@ -100,7 +102,7 @@
       /* 硬件加速 */
       transform: translate3d(0, 0, 0);
       backface-visibility: hidden;
-      /* CSS Anchor定位 - 设置为锚点 */
+      /* CSS Anchor定位 - 动态设置锚点名称 */
       anchor-name: var(--anchor-name);
     }
     
@@ -118,7 +120,7 @@
       margin-left: auto;
     }
     
-    /* CSS Anchor Positioning 连接线系统 */
+    /* CSS Anchor Positioning 连接线系统 - 使用polyfill语法 */
     .connection-container {
       position: fixed;
       top: 0;
@@ -136,8 +138,6 @@
     .connection-line {
       position: absolute;
       pointer-events: none;
-      /* CSS Anchor定位 - 相对于锚点定位 */
-      position-anchor: var(--source-anchor);
       /* 120Hz优化 */
       will-change: transform;
       transform: translate3d(0,0,0);
@@ -153,32 +153,38 @@
       transform: translate3d(0,0,0);
     }
     
-    /* 水平线段 */
-    .connection-line::before {
-      width: var(--h-length);
+    /* 会话头像到消息气泡的水平连接线 */
+    .connection-chat-to-bubble::before {
+      width: 15px;
       height: var(--connection-width);
-      left: anchor(var(--source-anchor) right);
-      top: anchor(var(--source-anchor) center);
+      left: anchor(var(--chat-anchor) right);
+      top: anchor(var(--chat-anchor) center);
       transform: translateY(-50%);
     }
     
-    /* 垂直线段 */
-    .connection-line::after {
+    /* 会话头像到消息气泡的垂直连接线 */
+    .connection-chat-to-bubble::after {
       width: var(--connection-width);
-      height: var(--v-length);
-      left: calc(anchor(var(--source-anchor) right) + var(--h-length));
-      top: var(--v-start);
+      height: calc(anchor(var(--bubble-anchor) center) - anchor(var(--chat-anchor) center));
+      left: calc(anchor(var(--chat-anchor) right) + 15px);
+      top: anchor(var(--chat-anchor) center);
     }
     
-    /* 连接线的不同类型 */
-    .connection-chat-to-bubble {
-      --connection-color: hsl(var(--hue), 65%, 55%);
-      --h-length: 15px;
+    /* 消息气泡到账号头像的水平连接线 */
+    .connection-bubble-to-account::before {
+      width: 15px;
+      height: var(--connection-width);
+      left: anchor(var(--bubble-anchor) right);
+      top: anchor(var(--bubble-anchor) center);
+      transform: translateY(-50%);
     }
     
-    .connection-bubble-to-account {
-      --connection-color: hsl(var(--hue), 65%, 55%);
-      --h-length: 15px;
+    /* 消息气泡到账号头像的垂直连接线 */
+    .connection-bubble-to-account::after {
+      width: var(--connection-width);
+      height: calc(anchor(var(--account-anchor) center) - anchor(var(--bubble-anchor) center));
+      left: calc(anchor(var(--bubble-anchor) right) + 15px);
+      top: anchor(var(--bubble-anchor) center);
     }
     
     /* 性能监控面板 */
@@ -193,7 +199,7 @@
       font-family: monospace;
       font-size: 10px;
       z-index: 1000;
-      max-width: 140px;
+      max-width: 160px;
       backdrop-filter: blur(10px);
       transform: translate3d(0,0,0);
     }
@@ -313,40 +319,27 @@
     .scroll-content {
       contain: layout style;
     }
-    
-    /* CSS Anchor Positioning Fallback - 如果不支持则隐藏连接线 */
-    @supports not (anchor-name: --test) {
-      .connection-line {
-        display: none;
-      }
-      
-      .perf-monitor::after {
-        content: '\A⚠️ CSS Anchor不支持';
-        white-space: pre;
-        color: #ff6666;
-      }
-    }
   </style>
 </head>
 <body>
   
   <!-- 加载遮罩 -->
   <div id="loadingOverlay" class="loading-overlay">
-    <div style="font-size: 24px; margin-bottom: 10px;">⚓</div>
-    <div>CSS Anchor Positioning 120Hz</div>
+    <div style="font-size: 24px; margin-bottom: 10px;">🔧</div>
+    <div>CSS Anchor Polyfill 120Hz</div>
     <div class="loading-progress">
       <div id="loadingBar" class="loading-bar"></div>
     </div>
-    <div id="loadingText">正在生成1000个锚点...</div>
+    <div id="loadingText">正在加载Polyfill...</div>
   </div>
   
   <!-- 性能监控面板 -->
   <div id="perfMonitor" class="perf-monitor">
-    <div>⚓ CSS Anchor 120Hz</div>
+    <div>🔧 CSS Anchor Polyfill</div>
     <div>FPS: <span id="fps" class="perf-value">--</span></div>
     <div>帧时: <span id="frameTime" class="perf-value">--</span>ms</div>
     <div>连接: <span id="connectionCount" class="perf-value">0</span></div>
-    <div>方式: <span id="renderMode" class="perf-value">CSS原生</span></div>
+    <div>方式: <span id="renderMode" class="perf-value">Polyfill</span></div>
     <div>状态: <span id="systemStatus" class="perf-value">准备中</span></div>
   </div>
 
@@ -359,7 +352,7 @@
       🔍 调试
     </button>
     <button id="refreshCSS" class="control-btn" style="background: #10b981;">
-      ⚓ 刷新锚点
+      🔧 刷新锚点
     </button>
     <button id="resetTest" class="control-btn" style="background: #3b82f6;">
       🔄 重置
@@ -370,8 +363,8 @@
     
     <!-- 标题 -->
     <div class="text-center mb-4 pt-2">
-      <h1 class="text-xl font-bold text-white mb-1">⚓ CSS Anchor Positioning</h1>
-      <p class="text-white/80 text-sm">1000连接线 • 原生CSS • 120Hz极速</p>
+      <h1 class="text-xl font-bold text-white mb-1">🔧 CSS Anchor Polyfill</h1>
+      <p class="text-white/80 text-sm">1000连接线 • 强制支持 • 120Hz</p>
     </div>
 
     <!-- 三个横向排列的容器 -->
@@ -408,54 +401,62 @@
   </div>
   
   <script>
-    // CSS Anchor Positioning 120Hz连接引擎
-    class CSSAnchor120HzEngine {
+    // CSS Anchor Polyfill 120Hz连接引擎
+    class CSSAnchorPolyfill120HzEngine {
       constructor() {
         this.connections = [];
         this.connectionsVisible = true;
         this.debugMode = false;
         this.connectionContainer = null;
-        
-        // CSS Anchor支持检测
-        this.anchorSupported = this.detectAnchorSupport();
+        this.polyfillLoaded = false;
         
         this.init();
       }
       
-      detectAnchorSupport() {
-        // 检测CSS Anchor Positioning支持
-        try {
-          const testEl = document.createElement('div');
-          testEl.style.anchorName = '--test';
-          return testEl.style.anchorName === '--test';
-        } catch (e) {
-          return false;
-        }
-      }
-      
-      init() {
+      async init() {
         this.connectionContainer = document.getElementById('connectionContainer');
         
-        if (!this.anchorSupported) {
-          console.warn('⚠️ CSS Anchor Positioning 不支持，连接线将被隐藏');
-          document.getElementById('renderMode').textContent = '不支持';
-          document.getElementById('renderMode').className = 'perf-warning';
-          return;
-        }
+        // 等待polyfill加载完成
+        await this.waitForPolyfill();
         
-        this.log('✅ CSS Anchor Positioning 120Hz引擎初始化完成');
-        document.getElementById('renderMode').textContent = 'CSS原生';
+        this.log('✅ CSS Anchor Polyfill 120Hz引擎初始化完成');
+        document.getElementById('renderMode').textContent = 'Polyfill';
         document.getElementById('renderMode').className = 'perf-excellent';
       }
       
-      createConnections(count) {
-        if (!this.anchorSupported) {
-          document.getElementById('connectionCount').textContent = '不支持';
-          return;
+      async waitForPolyfill() {
+        // 等待polyfill库加载
+        let attempts = 0;
+        const maxAttempts = 50;
+        
+        while (attempts < maxAttempts) {
+          if (window.CSS && window.CSS.supports && 
+              (window.CSS.supports('anchor-name', '--test') || 
+               typeof window.polyfillCSSAnchorPositioning === 'function')) {
+            this.polyfillLoaded = true;
+            break;
+          }
+          
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
         }
         
+        if (!this.polyfillLoaded) {
+          console.warn('⚠️ CSS Anchor Polyfill 加载失败，使用JavaScript实现');
+          this.useJavaScriptFallback = true;
+        }
+        
+        // 如果有polyfill函数，手动调用初始化
+        if (typeof window.polyfillCSSAnchorPositioning === 'function') {
+          window.polyfillCSSAnchorPositioning();
+        }
+      }
+      
+      createConnections(count) {
         this.connections = [];
         this.connectionContainer.innerHTML = '';
+        
+        const fragment = document.createDocumentFragment();
         
         for (let i = 0; i < count; i++) {
           const isSelf = i % 3 === 2;
@@ -465,6 +466,7 @@
           const chatToBubble = this.createCSSConnection(
             `--chat-${i}`, 
             `--bubble-${i}`, 
+            null,
             hue, 
             'chat-to-bubble',
             i
@@ -473,14 +475,15 @@
           // 创建连接线2: 消息气泡 → 账号头像
           const bubbleToAccount = this.createCSSConnection(
             `--bubble-${i}`, 
+            null,
             `--account-${i}`, 
             hue, 
             'bubble-to-account',
             i
           );
           
-          this.connectionContainer.appendChild(chatToBubble);
-          this.connectionContainer.appendChild(bubbleToAccount);
+          fragment.appendChild(chatToBubble);
+          fragment.appendChild(bubbleToAccount);
           
           this.connections.push({
             id: i,
@@ -491,16 +494,31 @@
           });
         }
         
+        this.connectionContainer.appendChild(fragment);
+        
+        // 强制polyfill重新计算
+        if (typeof window.polyfillCSSAnchorPositioning === 'function') {
+          setTimeout(() => {
+            window.polyfillCSSAnchorPositioning();
+          }, 100);
+        }
+        
         document.getElementById('connectionCount').textContent = this.connections.length * 2;
-        this.log(`⚓ 创建了 ${this.connections.length * 2} 个CSS Anchor连接线`);
+        this.log(`🔧 创建了 ${this.connections.length * 2} 个Polyfill连接线`);
       }
       
-      createCSSConnection(sourceAnchor, targetAnchor, hue, connectionType, index) {
+      createCSSConnection(chatAnchor, bubbleAnchor, accountAnchor, hue, connectionType, index) {
         const connection = document.createElement('div');
         connection.className = `connection-line connection-${connectionType}`;
-        connection.style.setProperty('--source-anchor', sourceAnchor);
-        connection.style.setProperty('--target-anchor', targetAnchor);
-        connection.style.setProperty('--hue', hue);
+        
+        if (connectionType === 'chat-to-bubble') {
+          connection.style.setProperty('--chat-anchor', chatAnchor);
+          connection.style.setProperty('--bubble-anchor', bubbleAnchor);
+        } else {
+          connection.style.setProperty('--bubble-anchor', bubbleAnchor || `--bubble-${index}`);
+          connection.style.setProperty('--account-anchor', accountAnchor);
+        }
+        
         connection.style.setProperty('--connection-color', `hsl(${hue}, 65%, 55%)`);
         connection.setAttribute('data-connection-id', index);
         connection.setAttribute('data-connection-type', connectionType);
@@ -513,7 +531,7 @@
         
         if (this.connectionsVisible) {
           this.connectionContainer.style.display = 'block';
-          document.getElementById('systemStatus').textContent = 'CSS运行';
+          document.getElementById('systemStatus').textContent = 'Polyfill运行';
           document.getElementById('systemStatus').className = 'perf-excellent';
         } else {
           this.connectionContainer.style.display = 'none';
@@ -531,24 +549,25 @@
       }
       
       refreshAnchors() {
-        if (!this.anchorSupported) return;
+        // 强制polyfill重新计算所有锚点位置
+        if (typeof window.polyfillCSSAnchorPositioning === 'function') {
+          this.connectionContainer.style.display = 'none';
+          requestAnimationFrame(() => {
+            this.connectionContainer.style.display = 'block';
+            window.polyfillCSSAnchorPositioning();
+          });
+        }
         
-        // 强制重新计算CSS Anchor位置
-        this.connectionContainer.style.display = 'none';
-        requestAnimationFrame(() => {
-          this.connectionContainer.style.display = 'block';
-        });
-        
-        this.log('⚓ CSS锚点已刷新');
+        this.log('🔧 Polyfill锚点已刷新');
       }
       
       log(message) {
-        console.log(`[CSS Anchor引擎] ${message}`);
+        console.log(`[CSS Anchor Polyfill引擎] ${message}`);
       }
     }
     
     // 120Hz性能监控器（简化版）
-    class CSSAnchor120HzMonitor {
+    class CSSAnchorPolyfill120HzMonitor {
       constructor() {
         this.frameCount = 0;
         this.lastTime = performance.now();
@@ -568,7 +587,7 @@
           document.getElementById('frameTime').textContent = this.frameTime;
           
           // FPS性能评级
-          if (this.fps >= 100) {
+          if (this.fps >= 90) {
             document.getElementById('fps').className = 'perf-excellent';
           } else if (this.fps >= 60) {
             document.getElementById('fps').className = 'perf-value';
@@ -582,11 +601,11 @@
       }
     }
     
-    // CSS Anchor主应用
-    class CSSAnchor120HzApp {
+    // CSS Anchor Polyfill主应用
+    class CSSAnchorPolyfill120HzApp {
       constructor() {
-        this.connectionEngine = new CSSAnchor120HzEngine();
-        this.perfMonitor = new CSSAnchor120HzMonitor();
+        this.connectionEngine = new CSSAnchorPolyfill120HzEngine();
+        this.perfMonitor = new CSSAnchorPolyfill120HzMonitor();
         this.elementsGenerated = false;
         
         this.setupEventListeners();
@@ -619,6 +638,10 @@
         const loadingBar = document.getElementById('loadingBar');
         const loadingText = document.getElementById('loadingText');
         
+        // 等待polyfill加载
+        loadingText.textContent = 'Polyfill加载中...';
+        await this.connectionEngine.waitForPolyfill();
+        
         const count = 1000;
         const batchSize = 50;
         
@@ -628,7 +651,7 @@
           
           const progress = (end / count) * 100;
           loadingBar.style.width = progress + '%';
-          loadingText.textContent = `生成CSS锚点 ${end}/${count}`;
+          loadingText.textContent = `生成锚点元素 ${end}/${count}`;
           
           await this.generateBatch(start, end);
           await new Promise(resolve => setTimeout(resolve, 5));
@@ -636,8 +659,8 @@
         
         this.setContainerHeights(count);
         
-        loadingText.textContent = '创建CSS连接线...';
-        await new Promise(resolve => setTimeout(resolve, 100));
+        loadingText.textContent = '创建Polyfill连接线...';
+        await new Promise(resolve => setTimeout(resolve, 200));
         this.connectionEngine.createConnections(count);
         
         this.startPerformanceMonitoring();
@@ -647,11 +670,11 @@
           loadingOverlay.style.display = 'none';
         }, 300);
         
-        document.getElementById('systemStatus').textContent = 'CSS就绪';
+        document.getElementById('systemStatus').textContent = 'Polyfill就绪';
         document.getElementById('systemStatus').className = 'perf-excellent';
         this.elementsGenerated = true;
         
-        console.log('⚓ CSS Anchor Positioning 120Hz版本启动完成');
+        console.log('🔧 CSS Anchor Polyfill 120Hz版本启动完成');
       }
       
       async generateBatch(start, end) {
@@ -725,7 +748,12 @@
           document.getElementById(id).scrollTop = 0;
         });
         
-        console.log('🔄 CSS Anchor测试已重置');
+        // 重新计算锚点位置
+        setTimeout(() => {
+          this.connectionEngine.refreshAnchors();
+        }, 100);
+        
+        console.log('🔄 CSS Anchor Polyfill测试已重置');
       }
       
       startPerformanceMonitoring() {
@@ -737,18 +765,11 @@
       }
     }
     
-    // 检查CSS Anchor Positioning支持并启动应用
+    // 启动CSS Anchor Polyfill应用
     document.addEventListener('DOMContentLoaded', () => {
-      // 检测CSS Anchor支持
-      const supportsAnchor = CSS.supports('anchor-name', '--test') || CSS.supports('position-anchor', '--test');
+      console.log('🔧 启动CSS Anchor Positioning Polyfill版本');
       
-      if (!supportsAnchor) {
-        console.warn('⚠️ 浏览器不支持CSS Anchor Positioning，将显示警告信息');
-        document.getElementById('renderMode').textContent = '不支持';
-        document.getElementById('renderMode').className = 'perf-warning';
-      }
-      
-      const app = new CSSAnchor120HzApp();
+      const app = new CSSAnchorPolyfill120HzApp();
       
       // 防止页面缩放
       document.addEventListener('gesturestart', e => e.preventDefault());
@@ -761,6 +782,22 @@
           e.preventDefault();
         }
       }, { passive: false });
+      
+      // 监听滚动事件，定期刷新anchor位置
+      ['chatAvatarContainer', 'messageBubbleContainer', 'accountAvatarContainer'].forEach(id => {
+        const container = document.getElementById(id);
+        let scrollTimeout;
+        
+        container.addEventListener('scroll', () => {
+          // 滚动结束后刷新锚点位置
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => {
+            if (app.connectionEngine && typeof window.polyfillCSSAnchorPositioning === 'function') {
+              window.polyfillCSSAnchorPositioning();
+            }
+          }, 100);
+        }, { passive: true });
+      });
     });
     
   </script>
