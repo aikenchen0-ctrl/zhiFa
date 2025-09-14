@@ -169,129 +169,37 @@
       will-change: transform;
     }
     
-    /* === 纯CSS Anchor连接线实现 === */
+    /* === SVG连接线实现 - CSS Anchor Positioning === */
     
-    /* L型连接线容器 - 他人消息(左侧连接) */
-    .connection-other {
+    /* SVG连接线容器 */
+    .connection-line {
       position: absolute;
       pointer-events: none;
       z-index: 20;
+      /* 使用CSS Anchor定位SVG容器 */
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
     }
     
-    /* L型连接线容器 - 自己消息(右侧连接) */
-    .connection-self {
+    /* SVG连接线样式 */
+    .connection-svg {
       position: absolute;
-      pointer-events: none;
-      z-index: 20;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
+      overflow: visible;
     }
     
-    /* 他人消息: 气泡左侧 → 会话头像右侧 */
-    .connection-other::before {
-      content: '';
-      position: absolute;
-      /* 水平线段: 从气泡左侧开始，向左延伸5px */
-      left: anchor(var(--bubble-anchor) left);
-      top: anchor(var(--bubble-anchor) center);
-      width: var(--horizontal-extend);
-      height: var(--connection-width);
-      background: var(--connection-color);
-      transform: translateX(-100%) translateY(-50%);
-      border-radius: var(--corner-radius);
-    }
-    
-    .connection-other::after {
-      content: '';
-      position: absolute;
-      /* 垂直线段: 从第一段终点到会话头像中心高度 */
-      left: calc(anchor(var(--bubble-anchor) left) - var(--horizontal-extend));
-      top: min(anchor(var(--bubble-anchor) center), anchor(var(--chat-anchor) center));
-      width: var(--connection-width);
-      height: abs(anchor(var(--bubble-anchor) center) - anchor(var(--chat-anchor) center));
-      background: var(--connection-color);
-      transform: translateX(-50%);
-      border-radius: var(--corner-radius);
-    }
-    
-    /* 自己消息: 气泡右侧 → 账号头像左侧 */
-    .connection-self::before {
-      content: '';
-      position: absolute;
-      /* 水平线段: 从气泡右侧开始，向右延伸5px */
-      left: anchor(var(--bubble-anchor) right);
-      top: anchor(var(--bubble-anchor) center);
-      width: var(--horizontal-extend);
-      height: var(--connection-width);
-      background: var(--connection-color);
-      transform: translateY(-50%);
-      border-radius: var(--corner-radius);
-    }
-    
-    .connection-self::after {
-      content: '';
-      position: absolute;
-      /* 垂直线段: 从第一段终点到账号头像中心高度 */
-      left: calc(anchor(var(--bubble-anchor) right) + var(--horizontal-extend));
-      top: min(anchor(var(--bubble-anchor) center), anchor(var(--account-anchor) center));
-      width: var(--connection-width);
-      height: abs(anchor(var(--bubble-anchor) center) - anchor(var(--account-anchor) center));
-      background: var(--connection-color);
-      transform: translateX(-50%);
-      border-radius: var(--corner-radius);
-    }
-    
-    /* 连接线的最终水平段 */
-    .connection-other-final {
-      position: absolute;
-      pointer-events: none;
-      z-index: 20;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
-    
-    .connection-other-final::before {
-      content: '';
-      position: absolute;
-      /* 从垂直段终点到会话头像右侧 */
-      left: calc(anchor(var(--bubble-anchor) left) - var(--horizontal-extend));
-      top: anchor(var(--chat-anchor) center);
-      width: calc(anchor(var(--chat-anchor) right) - (anchor(var(--bubble-anchor) left) - var(--horizontal-extend)));
-      height: var(--connection-width);
-      background: var(--connection-color);
-      transform: translateY(-50%);
-      border-radius: var(--corner-radius);
-    }
-    
-    .connection-self-final {
-      position: absolute;
-      pointer-events: none;
-      z-index: 20;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-    }
-    
-    .connection-self-final::before {
-      content: '';
-      position: absolute;
-      /* 从垂直段终点到账号头像左侧 */
-      left: calc(anchor(var(--bubble-anchor) right) + var(--horizontal-extend));
-      top: anchor(var(--account-anchor) center);
-      width: calc(anchor(var(--account-anchor) left) - (anchor(var(--bubble-anchor) right) + var(--horizontal-extend)));
-      height: var(--connection-width);
-      background: var(--connection-color);
-      transform: translateY(-50%);
-      border-radius: var(--corner-radius);
+    .connection-path {
+      fill: none;
+      stroke-width: 2px;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      /* 圆角效果 */
+      vector-effect: non-scaling-stroke;
     }
     
     /* 控制按钮 */
@@ -444,8 +352,8 @@
         // 生成测试元素
         await this.generateTestElements();
         
-        // 创建纯CSS连接线
-        this.createCSSConnections();
+        // 创建SVG连接线
+        this.createSVGConnections();
         
         // 设置事件监听
         this.setupEventListeners();
@@ -568,7 +476,7 @@
         console.log(`✅ 生成了 ${total} 个测试元素`);
       }
       
-      createCSSConnections() {
+      createSVGConnections() {
         const connectionContainer = document.getElementById('connection-container');
         connectionContainer.innerHTML = '';
         
@@ -580,61 +488,229 @@
           const hue = (i * 137) % 360;
           const connectionColor = `hsl(${hue}, 80%, 60%)`;
           
-          // 创建L型连接线的三个部分
-          const connection1 = document.createElement('div');
-          const connection2 = document.createElement('div');
-          const connection3 = document.createElement('div');
+          // 创建SVG连接线容器
+          const connectionDiv = document.createElement('div');
+          connectionDiv.className = 'connection-line';
+          connectionDiv.setAttribute('data-index', i);
+          connectionDiv.setAttribute('data-sender', isSelf ? 'self' : 'other');
           
-          if (isSelf) {
-            // 自己的消息：气泡右侧 → 账号头像左侧
-            connection1.className = 'connection-self';
-            connection2.className = 'connection-self-final';
-            
-            connection1.style.cssText = `
-              --bubble-anchor: --bubble-${i};
-              --account-anchor: --account-${i};
-              --connection-color: ${connectionColor};
-            `;
-            
-            connection2.style.cssText = `
-              --bubble-anchor: --bubble-${i};
-              --account-anchor: --account-${i};
-              --connection-color: ${connectionColor};
-            `;
-          } else {
-            // 他人的消息：气泡左侧 → 会话头像右侧
-            connection1.className = 'connection-other';
-            connection2.className = 'connection-other-final';
-            
-            connection1.style.cssText = `
-              --bubble-anchor: --bubble-${i};
-              --chat-anchor: --chat-${i};
-              --connection-color: ${connectionColor};
-            `;
-            
-            connection2.style.cssText = `
-              --bubble-anchor: --bubble-${i};
-              --chat-anchor: --chat-${i};
-              --connection-color: ${connectionColor};
-            `;
-          }
+          // 创建SVG元素
+          const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+          svg.className = 'connection-svg';
+          svg.setAttribute('viewBox', '0 0 400 800'); // 足够大的视口
           
-          connectionContainer.appendChild(connection1);
-          connectionContainer.appendChild(connection2);
+          // 创建路径元素
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.className = 'connection-path';
+          path.setAttribute('stroke', connectionColor);
+          path.setAttribute('data-bubble-anchor', `--bubble-${i}`);
+          path.setAttribute('data-target-anchor', isSelf ? `--account-${i}` : `--chat-${i}`);
+          path.setAttribute('data-is-self', isSelf);
           
-          this.connectionCount += 2;
+          svg.appendChild(path);
+          connectionDiv.appendChild(svg);
+          connectionContainer.appendChild(connectionDiv);
+          
+          this.connectionCount++;
         }
         
-        // 强制polyfill计算所有连接线
-        if (typeof window.polyfillCSSAnchorPositioning === 'function') {
-          requestAnimationFrame(() => {
-            window.polyfillCSSAnchorPositioning();
-            console.log('🔧 纯CSS连接线polyfill计算完成');
-          });
-        }
+        // 初始化连接线路径
+        setTimeout(() => {
+          this.updateAllConnectionPaths();
+        }, 100);
         
         document.getElementById('connections').textContent = this.connectionCount;
-        console.log(`✅ 创建了 ${this.connectionCount} 个纯CSS连接线元素`);
+        console.log(`✅ 创建了 ${this.connectionCount} 个SVG连接线元素`);
+      }
+      
+      updateAllConnectionPaths() {
+        const paths = document.querySelectorAll('.connection-path');
+        
+        paths.forEach(path => {
+          this.updateConnectionPath(path);
+        });
+        
+        // 强制polyfill重新计算位置
+        if (typeof window.polyfillCSSAnchorPositioning === 'function') {
+          window.polyfillCSSAnchorPositioning();
+        }
+      }
+      
+      updateConnectionPath(pathElement) {
+        const bubbleAnchor = pathElement.getAttribute('data-bubble-anchor');
+        const targetAnchor = pathElement.getAttribute('data-target-anchor');
+        const isSelf = pathElement.getAttribute('data-is-self') === 'true';
+        
+        try {
+          // 使用CSS Anchor Positioning获取位置
+          const bubbleLeft = this.getAnchorPosition(bubbleAnchor, 'left');
+          const bubbleRight = this.getAnchorPosition(bubbleAnchor, 'right');
+          const bubbleCenter = this.getAnchorPosition(bubbleAnchor, 'center');
+          
+          const targetLeft = this.getAnchorPosition(targetAnchor, 'left');
+          const targetRight = this.getAnchorPosition(targetAnchor, 'right');
+          const targetCenter = this.getAnchorPosition(targetAnchor, 'center');
+          
+          let pathData;
+          
+          if (isSelf) {
+            // 自己消息：气泡右侧 → 账号头像左侧
+            const startX = bubbleRight;
+            const startY = bubbleCenter;
+            const endX = targetLeft;
+            const endY = targetCenter;
+            
+            // L型路径: 右5px → 垂直 → 水平到头像
+            pathData = this.generateLPath(startX, startY, endX, endY, 5, 'right');
+          } else {
+            // 他人消息：气泡左侧 → 会话头像右侧
+            const startX = bubbleLeft;
+            const startY = bubbleCenter;
+            const endX = targetRight;
+            const endY = targetCenter;
+            
+            // L型路径: 左5px → 垂直 → 水平到头像
+            pathData = this.generateLPath(startX, startY, endX, endY, 5, 'left');
+          }
+          
+          pathElement.setAttribute('d', pathData);
+          
+        } catch (error) {
+          console.warn('更新连接线路径失败:', error);
+          // 如果CSS Anchor不可用，使用getBoundingClientRect作为降级
+          this.updateConnectionPathFallback(pathElement);
+        }
+      }
+      
+      getAnchorPosition(anchorName, side) {
+        // 首先尝试直接查找对应的元素
+        const anchorSelector = `[style*="${anchorName}"]`;
+        const anchorElement = document.querySelector(anchorSelector);
+        
+        if (anchorElement) {
+          const rect = anchorElement.getBoundingClientRect();
+          const containerRect = document.querySelector('.connection-overlay').getBoundingClientRect();
+          
+          let position;
+          switch(side) {
+            case 'left':
+              position = rect.left - containerRect.left;
+              break;
+            case 'right':
+              position = rect.right - containerRect.left;
+              break;
+            case 'center':
+              if (side === 'center') {
+                // 可能是垂直中心
+                position = rect.top + rect.height / 2 - containerRect.top;
+              }
+              break;
+            default:
+              position = rect.left - containerRect.left;
+          }
+          
+          console.log(`📍 ${anchorName} ${side}: ${position}`);
+          return position;
+        }
+        
+        // 降级：尝试使用CSS anchor()函数（如果polyfill可用）
+        try {
+          const testElement = document.createElement('div');
+          testElement.style.cssText = `
+            position: absolute;
+            left: anchor(${anchorName} ${side});
+            visibility: hidden;
+          `;
+          
+          const container = document.querySelector('.connection-overlay');
+          container.appendChild(testElement);
+          
+          const computedLeft = window.getComputedStyle(testElement).left;
+          container.removeChild(testElement);
+          
+          const value = parseFloat(computedLeft);
+          return isNaN(value) ? 0 : value;
+        } catch (error) {
+          console.warn(`获取锚点位置失败: ${anchorName} ${side}`, error);
+          return 0;
+        }
+      }
+      
+      generateLPath(startX, startY, endX, endY, extendDistance, direction) {
+        const cornerRadius = 3; // 圆角半径
+        
+        let midX, pathData;
+        
+        if (direction === 'right') {
+          // 向右延伸
+          midX = startX + extendDistance;
+          
+          if (startY < endY) {
+            // 向下转折
+            pathData = `M ${startX} ${startY} 
+                       L ${midX - cornerRadius} ${startY}
+                       Q ${midX} ${startY} ${midX} ${startY + cornerRadius}
+                       L ${midX} ${endY - cornerRadius}
+                       Q ${midX} ${endY} ${midX + cornerRadius} ${endY}
+                       L ${endX} ${endY}`;
+          } else {
+            // 向上转折  
+            pathData = `M ${startX} ${startY}
+                       L ${midX - cornerRadius} ${startY}
+                       Q ${midX} ${startY} ${midX} ${startY - cornerRadius}
+                       L ${midX} ${endY + cornerRadius}
+                       Q ${midX} ${endY} ${midX + cornerRadius} ${endY}
+                       L ${endX} ${endY}`;
+          }
+        } else {
+          // 向左延伸
+          midX = startX - extendDistance;
+          
+          if (startY < endY) {
+            // 向下转折
+            pathData = `M ${startX} ${startY}
+                       L ${midX + cornerRadius} ${startY}
+                       Q ${midX} ${startY} ${midX} ${startY + cornerRadius}
+                       L ${midX} ${endY - cornerRadius}
+                       Q ${midX} ${endY} ${midX - cornerRadius} ${endY}
+                       L ${endX} ${endY}`;
+          } else {
+            // 向上转折
+            pathData = `M ${startX} ${startY}
+                       L ${midX + cornerRadius} ${startY}
+                       Q ${midX} ${startY} ${midX} ${startY - cornerRadius}
+                       L ${midX} ${endY + cornerRadius}
+                       Q ${midX} ${endY} ${midX - cornerRadius} ${endY}
+                       L ${endX} ${endY}`;
+          }
+        }
+        
+        return pathData;
+      }
+      
+      updateConnectionPathFallback(pathElement) {
+        // 降级方案：使用getBoundingClientRect
+        const bubbleAnchor = pathElement.getAttribute('data-bubble-anchor').replace('--', '');
+        const targetAnchor = pathElement.getAttribute('data-target-anchor').replace('--', '');
+        const isSelf = pathElement.getAttribute('data-is-self') === 'true';
+        
+        const bubbleElement = document.querySelector(`[style*="${bubbleAnchor}"]`);
+        const targetElement = document.querySelector(`[style*="${targetAnchor}"]`);
+        
+        if (!bubbleElement || !targetElement) return;
+        
+        const bubbleRect = bubbleElement.getBoundingClientRect();
+        const targetRect = targetElement.getBoundingClientRect();
+        const containerRect = document.querySelector('.connection-overlay').getBoundingClientRect();
+        
+        const bubbleX = isSelf ? bubbleRect.right - containerRect.left : bubbleRect.left - containerRect.left;
+        const bubbleY = bubbleRect.top + bubbleRect.height / 2 - containerRect.top;
+        
+        const targetX = isSelf ? targetRect.left - containerRect.left : targetRect.right - containerRect.left;
+        const targetY = targetRect.top + targetRect.height / 2 - containerRect.top;
+        
+        const pathData = this.generateLPath(bubbleX, bubbleY, targetX, targetY, 5, isSelf ? 'right' : 'left');
+        pathElement.setAttribute('d', pathData);
       }
       
       setupEventListeners() {
@@ -648,16 +724,11 @@
           btn.textContent = this.connectionsVisible ? '隐藏连接线' : '显示连接线';
         });
         
-        // 刷新锚点 - 纯CSS Anchor方式
+        // 刷新锚点 - SVG连接线方式
         document.getElementById('refresh-anchors').addEventListener('click', () => {
-          console.log('🔧 手动刷新CSS Anchor...');
-          
-          if (typeof window.polyfillCSSAnchorPositioning === 'function') {
-            window.polyfillCSSAnchorPositioning();
-            console.log('✅ CSS Anchor Polyfill重新计算完成');
-          } else {
-            console.warn('❌ Polyfill函数不可用');
-          }
+          console.log('🔧 手动刷新SVG连接线...');
+          this.updateAllConnectionPaths();
+          console.log('✅ SVG连接线更新完成');
         });
         
         // 滚动测试
@@ -670,20 +741,16 @@
           console.log('🔄 测试滚动触发');
         });
         
-        // 滚动时让polyfill自动处理 - 不需要手动干预
+        // 滚动时实时更新SVG连接线
         const containers = document.querySelectorAll('.scroll-container');
         containers.forEach((container, index) => {
           container.addEventListener('scroll', () => {
-            console.log(`🔄 容器${index + 1}滚动 - CSS Anchor自动跟随`);
+            console.log(`🔄 容器${index + 1}滚动 - 更新SVG连接线`);
             
-            // 只在需要时手动触发polyfill重新计算
-            if (typeof window.polyfillCSSAnchorPositioning === 'function') {
-              // 使用节流避免频繁调用
-              clearTimeout(container.scrollTimeout);
-              container.scrollTimeout = setTimeout(() => {
-                window.polyfillCSSAnchorPositioning();
-              }, 16); // 60fps
-            }
+            // 实时更新连接线路径
+            requestAnimationFrame(() => {
+              this.updateAllConnectionPaths();
+            });
           });
         });
       }
