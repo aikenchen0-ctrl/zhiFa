@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>📱 移动端1000连接线性能测试</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    :root {
+      --glass-bg: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.15);
+      --connection-width: 2px;
+      --corner-radius: 6px;
+      --avatar-size: 40px;
+      --bubble-padding: 8px 12px;
+    }
+    
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow-x: hidden;
+      touch-action: pan-y;
+    }
+    
+    .glass {
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+    }
+    
+    /* 移动端纵向容器布局 */
+    .mobile-container {
+      height: 30vh;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      position: relative;
+    }
+    
+    .scroll-content {
+      padding: 10px;
+      /* 动态高度，由JavaScript计算 */
+    }
+    
+    /* 优化的头像样式 */
+    .chat-avatar, .account-avatar {
+      width: var(--avatar-size);
+      height: var(--avatar-size);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.7);
+      margin: 8px auto;
+      font-size: 12px;
+      position: relative;
+      flex-shrink: 0;
+    }
+    
+    /* 优化的气泡样式 */
+    .message-bubble {
+      max-width: 200px;
+      padding: var(--bubble-padding);
+      border-radius: 10px;
+      color: white;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      margin: 8px auto;
+      font-size: 12px;
+      line-height: 1.3;
+      position: relative;
+      flex-shrink: 0;
+    }
+    
+    .bubble-other {
+      background: rgba(156, 163, 175, 0.25);
+      border: 1px solid rgba(156, 163, 175, 0.4);
+      margin-left: 15px;
+      margin-right: auto;
+    }
+    
+    .bubble-self {
+      background: rgba(59, 130, 246, 0.25);
+      border: 1px solid rgba(59, 130, 246, 0.4);
+      margin-right: 15px;
+      margin-left: auto;
+    }
+    
+    /* Canvas优化 */
+    #performanceCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 100;
+      will-change: transform;
+    }
+    
+    /* 性能监控面板 */
+    .perf-monitor {
+      position: fixed;
+      top: 5px;
+      right: 5px;
+      background: rgba(0, 0, 0, 0.9);
+      color: #00ff00;
+      padding: 8px;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 10px;
+      z-index: 1000;
+      max-width: 140px;
+      backdrop-filter: blur(10px);
+    }
+    
+    .perf-value {
+      color: #ffff00;
+      font-weight: bold;
+    }
+    
+    .perf-warning {
+      color: #ff6666;
+      font-weight: bold;
+    }
+    
+    /* 控制面板 */
+    .control-panel {
+      position: fixed;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1000;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 90vw;
+    }
+    
+    .control-btn {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: bold;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s;
+      min-width: 60px;
+      text-align: center;
+    }
+    
+    /* 加载状态 */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      color: white;
+    }
+    
+    .loading-progress {
+      width: 80%;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      margin: 20px 0;
+      overflow: hidden;
+    }
+    
+    .loading-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      width: 0%;
+      transition: width 0.3s;
+    }
+    
+    /* 调试模式 */
+    .debug-mode .chat-avatar,
+    .debug-mode .account-avatar { 
+      outline: 1px solid rgba(0, 255, 0, 0.8);
+    }
+    
+    .debug-mode .message-bubble { 
+      outline: 1px solid rgba(255, 0, 0, 0.8);
+    }
+    
+    /* 滚动优化 */
+    .mobile-container::-webkit-scrollbar {
+      width: 3px;
+    }
+    
+    .mobile-container::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+    
+    .mobile-container::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+  
+  <!-- 加载遮罩 -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div style="font-size: 24px; margin-bottom: 10px;">🚀</div>
+    <div>正在生成1000个元素...</div>
+    <div class="loading-progress">
+      <div id="loadingBar" class="loading-bar"></div>
+    </div>
+    <div id="loadingText">初始化中...</div>
+  </div>
+  
+  <!-- 性能监控面板 -->
+  <div id="perfMonitor" class="perf-monitor">
+    <div>📱 1K连接线测试</div>
+    <div>FPS: <span id="fps" class="perf-value">--</span></div>
+    <div>渲染: <span id="frameTime" class="perf-value">--</span>ms</div>
+    <div>连接: <span id="connectionCount" class="perf-value">0</span></div>
+    <div>内存: <span id="memoryUsage" class="perf-value">--</span>MB</div>
+    <div>状态: <span id="systemStatus" class="perf-value">准备中</span></div>
+  </div>
+
+  <!-- 控制面板 -->
+  <div class="control-panel">
+    <button id="toggleRender" class="control-btn" style="background: #ef4444;">
+      ⏸️ 暂停
+    </button>
+    <button id="toggleDebug" class="control-btn" style="background: #6b7280;">
+      🔍 调试
+    </button>
+    <button id="optimizeMode" class="control-btn" style="background: #f59e0b;">
+      ⚡ 优化
+    </button>
+    <button id="resetTest" class="control-btn" style="background: #3b82f6;">
+      🔄 重置
+    </button>
+  </div>
+
+  <div class="p-2">
+    
+    <!-- 标题 -->
+    <div class="text-center mb-4 pt-2">
+      <h1 class="text-xl font-bold text-white mb-1">📱 移动端性能极限测试</h1>
+      <p class="text-white/80 text-sm">1000连接线实时跟随</p>
+    </div>
+
+    <!-- 三个纵向排列的容器 -->
+    
+    <!-- 容器1：会话头像 -->
+    <div class="glass mobile-container" id="chatAvatarContainer">
+      <div class="scroll-content" id="chatAvatarContent">
+        <!-- 动态生成1000个会话头像 -->
+      </div>
+    </div>
+
+    <!-- 容器2：消息气泡 -->
+    <div class="glass mobile-container" id="messageBubbleContainer">
+      <div class="scroll-content" id="messageBubbleContent">
+        <!-- 动态生成1000个消息气泡 -->
+      </div>
+    </div>
+
+    <!-- 容器3：账号头像 -->
+    <div class="glass mobile-container" id="accountAvatarContainer">
+      <div class="scroll-content" id="accountAvatarContent">
+        <!-- 动态生成1000个账号头像 -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 高性能Canvas -->
+  <canvas id="performanceCanvas"></canvas>
+  
+  <script>
+    // 高性能渲染引擎
+    class HighPerformanceConnectionEngine {
+      constructor() {
+        this.canvas = null;
+        this.ctx = null;
+        this.connections = [];
+        this.enabled = true;
+        this.debugMode = false;
+        this.optimizeMode = false;
+        this.animationId = null;
+        
+        // 性能优化参数
+        this.renderThrottle = 1; // 渲染节流，1=每帧，2=每2帧
+        this.frameCounter = 0;
+        this.visibilityThreshold = 50; // 可见性检测阈值
+        
+        this.init();
+      }
+      
+      async init() {
+        this.canvas = document.getElementById('performanceCanvas');
+        if (!this.canvas) return;
+        
+        this.ctx = this.canvas.getContext('2d', {
+          alpha: true,
+          desynchronized: true, // 性能优化
+          powerPreference: 'high-performance'
+        });
+        
+        this.resizeCanvas();
+        
+        window.addEventListener('resize', () => {
+          this.resizeCanvas();
+        });
+        
+        this.log('✅ 高性能Canvas初始化完成');
+      }
+      
+      resizeCanvas() {
+        const dpr = window.devicePixelRatio || 1;
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        // 设置Canvas真实尺寸（考虑设备像素比）
+        this.canvas.width = width * dpr;
+        this.canvas.height = height * dpr;
+        
+        // 设置Canvas显示尺寸
+        this.canvas.style.width = width + 'px';
+        this.canvas.style.height = height + 'px';
+        
+        // 缩放上下文以适应设备像素比
+        this.ctx.scale(dpr, dpr);
+      }
+      
+      createConnections(count) {
+        this.connections = [];
+        
+        for (let i = 0; i < count; i++) {
+          const chatAvatar = document.querySelector(`[data-connection="chat-avatar-${i}"]`);
+          const bubble = document.querySelector(`[data-connection="bubble-${i}"]`);
+          const accountAvatar = document.querySelector(`[data-connection="account-avatar-${i}"]`);
+          
+          if (chatAvatar && bubble && accountAvatar) {
+            this.connections.push({
+              id: i,
+              chatAvatar: chatAvatar,
+              bubble: bubble,
+              accountAvatar: accountAvatar,
+              type: i % 3 === 2 ? 'self' : 'other', // 1/3为自己发送
+              color: this.getConnectionColor(i),
+              lastVisible: true
+            });
+          }
+        }
+        
+        document.getElementById('connectionCount').textContent = this.connections.length;
+        this.log(`🔗 创建了 ${this.connections.length} 个连接`);
+      }
+      
+      getConnectionColor(index) {
+        const hue = (index * 137) % 360; // 黄金角分布
+        return `hsl(${hue}, 70%, 60%)`;
+      }
+      
+      startRendering() {
+        const render = () => {
+          if (!this.enabled) return;
+          
+          this.frameCounter++;
+          
+          // 渲染节流
+          if (this.frameCounter % this.renderThrottle === 0) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            if (this.optimizeMode) {
+              this.drawVisibleConnections();
+            } else {
+              this.drawAllConnections();
+            }
+          }
+          
+          this.animationId = requestAnimationFrame(render);
+        };
+        
+        render();
+      }
+      
+      drawAllConnections() {
+        this.connections.forEach(connection => {
+          this.drawLShapedConnection(connection);
+        });
+      }
+      
+      drawVisibleConnections() {
+        // 只绘制可见区域内的连接线
+        const viewportHeight = window.innerHeight;
+        let visibleCount = 0;
+        
+        this.connections.forEach(connection => {
+          if (this.isConnectionVisible(connection, viewportHeight)) {
+            this.drawLShapedConnection(connection);
+            connection.lastVisible = true;
+            visibleCount++;
+          } else {
+            connection.lastVisible = false;
+          }
+        });
+        
+        // 更新可见连接数
+        document.getElementById('connectionCount').textContent = `${visibleCount}/${this.connections.length}`;
+      }
+      
+      isConnectionVisible(connection, viewportHeight) {
+        const bubbleRect = connection.bubble.getBoundingClientRect();
+        const chatRect = connection.chatAvatar.getBoundingClientRect();
+        const accountRect = connection.accountAvatar.getBoundingClientRect();
+        
+        // 检查是否有任何元素在可见区域内
+        const threshold = this.visibilityThreshold;
+        return (
+          (bubbleRect.top < viewportHeight + threshold && bubbleRect.bottom > -threshold) ||
+          (chatRect.top < viewportHeight + threshold && chatRect.bottom > -threshold) ||
+          (accountRect.top < viewportHeight + threshold && accountRect.bottom > -threshold)
+        );
+      }
+      
+      drawLShapedConnection(connection) {
+        const bubbleRect = connection.bubble.getBoundingClientRect();
+        const targetRect = connection.type === 'self' ? 
+          connection.accountAvatar.getBoundingClientRect() :
+          connection.chatAvatar.getBoundingClientRect();
+        
+        if (!bubbleRect.width || !targetRect.width) return;
+        
+        const bubbleCenterY = bubbleRect.top + bubbleRect.height / 2;
+        const targetCenterY = targetRect.top + targetRect.height / 2;
+        
+        let startX, startY, endX, endY;
+        const cornerRadius = 6;
+        const extension = 5;
+        
+        if (connection.type === 'self') {
+          startX = bubbleRect.right;
+          startY = bubbleCenterY;
+          endX = targetRect.left;
+          endY = targetCenterY;
+        } else {
+          startX = bubbleRect.left;
+          startY = bubbleCenterY;
+          endX = targetRect.right;
+          endY = targetCenterY;
+        }
+        
+        // 简化的L型路径绘制（性能优化）
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = connection.color;
+        this.ctx.lineWidth = 2;
+        this.ctx.lineCap = 'round';
+        
+        const midX = connection.type === 'self' ? startX + extension : startX - extension;
+        
+        // 快速路径：起点 → 中间点 → 终点
+        this.ctx.moveTo(startX, startY);
+        this.ctx.lineTo(midX, startY);
+        this.ctx.lineTo(midX, endY);
+        this.ctx.lineTo(endX, endY);
+        
+        this.ctx.stroke();
+        
+        // 调试模式：显示关键点
+        if (this.debugMode && connection.id % 50 === 0) { // 只显示部分调试点
+          this.drawDebugPoint(startX, startY, '#ff0000');
+          this.drawDebugPoint(endX, endY, '#00ff00');
+        }
+      }
+      
+      drawDebugPoint(x, y, color) {
+        this.ctx.beginPath();
+        this.ctx.fillStyle = color;
+        this.ctx.arc(x, y, 2, 0, 2 * Math.PI);
+        this.ctx.fill();
+      }
+      
+      toggle() {
+        this.enabled = !this.enabled;
+        
+        if (!this.enabled) {
+          if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+          }
+          this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+          document.getElementById('systemStatus').textContent = '暂停';
+          document.getElementById('systemStatus').className = 'perf-warning';
+        } else {
+          this.startRendering();
+          document.getElementById('systemStatus').textContent = '运行中';
+          document.getElementById('systemStatus').className = 'perf-value';
+        }
+        
+        this.log(`🎨 连接线渲染: ${this.enabled ? '启用' : '暂停'}`);
+      }
+      
+      setOptimizeMode(enabled) {
+        this.optimizeMode = enabled;
+        this.renderThrottle = enabled ? 2 : 1;
+        this.log(`⚡ 优化模式: ${enabled ? '启用' : '禁用'}`);
+      }
+      
+      setDebugMode(enabled) {
+        this.debugMode = enabled;
+        document.body.classList.toggle('debug-mode', enabled);
+        this.log(`🔍 调试模式: ${enabled ? '启用' : '禁用'}`);
+      }
+      
+      log(message) {
+        console.log(`[连接引擎] ${message}`);
+      }
+    }
+    
+    // 性能监控器
+    class PerformanceMonitor {
+      constructor() {
+        this.frameCount = 0;
+        this.lastTime = performance.now();
+        this.fps = 0;
+        this.frameTime = 0;
+        
+        this.updateInterval = setInterval(() => {
+          this.updateMemoryUsage();
+        }, 2000);
+      }
+      
+      update() {
+        this.frameCount++;
+        const now = performance.now();
+        
+        if (now - this.lastTime >= 1000) {
+          this.fps = Math.round(this.frameCount * 1000 / (now - this.lastTime));
+          this.frameTime = Math.round((now - this.lastTime) / this.frameCount * 100) / 100;
+          
+          document.getElementById('fps').textContent = this.fps;
+          document.getElementById('frameTime').textContent = this.frameTime;
+          
+          // 性能警告
+          if (this.fps < 30) {
+            document.getElementById('fps').className = 'perf-warning';
+          } else if (this.fps < 50) {
+            document.getElementById('fps').className = 'perf-value';
+          } else {
+            document.getElementById('fps').className = 'perf-value';
+          }
+          
+          this.frameCount = 0;
+          this.lastTime = now;
+        }
+      }
+      
+      updateMemoryUsage() {
+        if (performance.memory) {
+          const used = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+          document.getElementById('memoryUsage').textContent = used;
+          
+          if (used > 100) {
+            document.getElementById('memoryUsage').className = 'perf-warning';
+          } else {
+            document.getElementById('memoryUsage').className = 'perf-value';
+          }
+        }
+      }
+    }
+    
+    // 主应用控制器
+    class MobilePerformanceApp {
+      constructor() {
+        this.connectionEngine = new HighPerformanceConnectionEngine();
+        this.perfMonitor = new PerformanceMonitor();
+        this.elementsGenerated = false;
+        
+        this.setupEventListeners();
+        this.generateElements();
+      }
+      
+      setupEventListeners() {
+        document.getElementById('toggleRender').addEventListener('click', () => {
+          this.connectionEngine.toggle();
+          this.updateRenderButton();
+        });
+        
+        document.getElementById('toggleDebug').addEventListener('click', () => {
+          const enabled = document.body.classList.contains('debug-mode');
+          this.connectionEngine.setDebugMode(!enabled);
+          this.updateDebugButton();
+        });
+        
+        document.getElementById('optimizeMode').addEventListener('click', () => {
+          this.toggleOptimizeMode();
+        });
+        
+        document.getElementById('resetTest').addEventListener('click', () => {
+          this.resetTest();
+        });
+      }
+      
+      async generateElements() {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingBar = document.getElementById('loadingBar');
+        const loadingText = document.getElementById('loadingText');
+        
+        const count = 1000;
+        const batchSize = 50; // 批量生成，避免阻塞UI
+        
+        for (let batch = 0; batch < count / batchSize; batch++) {
+          const start = batch * batchSize;
+          const end = Math.min(start + batchSize, count);
+          
+          // 更新进度
+          const progress = (end / count) * 100;
+          loadingBar.style.width = progress + '%';
+          loadingText.textContent = `生成元素 ${end}/${count}`;
+          
+          // 生成当前批次
+          await this.generateBatch(start, end);
+          
+          // 让出控制权，避免阻塞
+          await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        
+        // 设置容器高度
+        this.setContainerHeights(count);
+        
+        // 创建连接
+        loadingText.textContent = '创建连接线...';
+        await new Promise(resolve => setTimeout(resolve, 100));
+        this.connectionEngine.createConnections(count);
+        
+        // 开始渲染
+        this.connectionEngine.startRendering();
+        this.startPerformanceMonitoring();
+        
+        // 隐藏加载界面
+        loadingOverlay.style.opacity = '0';
+        setTimeout(() => {
+          loadingOverlay.style.display = 'none';
+        }, 300);
+        
+        document.getElementById('systemStatus').textContent = '已就绪';
+        this.elementsGenerated = true;
+        
+        console.log('🚀 1000个元素生成完成，性能测试开始');
+      }
+      
+      async generateBatch(start, end) {
+        const chatContainer = document.getElementById('chatAvatarContent');
+        const bubbleContainer = document.getElementById('messageBubbleContent');
+        const accountContainer = document.getElementById('accountAvatarContent');
+        
+        for (let i = start; i < end; i++) {
+          // 会话头像
+          const chatAvatar = document.createElement('div');
+          chatAvatar.className = 'chat-avatar';
+          chatAvatar.style.background = `hsl(${(i * 137) % 360}, 70%, 50%)`;
+          chatAvatar.setAttribute('data-connection', `chat-avatar-${i}`);
+          chatAvatar.textContent = String.fromCharCode(65 + (i % 26)); // A-Z循环
+          chatContainer.appendChild(chatAvatar);
+          
+          // 消息气泡
+          const bubble = document.createElement('div');
+          const isSelf = i % 3 === 2;
+          bubble.className = `message-bubble ${isSelf ? 'bubble-self' : 'bubble-other'}`;
+          bubble.setAttribute('data-connection', `bubble-${i}`);
+          bubble.setAttribute('data-type', isSelf ? 'self' : 'other');
+          bubble.textContent = `消息 ${i + 1} ${isSelf ? '(我)' : '(对方)'}`;
+          bubbleContainer.appendChild(bubble);
+          
+          // 账号头像
+          const accountAvatar = document.createElement('div');
+          accountAvatar.className = 'account-avatar';
+          accountAvatar.style.background = `hsl(${(i * 137 + 30) % 360}, 70%, 45%)`;
+          accountAvatar.setAttribute('data-connection', `account-avatar-${i}`);
+          accountAvatar.textContent = String.fromCharCode(65 + (i % 26));
+          accountContainer.appendChild(accountAvatar);
+        }
+      }
+      
+      setContainerHeights(count) {
+        const avatarHeight = 56; // 40px + 16px margin
+        const bubbleHeight = 56; // 约等高度
+        
+        document.getElementById('chatAvatarContent').style.height = (count * avatarHeight) + 'px';
+        document.getElementById('messageBubbleContent').style.height = (count * bubbleHeight) + 'px';
+        document.getElementById('accountAvatarContent').style.height = (count * avatarHeight) + 'px';
+      }
+      
+      updateRenderButton() {
+        const btn = document.getElementById('toggleRender');
+        const enabled = this.connectionEngine.enabled;
+        
+        btn.textContent = enabled ? '⏸️ 暂停' : '▶️ 继续';
+        btn.style.background = enabled ? '#ef4444' : '#10b981';
+      }
+      
+      updateDebugButton() {
+        const btn = document.getElementById('toggleDebug');
+        const enabled = document.body.classList.contains('debug-mode');
+        
+        btn.textContent = enabled ? '🔍 调试ON' : '🔍 调试OFF';
+        btn.style.background = enabled ? '#3b82f6' : '#6b7280';
+      }
+      
+      toggleOptimizeMode() {
+        const btn = document.getElementById('optimizeMode');
+        const enabled = this.connectionEngine.optimizeMode;
+        
+        this.connectionEngine.setOptimizeMode(!enabled);
+        
+        btn.textContent = !enabled ? '⚡ 优化ON' : '⚡ 优化OFF';
+        btn.style.background = !enabled ? '#10b981' : '#f59e0b';
+      }
+      
+      resetTest() {
+        // 重置滚动位置
+        ['chatAvatarContainer', 'messageBubbleContainer', 'accountAvatarContainer'].forEach(id => {
+          document.getElementById(id).scrollTop = 0;
+        });
+        
+        console.log('🔄 测试已重置');
+      }
+      
+      startPerformanceMonitoring() {
+        const monitor = () => {
+          this.perfMonitor.update();
+          requestAnimationFrame(monitor);
+        };
+        monitor();
+      }
+    }
+    
+    // 启动应用
+    document.addEventListener('DOMContentLoaded', () => {
+      const app = new MobilePerformanceApp();
+      
+      // 防止页面缩放
+      document.addEventListener('gesturestart', e => e.preventDefault());
+      document.addEventListener('gesturechange', e => e.preventDefault());
+      document.addEventListener('gestureend', e => e.preventDefault());
+    });
+    
+  </script>
+  
+</body>
+</html>
