@@ -61,6 +61,19 @@
       gap: 10px;
       padding: 0 10px;
       position: relative;
+      z-index: 1; /* 确保容器在连接线之下 */
+    }
+    
+    /* 跨容器连接线层 - 浮动在所有容器之上 */
+    .connection-overlay {
+      position: absolute;
+      top: 80px;
+      left: 0;
+      right: 0;
+      height: 80vh;
+      pointer-events: none;
+      z-index: 10; /* 高于所有容器 */
+      overflow: hidden;
     }
     
     /* 三个滚动容器 */
@@ -162,14 +175,22 @@
     .connection-other {
       position: absolute;
       pointer-events: none;
-      z-index: 100;
+      z-index: 20;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
     }
     
     /* L型连接线容器 - 自己消息(右侧连接) */
     .connection-self {
       position: absolute;
       pointer-events: none;
-      z-index: 100;
+      z-index: 20;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
     }
     
     /* 他人消息: 气泡左侧 → 会话头像右侧 */
@@ -230,7 +251,11 @@
     .connection-other-final {
       position: absolute;
       pointer-events: none;
-      z-index: 100;
+      z-index: 20;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
     }
     
     .connection-other-final::before {
@@ -249,7 +274,11 @@
     .connection-self-final {
       position: absolute;
       pointer-events: none;
-      z-index: 100;
+      z-index: 20;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
     }
     
     .connection-self-final::before {
@@ -361,6 +390,11 @@
     <div id="loading-text">正在加载 Polyfill...</div>
   </div>
 
+  <!-- 跨容器连接线覆盖层 - 独立于滚动容器 -->
+  <div class="connection-overlay">
+    <div id="connection-container"></div>
+  </div>
+
   <!-- 主容器 -->
   <div class="main-container">
     <!-- 会话头像容器(窄) -->
@@ -377,9 +411,6 @@
     <div id="account-container" class="scroll-container">
       <div id="account-content"></div>
     </div>
-    
-    <!-- 连接线容器 - 纯CSS Anchor定位 -->
-    <div id="connection-container"></div>
   </div>
 
   <!-- 控制按钮 -->
