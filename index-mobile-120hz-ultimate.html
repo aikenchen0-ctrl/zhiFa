@@ -11,8 +11,8 @@
   <style>
     :root {
       --avatar-size: 50px;
-      --connection-color: #3b82f6;
-      --connection-width: 2px;
+      --connection-color: #ff3366;
+      --connection-width: 3px;
     }
     
     * {
@@ -160,34 +160,60 @@
       z-index: 100;
     }
     
-    /* 连接线1: 会话头像 → 消息气泡 */
+    /* 修正后的连接线实现 - 使用calc()计算距离 */
     .connection-chat-to-bubble {
       position: absolute;
-      /* CSS Anchor Positioning 实时定位 */
+      /* 正确的CSS Anchor语法 */
       left: anchor(var(--chat-anchor) right);
       top: anchor(var(--chat-anchor) center);
-      width: anchor(var(--bubble-anchor) left);
+      /* 使用calc计算两点间距离作为宽度 */
+      width: calc(anchor(var(--bubble-anchor) left) - anchor(var(--chat-anchor) right));
       height: var(--connection-width);
       background: var(--connection-color);
       transform: translateY(-50%);
+      border-radius: 1px;
       /* 性能优化 */
       will-change: left, top, width;
       contain: layout style paint;
     }
     
-    /* 连接线2: 消息气泡 → 账号头像 */
     .connection-bubble-to-account {
       position: absolute;
-      /* CSS Anchor Positioning 实时定位 */
+      /* 正确的CSS Anchor语法 */
       left: anchor(var(--bubble-anchor) right);
       top: anchor(var(--bubble-anchor) center);
-      width: anchor(var(--account-anchor) left);
+      /* 使用calc计算两点间距离作为宽度 */
+      width: calc(anchor(var(--account-anchor) left) - anchor(var(--bubble-anchor) right));
       height: var(--connection-width);
       background: var(--connection-color);
       transform: translateY(-50%);
+      border-radius: 1px;
       /* 性能优化 */
       will-change: left, top, width;
       contain: layout style paint;
+    }
+    
+    /* 备用方案：使用伪元素实现连接线 */
+    .connection-line {
+      position: absolute;
+      /* 锚点定位到起始元素 */
+      left: anchor(var(--start-anchor) right);
+      top: anchor(var(--start-anchor) center);
+      width: 0;
+      height: 0;
+      transform: translateY(-50%);
+    }
+    
+    .connection-line::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: -1px;
+      /* 使用CSS变量设置计算好的宽度 */
+      width: var(--line-width);
+      height: var(--connection-width);
+      background: var(--connection-color);
+      border-radius: 1px;
     }
     
     /* L型连接线实现 */
@@ -202,6 +228,11 @@
       height: var(--connection-width);
       background: var(--connection-color);
       border-radius: 1px;
+      /* L型水平段 */
+      left: anchor(var(--start-anchor) right);
+      top: anchor(var(--start-anchor) center);
+      width: calc(anchor(var(--end-anchor) left) - anchor(var(--start-anchor) right));
+      transform: translateY(-50%);
     }
     
     /* 垂直线段 */
@@ -211,35 +242,10 @@
       width: var(--connection-width);
       background: var(--connection-color);
       border-radius: 1px;
-    }
-    
-    /* 会话到气泡的L型连接 */
-    .l-chat-to-bubble::before {
-      left: anchor(var(--chat-anchor) right);
-      top: anchor(var(--chat-anchor) center);
-      width: calc(anchor(var(--bubble-anchor) left) - anchor(var(--chat-anchor) right));
-      transform: translateY(-50%);
-    }
-    
-    .l-chat-to-bubble::after {
-      left: anchor(var(--bubble-anchor) left);
-      top: min(anchor(var(--chat-anchor) center), anchor(var(--bubble-anchor) center));
-      height: abs(anchor(var(--bubble-anchor) center) - anchor(var(--chat-anchor) center));
-      transform: translateX(-50%);
-    }
-    
-    /* 气泡到账号的L型连接 */
-    .l-bubble-to-account::before {
-      left: anchor(var(--bubble-anchor) right);
-      top: anchor(var(--bubble-anchor) center);
-      width: calc(anchor(var(--account-anchor) left) - anchor(var(--bubble-anchor) right));
-      transform: translateY(-50%);
-    }
-    
-    .l-bubble-to-account::after {
-      left: anchor(var(--account-anchor) left);
-      top: min(anchor(var(--bubble-anchor) center), anchor(var(--account-anchor) center));
-      height: abs(anchor(var(--account-anchor) center) - anchor(var(--bubble-anchor) center));
+      /* L型垂直段 */
+      left: anchor(var(--end-anchor) left);
+      top: min(anchor(var(--start-anchor) center), anchor(var(--end-anchor) center));
+      height: abs(anchor(var(--end-anchor) center) - anchor(var(--start-anchor) center));
       transform: translateX(-50%);
     }
     
@@ -365,6 +371,7 @@
     <button id="toggle-connections" class="control-btn">隐藏连接线</button>
     <button id="refresh-anchors" class="control-btn">刷新锚点</button>
     <button id="toggle-l-shape" class="control-btn">切换L型</button>
+    <button id="fallback-mode" class="control-btn">JS备用模式</button>
   </div>
 
   <script>
@@ -372,6 +379,7 @@
       constructor() {
         this.connectionsVisible = true;
         this.lShapeMode = false;
+        this.fallbackMode = false;
         this.polyfillReady = false;
         this.connectionCount = 0;
         this.elements = {
@@ -428,7 +436,9 @@
             console.log('✅ CSS Anchor Polyfill 加载完成');
             
             // 初始化 polyfill
-            window.polyfillCSSAnchorPositioning();
+            setTimeout(() => {
+              window.polyfillCSSAnchorPositioning();
+            }, 100);
             break;
           }
           
@@ -439,12 +449,13 @@
         if (!this.polyfillReady) {
           console.error('❌ CSS Anchor Polyfill 加载失败');
           document.getElementById('status').textContent = '加载失败';
+          this.fallbackMode = true;
         }
       }
       
       async generateTestElements() {
-        const total = 1000;
-        const batchSize = 50;
+        const total = 200; // 减少到200个以便调试
+        const batchSize = 25;
         
         const chatContent = document.getElementById('chat-content');
         const messageContent = document.getElementById('message-content');
@@ -485,7 +496,7 @@
               --bubble-anchor: --bubble-${i};
               background: hsla(${hue}, 60%, 60%, 0.3);
             `;
-            messageBubble.textContent = `这是第${i + 1}条消息内容，用于测试CSS Anchor连接线的实时跟随效果。`;
+            messageBubble.textContent = `消息 ${i + 1}: 测试CSS Anchor连接线的实时跟随效果。`;
             messageFragment.appendChild(messageBubble);
             this.elements.messages.push(messageBubble);
             
@@ -521,31 +532,34 @@
         
         for (let i = 0; i < total; i++) {
           const hue = (i * 137) % 360;
-          const connectionColor = `hsl(${hue}, 70%, 55%)`;
+          const connectionColor = `hsl(${hue}, 80%, 60%)`;
           
-          if (this.lShapeMode) {
+          if (this.fallbackMode) {
+            // JavaScript备用模式
+            this.createJSConnection(i, connectionColor, fragment);
+          } else if (this.lShapeMode) {
             // L型连接线
             const chatToBubbleL = document.createElement('div');
-            chatToBubbleL.className = 'connection-l-shape l-chat-to-bubble';
+            chatToBubbleL.className = 'connection-l-shape';
             chatToBubbleL.style.cssText = `
-              --chat-anchor: --chat-${i};
-              --bubble-anchor: --bubble-${i};
+              --start-anchor: --chat-${i};
+              --end-anchor: --bubble-${i};
               --connection-color: ${connectionColor};
             `;
             fragment.appendChild(chatToBubbleL);
             
             const bubbleToAccountL = document.createElement('div');
-            bubbleToAccountL.className = 'connection-l-shape l-bubble-to-account';
+            bubbleToAccountL.className = 'connection-l-shape';
             bubbleToAccountL.style.cssText = `
-              --bubble-anchor: --bubble-${i};
-              --account-anchor: --account-${i};
+              --start-anchor: --bubble-${i};
+              --end-anchor: --account-${i};
               --connection-color: ${connectionColor};
             `;
             fragment.appendChild(bubbleToAccountL);
             
             this.connectionCount += 2;
           } else {
-            // 直线连接
+            // 直线连接（CSS Anchor）
             const chatToBubble = document.createElement('div');
             chatToBubble.className = 'connection-chat-to-bubble';
             chatToBubble.style.cssText = `
@@ -574,11 +588,41 @@
         if (typeof window.polyfillCSSAnchorPositioning === 'function') {
           requestAnimationFrame(() => {
             window.polyfillCSSAnchorPositioning();
+            console.log('🔧 Polyfill 重新计算完成');
           });
         }
         
         document.getElementById('connections').textContent = this.connectionCount;
         console.log(`✅ 创建了 ${this.connectionCount} 条连接线`);
+      }
+      
+      // JavaScript备用模式 - 手动计算位置
+      createJSConnection(index, color, fragment) {
+        const chatEl = this.elements.chat[index];
+        const bubbleEl = this.elements.messages[index];
+        const accountEl = this.elements.accounts[index];
+        
+        const line1 = document.createElement('div');
+        line1.className = 'connection-line';
+        line1.style.cssText = `
+          --start-anchor: --chat-${index};
+          --connection-color: ${color};
+          --line-width: 100px;
+        `;
+        line1.setAttribute('data-js-connection', 'chat-bubble-' + index);
+        fragment.appendChild(line1);
+        
+        const line2 = document.createElement('div');
+        line2.className = 'connection-line';
+        line2.style.cssText = `
+          --start-anchor: --bubble-${index};
+          --connection-color: ${color};
+          --line-width: 100px;
+        `;
+        line2.setAttribute('data-js-connection', 'bubble-account-' + index);
+        fragment.appendChild(line2);
+        
+        this.connectionCount += 2;
       }
       
       setupEventListeners() {
@@ -610,7 +654,17 @@
           btn.textContent = this.lShapeMode ? '直线模式' : 'L型模式';
         });
         
-        // 滚动时自动刷新锚点（为了确保实时跟随）
+        // 备用模式
+        document.getElementById('fallback-mode').addEventListener('click', () => {
+          this.fallbackMode = !this.fallbackMode;
+          this.connectionCount = 0;
+          this.createConnections();
+          
+          const btn = document.getElementById('fallback-mode');
+          btn.textContent = this.fallbackMode ? 'CSS模式' : 'JS备用模式';
+        });
+        
+        // 滚动时自动刷新锚点
         const containers = document.querySelectorAll('.scroll-container');
         containers.forEach(container => {
           container.addEventListener('scroll', () => {
