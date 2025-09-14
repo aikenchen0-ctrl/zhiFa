@@ -1,0 +1,355 @@
+/**
+ * 移动端120Hz高刷新率优化系统
+ * 专门针对高刷新率移动设备的连接线渲染优化
+ */
+
+/* ====== 120Hz检测与优化 ====== */
+
+/* 高刷新率设备检测 */
+@media (min-refresh-rate: 90hz) {
+  :root {
+    --high-refresh-rate: true;
+    --animation-duration-base: 0.25s;
+    --transition-duration-base: 0.15s;
+  }
+}
+
+@media (min-refresh-rate: 120hz) {
+  :root {
+    --ultra-high-refresh-rate: true;
+    --animation-duration-base: 0.2s;
+    --transition-duration-base: 0.1s;
+  }
+}
+
+/* ====== GPU加速和渲染优化 ====== */
+
+.connection-overlay-mobile {
+  /* 移动端专用连接层 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 15;
+  
+  /* 关键优化：强制GPU层合成 */
+  will-change: transform, opacity;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  
+  /* 优化渲染上下文 */
+  isolation: isolate;
+  contain: strict;
+  
+  /* 减少重绘区域 */
+  overflow: hidden;
+}
+
+/* SVG容器移动端优化 */
+.connection-svg-mobile {
+  /* 移动端SVG容器 */
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  
+  /* GPU渲染优化 */
+  transform: translateZ(0);
+  will-change: auto; /* 让浏览器智能决定 */
+  
+  /* 向量图形优化 */
+  shape-rendering: optimizeSpeed; /* 优先速度而非精度 */
+  vector-effect: non-scaling-stroke;
+  
+  /* 移动端特定渲染模式 */
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: optimize-contrast;
+}
+
+/* ====== 120Hz动画系统 ====== */
+
+/* 基础动画优化 */
+.l-path-120hz {
+  /* 120Hz优化的L型路径 */
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  vector-effect: non-scaling-stroke;
+  
+  /* 关键：优化动画性能 */
+  will-change: stroke-dashoffset, opacity, stroke-width;
+  transform: translateZ(0); /* 强制GPU合成 */
+  
+  /* 120Hz专用过渡 */
+  transition: 
+    opacity var(--transition-duration-base, 0.1s) cubic-bezier(0.25, 0.46, 0.45, 0.94),
+    stroke-width var(--transition-duration-base, 0.1s) ease-out;
+}
+
+/* 120Hz绘制动画 */
+.l-path-120hz--draw {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: draw-120hz var(--animation-duration-base, 0.2s) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes draw-120hz {
+  0% {
+    stroke-dashoffset: 1000;
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+/* 120Hz脉冲动画 */
+.l-path-120hz--pulse {
+  animation: pulse-120hz 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-120hz {
+  0%, 100% {
+    opacity: 0.6;
+    stroke-width: 2px;
+    filter: none;
+  }
+  50% {
+    opacity: 0.9;
+    stroke-width: 2.5px;
+    filter: drop-shadow(0 0 2px currentColor);
+  }
+}
+
+/* 120Hz流动动画 */
+.l-path-120hz--flow {
+  stroke-dasharray: 6, 3;
+  animation: flow-120hz 1s linear infinite;
+}
+
+@keyframes flow-120hz {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -9; }
+}
+
+/* ====== 触摸优化 ====== */
+
+.connection-touch-area {
+  /* 触摸友好的连接线区域 */
+  stroke-width: 44px; /* iOS推荐的最小触摸目标 */
+  stroke: transparent;
+  fill: none;
+  cursor: pointer;
+  pointer-events: all;
+  
+  /* 触摸反馈 */
+  transition: opacity 0.1s ease;
+}
+
+.connection-touch-area:active {
+  opacity: 0.1;
+  stroke: rgba(0, 0, 0, 0.05);
+}
+
+/* 视觉线条（叠加在触摸区域上） */
+.connection-visual-line {
+  stroke-width: 2px;
+  pointer-events: none;
+  
+  /* 确保在触摸区域上方 */
+  z-index: 1;
+}
+
+/* ====== 滚动性能优化 ====== */
+
+.chat-container-mobile {
+  /* 移动端聊天容器滚动优化 */
+  overflow-y: scroll;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  scroll-behavior: smooth;
+  
+  /* 滚动时的渲染优化 */
+  will-change: scroll-position;
+  contain: layout style paint;
+  
+  /* 120Hz滚动优化 */
+  scroll-snap-type: y proximity;
+}
+
+/* 滚动时的连接线优化 */
+.chat-container-mobile.scrolling .l-path-120hz {
+  /* 滚动期间简化渲染 */
+  will-change: transform;
+  animation-play-state: paused; /* 暂停动画减少计算 */
+}
+
+.chat-container-mobile:not(.scrolling) .l-path-120hz {
+  /* 滚动结束后恢复动画 */
+  animation-play-state: running;
+}
+
+/* ====== 内存和电池优化 ====== */
+
+/* 低电量模式检测 */
+@media (prefers-reduced-motion: reduce) {
+  .l-path-120hz--draw,
+  .l-path-120hz--pulse,
+  .l-path-120hz--flow {
+    animation: none;
+  }
+  
+  .l-path-120hz {
+    will-change: auto;
+    transition: none;
+  }
+  
+  .connection-overlay-mobile {
+    will-change: auto;
+    transform: none;
+  }
+}
+
+/* 视口外优化 */
+.connection-out-of-view {
+  /* 视口外的连接线 */
+  display: none; /* 直接隐藏节省资源 */
+}
+
+.connection-near-view {
+  /* 即将进入视口的连接线 */
+  opacity: 0.3;
+  will-change: auto; /* 减少GPU占用 */
+}
+
+/* ====== 设备特定优化 ====== */
+
+/* iPhone 13 Pro / 14 Pro (120Hz) */
+@media screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) {
+  .l-path-120hz {
+    stroke-width: 1.8px; /* ProMotion优化线宽 */
+  }
+  
+  .l-path-120hz--draw {
+    animation-duration: 0.25s; /* ProMotion优化时长 */
+  }
+}
+
+/* iPad Pro (120Hz) */
+@media screen and (min-device-width: 1024px) and (max-device-width: 1366px) and (-webkit-device-pixel-ratio: 2) {
+  .l-path-120hz {
+    stroke-width: 2.2px; /* iPad Pro优化线宽 */
+  }
+  
+  .connection-overlay-mobile {
+    /* iPad Pro更大的渲染区域 */
+    contain: layout style; /* 较宽松的contain策略 */
+  }
+}
+
+/* Android 120Hz设备 */
+@media screen and (min-resolution: 120dpi) and (max-width: 500px) {
+  .l-path-120hz {
+    /* Android 120Hz优化 */
+    stroke-width: 2px;
+    shape-rendering: optimizeSpeed;
+  }
+  
+  .l-path-120hz--draw {
+    animation-timing-function: cubic-bezier(0.33, 0, 0.2, 1); /* Android动画曲线 */
+  }
+}
+
+/* ====== 网络和资源优化 ====== */
+
+/* 慢网络检测 */
+@media (prefers-reduced-data: reduce) {
+  .l-path-120hz--pulse,
+  .l-path-120hz--flow {
+    animation: none; /* 节省数据的情况下禁用复杂动画 */
+  }
+  
+  .connection-overlay-mobile {
+    will-change: auto;
+    transform: none;
+  }
+}
+
+/* ====== 调试和性能监控 ====== */
+
+.debug-120hz {
+  /* 120Hz调试模式 */
+  position: fixed;
+  top: 50px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px;
+  font-size: 11px;
+  border-radius: 4px;
+  z-index: 9999;
+  font-family: monospace;
+}
+
+.debug-120hz::before {
+  content: "120Hz Mode: " attr(data-refresh-rate) "Hz";
+  display: block;
+  margin-bottom: 4px;
+}
+
+.debug-120hz::after {
+  content: "Connections: " attr(data-connection-count);
+  display: block;
+}
+
+/* 性能指示器 */
+.performance-indicator {
+  position: fixed;
+  bottom: 10px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e; /* 绿色表示良好性能 */
+  transition: background-color 0.2s ease;
+}
+
+.performance-indicator.warning {
+  background: #f59e0b; /* 黄色表示性能警告 */
+}
+
+.performance-indicator.critical {
+  background: #ef4444; /* 红色表示性能问题 */
+}
+
+/* ====== 兼容性回退 ====== */
+
+/* 不支持120Hz的设备回退 */
+@supports not (min-refresh-rate: 90hz) {
+  .l-path-120hz {
+    /* 标准60Hz优化 */
+    animation-duration: 0.4s;
+    transition-duration: 0.2s;
+  }
+  
+  .connection-overlay-mobile {
+    /* 标准设备的保守优化 */
+    will-change: transform;
+    contain: layout style;
+  }
+}
+
+/* 不支持will-change的设备 */
+@supports not (will-change: transform) {
+  .l-path-120hz,
+  .connection-overlay-mobile {
+    /* 降级方案 */
+    transform: translateZ(0); /* 仍然尝试GPU加速 */
+  }
+}

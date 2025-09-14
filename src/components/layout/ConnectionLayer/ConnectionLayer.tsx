@@ -1,1 +1,185 @@
-import React, { memo, useEffect, useRef } from 'react';\nimport { useChatStore } from '../../../stores/simpleChatStore';\nimport { BaseComponentProps, ConnectionLine } from '../../../types';\n\nexport interface ConnectionLayerProps extends BaseComponentProps {}\n\nexport const ConnectionLayer = memo<ConnectionLayerProps>(({ \n  className = '', \n  ...props \n}) => {\n  const canvasRef = useRef<HTMLCanvasElement>(null);\n  const { connectionLines } = useChatStore();\n  \n  // Draw connections on canvas\n  useEffect(() => {\n    const canvas = canvasRef.current;\n    if (!canvas) return;\n    \n    const ctx = canvas.getContext('2d');\n    if (!ctx) return;\n    \n    // Set canvas size to match container\n    const rect = canvas.getBoundingClientRect();\n    canvas.width = rect.width * devicePixelRatio;\n    canvas.height = rect.height * devicePixelRatio;\n    ctx.scale(devicePixelRatio, devicePixelRatio);\n    \n    // Clear canvas\n    ctx.clearRect(0, 0, rect.width, rect.height);\n    \n    // Draw each connection line\n    connectionLines.forEach(line => {\n      drawConnectionLine(ctx, line, rect.width, rect.height);\n    });\n  }, [connectionLines]);\n  \n  const drawConnectionLine = (\n    ctx: CanvasRenderingContext2D, \n    line: ConnectionLine,\n    canvasWidth: number,\n    canvasHeight: number\n  ) => {\n    const { from, to, type, color = '#3B82F6', thickness = 2 } = line;\n    \n    ctx.strokeStyle = color;\n    ctx.lineWidth = thickness;\n    ctx.lineCap = 'round';\n    ctx.setLineDash([]);\n    \n    ctx.beginPath();\n    \n    switch (type) {\n      case 'straight':\n        drawStraightLine(ctx, from, to);\n        break;\n      case 'curved':\n        drawCurvedLine(ctx, from, to);\n        break;\n      case 'bezier':\n        drawBezierLine(ctx, from, to);\n        break;\n      default:\n        drawStraightLine(ctx, from, to);\n    }\n    \n    ctx.stroke();\n    \n    // Draw arrowhead\n    drawArrowhead(ctx, from, to, color);\n  };\n  \n  const drawStraightLine = (\n    ctx: CanvasRenderingContext2D,\n    from: { x: number; y: number },\n    to: { x: number; y: number }\n  ) => {\n    ctx.moveTo(from.x, from.y);\n    ctx.lineTo(to.x, to.y);\n  };\n  \n  const drawCurvedLine = (\n    ctx: CanvasRenderingContext2D,\n    from: { x: number; y: number },\n    to: { x: number; y: number }\n  ) => {\n    const midX = (from.x + to.x) / 2;\n    const midY = (from.y + to.y) / 2;\n    const offsetY = Math.abs(to.x - from.x) * 0.2;\n    \n    ctx.moveTo(from.x, from.y);\n    ctx.quadraticCurveTo(\n      midX, \n      midY - offsetY, \n      to.x, \n      to.y\n    );\n  };\n  \n  const drawBezierLine = (\n    ctx: CanvasRenderingContext2D,\n    from: { x: number; y: number },\n    to: { x: number; y: number }\n  ) => {\n    const dx = to.x - from.x;\n    const dy = to.y - from.y;\n    \n    const cp1x = from.x + dx * 0.3;\n    const cp1y = from.y;\n    const cp2x = to.x - dx * 0.3;\n    const cp2y = to.y;\n    \n    ctx.moveTo(from.x, from.y);\n    ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, to.x, to.y);\n  };\n  \n  const drawArrowhead = (\n    ctx: CanvasRenderingContext2D,\n    from: { x: number; y: number },\n    to: { x: number; y: number },\n    color: string\n  ) => {\n    const angle = Math.atan2(to.y - from.y, to.x - from.x);\n    const arrowLength = 10;\n    const arrowAngle = Math.PI / 6;\n    \n    ctx.fillStyle = color;\n    ctx.beginPath();\n    ctx.moveTo(to.x, to.y);\n    ctx.lineTo(\n      to.x - arrowLength * Math.cos(angle - arrowAngle),\n      to.y - arrowLength * Math.sin(angle - arrowAngle)\n    );\n    ctx.lineTo(\n      to.x - arrowLength * Math.cos(angle + arrowAngle),\n      to.y - arrowLength * Math.sin(angle + arrowAngle)\n    );\n    ctx.closePath();\n    ctx.fill();\n  };\n  \n  // Handle window resize\n  useEffect(() => {\n    const handleResize = () => {\n      // Trigger re-draw on resize\n      const canvas = canvasRef.current;\n      if (canvas) {\n        const rect = canvas.getBoundingClientRect();\n        canvas.width = rect.width * devicePixelRatio;\n        canvas.height = rect.height * devicePixelRatio;\n      }\n    };\n    \n    window.addEventListener('resize', handleResize);\n    return () => window.removeEventListener('resize', handleResize);\n  }, []);\n  \n  return (\n    <div \n      className={`\n        absolute inset-0 pointer-events-none z-20\n        ${className}\n      `}\n      {...props}\n    >\n      <canvas\n        ref={canvasRef}\n        className=\"w-full h-full\"\n        style={{\n          width: '100%',\n          height: '100%',\n        }}\n      />\n      \n      {/* Connection Points (for visual feedback) */}\n      {connectionLines.map(line => (\n        <React.Fragment key={line.id}>\n          {/* Start point */}\n          <div\n            className=\"absolute w-2 h-2 bg-blue-500 rounded-full transform -translate-x-1 -translate-y-1 opacity-75\"\n            style={{\n              left: line.from.x,\n              top: line.from.y,\n            }}\n          />\n          \n          {/* End point */}\n          <div\n            className=\"absolute w-2 h-2 bg-blue-500 rounded-full transform -translate-x-1 -translate-y-1 opacity-75\"\n            style={{\n              left: line.to.x,\n              top: line.to.y,\n            }}\n          />\n          \n          {/* Connection label */}\n          {line.from.x !== line.to.x && line.from.y !== line.to.y && (\n            <div\n              className=\"absolute bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded transform -translate-x-1/2 -translate-y-1/2 pointer-events-auto\"\n              style={{\n                left: (line.from.x + line.to.x) / 2,\n                top: (line.from.y + line.to.y) / 2,\n              }}\n            >\n              连接\n            </div>\n          )}\n        </React.Fragment>\n      ))}\n    </div>\n  );\n});\n\nConnectionLayer.displayName = 'ConnectionLayer';\n\n// Helper hook for creating connections\nexport const useConnectionLines = () => {\n  const { addConnectionLine, removeConnectionLine, clearConnectionLines } = useChatStore();\n  \n  const createConnection = (\n    fromElement: HTMLElement,\n    toElement: HTMLElement,\n    type: ConnectionLine['type'] = 'curved',\n    options?: Partial<Pick<ConnectionLine, 'color' | 'thickness'>>\n  ) => {\n    const fromRect = fromElement.getBoundingClientRect();\n    const toRect = toElement.getBoundingClientRect();\n    \n    const connectionLine: ConnectionLine = {\n      id: `connection_${Date.now()}`,\n      from: {\n        x: fromRect.left + fromRect.width / 2,\n        y: fromRect.top + fromRect.height / 2,\n      },\n      to: {\n        x: toRect.left + toRect.width / 2,\n        y: toRect.top + toRect.height / 2,\n      },\n      type,\n      color: options?.color,\n      thickness: options?.thickness,\n    };\n    \n    addConnectionLine(connectionLine);\n    return connectionLine.id;\n  };\n  \n  return {\n    createConnection,\n    removeConnection: removeConnectionLine,\n    clearConnections: clearConnectionLines,\n  };\n};
+import React, { memo, useEffect, useRef } from 'react';
+import { connectionSystem } from '../../../core/ConnectionSystem';
+import { BaseComponentProps } from '../../../types';
+
+export interface ConnectionLayerProps extends BaseComponentProps {
+  enableConnections?: boolean;
+}
+
+export const ConnectionLayer = memo<ConnectionLayerProps>(({ 
+  className = '', 
+  enableConnections = true,
+  ...props 
+}) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Initialize connection system
+  useEffect(() => {
+    if (!enableConnections) return;
+
+    // Connection system is initialized automatically
+    return () => {
+      // Cleanup handled by connection system
+    };
+  }, [enableConnections]);
+
+  // Auto-detect and register elements for connections
+  useEffect(() => {
+    if (!enableConnections) return;
+
+    const observeElements = () => {
+      // Find message bubbles
+      const messageBubbles = document.querySelectorAll('[data-message-id]');
+      messageBubbles.forEach((bubble) => {
+        const messageId = bubble.getAttribute('data-message-id');
+        if (messageId && bubble instanceof HTMLElement) {
+          connectionSystem.registerElement(messageId, bubble, 'chat');
+        }
+      });
+
+      // Find avatars in sidebar
+      const sidebarAvatars = document.querySelectorAll('[data-user-avatar]');
+      sidebarAvatars.forEach((avatar) => {
+        const userId = avatar.getAttribute('data-user-id');
+        if (userId && avatar instanceof HTMLElement) {
+          connectionSystem.registerElement(`avatar-${userId}`, avatar, 'sidebar');
+        }
+      });
+
+      // Find avatars in top bar
+      const topbarAvatars = document.querySelectorAll('[data-topbar-avatar]');
+      topbarAvatars.forEach((avatar) => {
+        const userId = avatar.getAttribute('data-user-id');
+        if (userId && avatar instanceof HTMLElement) {
+          connectionSystem.registerElement(`topbar-avatar-${userId}`, avatar, 'topbar');
+        }
+      });
+
+      // Auto-create connections between messages and avatars
+      messageBubbles.forEach((bubble) => {
+        const messageId = bubble.getAttribute('data-message-id');
+        const senderId = bubble.getAttribute('data-sender-id');
+        const messageType = bubble.getAttribute('data-message-type') as 'self' | 'other';
+        
+        if (messageId && senderId && messageType) {
+          const targetAvatarId = messageType === 'self' 
+            ? `topbar-avatar-${senderId}` 
+            : `avatar-${senderId}`;
+          
+          // Create connection if both elements exist
+          setTimeout(() => {
+            connectionSystem.createConnection(messageId, targetAvatarId, messageType);
+          }, 100); // Small delay to ensure DOM is ready
+        }
+      });
+    };
+
+    // Initial observation
+    observeElements();
+
+    // Observe for new elements
+    const observer = new MutationObserver((mutations) => {
+      let shouldReobserve = false;
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'childList') {
+          mutation.addedNodes.forEach((node) => {
+            if (node instanceof HTMLElement) {
+              if (node.hasAttribute('data-message-id') || 
+                  node.hasAttribute('data-user-avatar') || 
+                  node.hasAttribute('data-topbar-avatar')) {
+                shouldReobserve = true;
+              }
+            }
+          });
+        }
+      });
+      
+      if (shouldReobserve) {
+        setTimeout(observeElements, 50);
+      }
+    });
+
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: false
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [enableConnections]);
+
+  if (!enableConnections) {
+    return null;
+  }
+
+  return (
+    <div 
+      ref={containerRef}
+      className={`
+        absolute inset-0 pointer-events-none z-20
+        ${className}
+      `}
+      {...props}
+    >
+      {/* Connection system renders its own SVG overlay */}
+      {/* Debug info overlay */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="absolute bottom-4 right-4 bg-black bg-opacity-75 text-white text-xs p-2 rounded pointer-events-auto">
+          <div>Connection System: Active</div>
+          <div>CSS Anchor: Loaded</div>
+          <button 
+            onClick={() => connectionSystem.clearConnections()}
+            className="mt-1 px-2 py-1 bg-blue-600 rounded text-xs hover:bg-blue-700"
+          >
+            Clear Connections
+          </button>
+        </div>
+      )}
+    </div>
+  );
+});
+
+ConnectionLayer.displayName = 'ConnectionLayer';
+
+// Enhanced hook for connection management
+export const useConnectionSystem = () => {
+  const registerElement = (
+    id: string,
+    element: HTMLElement,
+    container: 'chat' | 'sidebar' | 'topbar',
+    anchorName?: string
+  ) => {
+    connectionSystem.registerElement(id, element, container, anchorName);
+  };
+
+  const createConnection = (
+    messageId: string,
+    avatarId: string,
+    type: 'self' | 'other'
+  ) => {
+    return connectionSystem.createConnection(messageId, avatarId, type);
+  };
+
+  const removeConnection = (connectionId: string) => {
+    connectionSystem.removeConnection(connectionId);
+  };
+
+  const clearConnections = () => {
+    connectionSystem.clearConnections();
+  };
+
+  const updateConfig = (config: Parameters<typeof connectionSystem.updateConfig>[0]) => {
+    connectionSystem.updateConfig(config);
+  };
+
+  return {
+    registerElement,
+    createConnection,
+    removeConnection,
+    clearConnections,
+    updateConfig,
+    connectionSystem
+  };
+};

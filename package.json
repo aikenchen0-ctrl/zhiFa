@@ -87,7 +87,8 @@
   
   "dependencies": {
     "zustand": "^4.4.7",
-    "clsx": "^2.0.0"
+    "clsx": "^2.0.0",
+    "@oddbird/css-anchor-positioning": "^0.2.2"
   },
   
   "devDependencies": {

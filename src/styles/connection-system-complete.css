@@ -1,0 +1,509 @@
+/**
+ * 完整CSS Anchor Positioning和SVG连接线系统
+ * 集成所有子系统：anchor定位、L型路径、120Hz优化、滚动跟随
+ */
+
+/* ====== 系统导入和初始化 ====== */
+
+/* 导入各个子系统 */
+@import url('./anchor-positioning-core.css');
+@import url('./svg-path-algorithms.css');
+@import url('./mobile-120hz-optimization.css');
+@import url('./connection-system.css');
+
+/* ====== 全局变量和配置 ====== */
+
+:root {
+  /* 连接线颜色系统 */
+  --connection-color-self: rgba(59, 130, 246, 0.7);    /* 自己发送：蓝色 */
+  --connection-color-other: rgba(16, 185, 129, 0.7);   /* 他人发送：绿色 */
+  --connection-color-hover: rgba(139, 92, 246, 0.8);   /* 悬停状态：紫色 */
+  --connection-color-active: rgba(245, 158, 11, 0.8);  /* 激活状态：橙色 */
+  
+  /* 连接线尺寸 */
+  --connection-stroke-width: 2px;
+  --connection-stroke-width-hover: 3px;
+  --connection-stroke-width-active: 2.5px;
+  --connection-corner-radius: 8px;
+  
+  /* 动画时间 */
+  --connection-animation-duration: 0.6s;
+  --connection-transition-duration: 0.3s;
+  --connection-draw-duration: 0.8s;
+  
+  /* Z-index层级管理 */
+  --z-connection-overlay: 15;
+  --z-connection-debug: 9999;
+  --z-anchor-indicator: 1000;
+  
+  /* 移动端优化变量 */
+  --mobile-stroke-width: 2px;
+  --mobile-corner-radius: 6px;
+  --mobile-touch-target: 44px;
+  
+  /* 高刷新率优化变量 */
+  --high-refresh-animation-duration: 0.4s;
+  --ultra-high-refresh-animation-duration: 0.25s;
+}
+
+/* 深色模式变量 */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --connection-color-self: rgba(96, 165, 250, 0.8);
+    --connection-color-other: rgba(52, 211, 153, 0.8);
+    --connection-color-hover: rgba(168, 85, 247, 0.9);
+    --connection-color-active: rgba(251, 191, 36, 0.9);
+  }
+}
+
+/* ====== 主连接系统容器 ====== */
+
+.claude-flow-connection-system {
+  /* 主连接系统容器 */
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  
+  /* 确保连接系统独立运行 */
+  isolation: isolate;
+  contain: layout;
+}
+
+/* 连接覆盖层 - 统一管理 */
+.connection-overlay-unified {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: var(--z-connection-overlay);
+  
+  /* 性能优化 */
+  will-change: transform;
+  transform: translateZ(0);
+  contain: strict;
+  isolation: isolate;
+  
+  /* 确保渲染在正确层级 */
+  overflow: visible;
+}
+
+/* SVG容器统一样式 */
+.connection-svg-unified {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  
+  /* SVG优化 */
+  shape-rendering: geometricPrecision;
+  vector-effect: non-scaling-stroke;
+  overflow: visible;
+}
+
+/* ====== 统一Anchor系统 ====== */
+
+/* 基础anchor元素 */
+.connection-anchor {
+  position: relative;
+  anchor-name: var(--anchor-name);
+  
+  /* 通用anchor优化 */
+  contain: size layout;
+  will-change: auto;
+  
+  /* 确保跨容器可见性 */
+  z-index: 1;
+}
+
+/* 消息气泡anchor */
+.connection-anchor--message {
+  /* 继承基础anchor */
+  composes: connection-anchor;
+  
+  /* 消息特定优化 */
+  transform-style: preserve-3d;
+}
+
+/* 头像anchor */
+.connection-anchor--avatar {
+  /* 继承基础anchor */
+  composes: connection-anchor;
+  
+  /* 头像特定优化 */
+  isolation: isolate;
+}
+
+/* ====== 统一连接线样式 ====== */
+
+/* 基础连接线 */
+.connection-line-unified {
+  /* 基础SVG路径样式 */
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+  
+  /* 通用优化 */
+  will-change: stroke-dashoffset, opacity, stroke-width;
+  transform: translateZ(0);
+  
+  /* 默认样式 */
+  stroke-width: var(--connection-stroke-width);
+  opacity: 0.8;
+  
+  /* 过渡动画 */
+  transition: 
+    opacity var(--connection-transition-duration) ease,
+    stroke-width var(--connection-transition-duration) ease,
+    stroke var(--connection-transition-duration) ease;
+}
+
+/* 自己发送的连接线 */
+.connection-line-unified--self {
+  stroke: var(--connection-color-self);
+}
+
+/* 他人发送的连接线 */
+.connection-line-unified--other {
+  stroke: var(--connection-color-other);
+}
+
+/* 连接线状态 */
+.connection-line-unified:hover {
+  stroke-width: var(--connection-stroke-width-hover);
+  opacity: 1;
+}
+
+.connection-line-unified--active {
+  stroke: var(--connection-color-active);
+  stroke-width: var(--connection-stroke-width-active);
+  opacity: 0.9;
+}
+
+.connection-line-unified--highlighted {
+  stroke: var(--connection-color-hover);
+  stroke-width: var(--connection-stroke-width-hover);
+  opacity: 1;
+  filter: drop-shadow(0 0 4px currentColor);
+}
+
+/* ====== 动画系统统一 ====== */
+
+/* 绘制动画 */
+.connection-draw-animation {
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 1000;
+  animation: connection-draw var(--connection-draw-duration) cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes connection-draw {
+  0% {
+    stroke-dashoffset: 1000;
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  100% {
+    stroke-dashoffset: 0;
+    opacity: 0.8;
+  }
+}
+
+/* 脉冲动画 */
+.connection-pulse-animation {
+  animation: connection-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes connection-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    stroke-width: var(--connection-stroke-width);
+  }
+  50% {
+    opacity: 0.9;
+    stroke-width: var(--connection-stroke-width-active);
+  }
+}
+
+/* 流动动画 */
+.connection-flow-animation {
+  stroke-dasharray: 8, 4;
+  animation: connection-flow 1.5s linear infinite;
+}
+
+@keyframes connection-flow {
+  from { stroke-dashoffset: 0; }
+  to { stroke-dashoffset: -12; }
+}
+
+/* ====== 响应式优化统一 ====== */
+
+/* 移动端优化 */
+@media (max-width: 768px) {
+  :root {
+    --connection-stroke-width: var(--mobile-stroke-width);
+    --connection-corner-radius: var(--mobile-corner-radius);
+    --connection-animation-duration: 0.4s;
+    --connection-transition-duration: 0.2s;
+  }
+  
+  .connection-overlay-unified {
+    /* 移动端性能优化 */
+    contain: strict;
+    will-change: transform;
+    transform: translate3d(0, 0, 0);
+  }
+  
+  .connection-line-unified {
+    /* 移动端线条优化 */
+    shape-rendering: optimizeSpeed;
+  }
+}
+
+/* 高刷新率设备优化 */
+@media (min-refresh-rate: 90hz) {
+  :root {
+    --connection-animation-duration: var(--high-refresh-animation-duration);
+    --connection-transition-duration: 0.15s;
+  }
+}
+
+@media (min-refresh-rate: 120hz) {
+  :root {
+    --connection-animation-duration: var(--ultra-high-refresh-animation-duration);
+    --connection-transition-duration: 0.1s;
+  }
+  
+  .connection-line-unified {
+    /* 120Hz超平滑过渡 */
+    transition-timing-function: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+}
+
+/* 平板设备优化 */
+@media (min-width: 768px) and (max-width: 1024px) {
+  :root {
+    --connection-stroke-width: 2.2px;
+    --connection-corner-radius: 8px;
+  }
+}
+
+/* 桌面设备优化 */
+@media (min-width: 1024px) {
+  :root {
+    --connection-stroke-width: 2.5px;
+    --connection-stroke-width-hover: 3.5px;
+    --connection-corner-radius: 10px;
+  }
+  
+  .connection-line-unified {
+    /* 桌面端精细渲染 */
+    shape-rendering: geometricPrecision;
+  }
+}
+
+/* ====== 可访问性统一 ====== */
+
+/* 减少动画偏好 */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --connection-animation-duration: 0s;
+    --connection-transition-duration: 0s;
+  }
+  
+  .connection-draw-animation,
+  .connection-pulse-animation,
+  .connection-flow-animation {
+    animation: none;
+  }
+  
+  .connection-line-unified {
+    transition: none;
+  }
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+  :root {
+    --connection-color-self: #0066cc;
+    --connection-color-other: #00a86b;
+    --connection-stroke-width: 3px;
+    --connection-stroke-width-hover: 4px;
+  }
+  
+  .connection-line-unified {
+    opacity: 1;
+    filter: none;
+  }
+}
+
+/* 数据节省模式 */
+@media (prefers-reduced-data: reduce) {
+  .connection-pulse-animation,
+  .connection-flow-animation {
+    animation: none;
+  }
+  
+  .connection-line-unified--highlighted {
+    filter: none;
+  }
+}
+
+/* ====== 调试和开发工具统一 ====== */
+
+/* 调试模式 */
+.debug-connection-system {
+  /* 显示所有连接元素 */
+}
+
+.debug-connection-system .connection-anchor {
+  outline: 2px dashed var(--connection-color-self);
+  outline-offset: 2px;
+}
+
+.debug-connection-system .connection-anchor::before {
+  content: attr(data-anchor-id, "anchor");
+  position: absolute;
+  top: -25px;
+  left: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 3px 6px;
+  font-size: 11px;
+  border-radius: 3px;
+  z-index: var(--z-anchor-indicator);
+  white-space: nowrap;
+  font-family: monospace;
+}
+
+.debug-connection-system .connection-overlay-unified {
+  /* 调试时显示覆盖层边界 */
+  background: rgba(255, 0, 0, 0.02);
+  border: 1px dashed rgba(255, 0, 0, 0.2);
+}
+
+/* 性能监控 */
+.performance-monitor {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 12px;
+  z-index: var(--z-connection-debug);
+  pointer-events: none;
+  
+  /* 性能监控样式 */
+  min-width: 200px;
+  backdrop-filter: blur(10px);
+}
+
+.performance-monitor::before {
+  content: "Connection System Status";
+  display: block;
+  font-weight: bold;
+  margin-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  padding-bottom: 4px;
+}
+
+.performance-monitor .metric {
+  display: flex;
+  justify-content: space-between;
+  margin: 2px 0;
+}
+
+.performance-monitor .metric-value {
+  color: #22c55e;
+}
+
+.performance-monitor .metric-value.warning {
+  color: #f59e0b;
+}
+
+.performance-monitor .metric-value.critical {
+  color: #ef4444;
+}
+
+/* ====== 系统健康检查 ====== */
+
+/* CSS支持检查 */
+.system-check {
+  display: none;
+}
+
+@supports (anchor-name: --test) {
+  .system-check::before {
+    content: "✓ Native Anchor Support";
+  }
+}
+
+@supports not (anchor-name: --test) {
+  .system-check::before {
+    content: "⚠ Polyfill Required";
+  }
+}
+
+/* SVG支持检查 */
+@supports (vector-effect: non-scaling-stroke) {
+  .system-check::after {
+    content: " | ✓ SVG Vector Support";
+  }
+}
+
+/* 高刷新率支持检查 */
+@media (min-refresh-rate: 120hz) {
+  .system-check {
+    content: " | ✓ 120Hz Ready";
+  }
+}
+
+/* ====== 兜底和降级方案 ====== */
+
+/* 完全不支持时的降级 */
+@supports not (anchor-name: --test) and not (position: fixed) {
+  .connection-overlay-unified {
+    display: none;
+  }
+  
+  .connection-anchor::after {
+    content: "⚠ Unsupported Browser";
+    position: absolute;
+    background: #ef4444;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    z-index: 1000;
+  }
+}
+
+/* 低端设备简化 */
+@media (max-width: 480px) and (max-resolution: 150dpi) {
+  .connection-flow-animation,
+  .connection-pulse-animation {
+    animation: none;
+  }
+  
+  .connection-line-unified--highlighted {
+    filter: none;
+  }
+  
+  .connection-overlay-unified {
+    will-change: auto;
+    transform: none;
+    contain: layout;
+  }
+}

@@ -1,0 +1,403 @@
+/**
+ * CSS Anchor Positioning & SVG连接线系统
+ * 实现实时跟随、圆角L型路径、移动端120Hz优化
+ */
+
+/* ====== CSS Anchor Positioning 基础设置 ====== */
+
+/* 支持检测：检查浏览器是否支持CSS Anchor Positioning */
+@supports not (anchor-name: --test) {
+  /* Polyfill 会自动处理不支持的浏览器 */
+  body::before {
+    content: "CSS Anchor Positioning Polyfill Active";
+    position: fixed;
+    top: 0;
+    right: 0;
+    background: #f59e0b;
+    color: white;
+    padding: 2px 8px;
+    font-size: 10px;
+    z-index: 9999;
+    opacity: 0.7;
+  }
+}
+
+/* ====== Anchor命名系统 ====== */
+
+/* 会话头像锚点 - 左侧边栏 */
+[data-user-avatar] {
+  anchor-name: var(--conv-avatar-anchor);
+  /* 动态设置：--conv-avatar-{userId} */
+}
+
+/* 消息气泡锚点 - 聊天区域 */
+[data-message-id] {
+  anchor-name: var(--message-anchor);
+  /* 动态设置：--message-{msgId} */
+}
+
+/* 账号头像锚点 - 顶部栏 */
+[data-topbar-avatar] {
+  anchor-name: var(--acc-avatar-anchor);
+  /* 动态设置：--acc-avatar-{userId} */
+}
+
+/* ====== 连接点定位系统 ====== */
+
+/* 消息气泡连接点优化 */
+[data-message-id] {
+  /* 创建伪元素作为精确连接点 */
+  position: relative;
+}
+
+/* 自己发送消息：右侧连接点 */
+[data-message-type="self"]::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  background: rgba(59, 130, 246, 0.6);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  /* 作为连接起点的视觉指示 */
+}
+
+/* 他人发送消息：左侧连接点 */
+[data-message-type="other"]::before {
+  content: "";
+  position: absolute;
+  left: -2px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 4px;
+  background: rgba(16, 185, 129, 0.6);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* 调试模式：显示连接点 */
+.debug-connections [data-message-id]::before,
+.debug-connections [data-message-id]::after {
+  opacity: 1;
+}
+
+/* ====== SVG连接线容器 ====== */
+
+.connection-overlay {
+  /* 独立连接线覆盖层 - 绝对定位系统 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 15; /* 在气泡之上，在弹窗之下 */
+  
+  /* 性能优化 - 硬件加速 */
+  will-change: transform;
+  transform: translateZ(0);
+  contain: layout style paint;
+  
+  /* 确保在所有容器之上渲染 */
+  isolation: isolate;
+}
+
+.connection-layer {
+  /* SVG连接线图层 */
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible; /* 重要：允许连接线超出容器 */
+}
+
+/* ====== SVG连接线样式 ====== */
+
+.connection-path {
+  /* 基础连接线样式 */
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  vector-effect: non-scaling-stroke; /* 保持线条粗细不变 */
+  
+  /* 性能优化 */
+  will-change: d, opacity;
+  
+  /* 默认动画过渡 */
+  transition: 
+    opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+    stroke-width 0.2s ease,
+    stroke 0.2s ease;
+}
+
+/* 自己发送的连接线：蓝色系 */
+.connection-path--self {
+  stroke: rgba(59, 130, 246, 0.7); /* blue-500 with opacity */
+  stroke-width: 2px;
+  stroke-dasharray: none;
+}
+
+/* 他人发送的连接线：绿色系 */
+.connection-path--other {
+  stroke: rgba(16, 185, 129, 0.7); /* emerald-500 with opacity */
+  stroke-width: 2px;
+  stroke-dasharray: none;
+}
+
+/* 连接线状态变化 */
+.connection-path:hover {
+  stroke-width: 3px;
+  opacity: 1;
+}
+
+.connection-path--active {
+  stroke-width: 2.5px;
+  opacity: 0.9;
+}
+
+.connection-path--inactive {
+  opacity: 0.4;
+}
+
+/* ====== 连接线动画系统 ====== */
+
+/* 连接线绘制动画 */
+@keyframes connection-draw {
+  from {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dasharray: 1000;
+    stroke-dashoffset: 0;
+  }
+}
+
+/* 连接线脉冲动画 */
+@keyframes connection-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    stroke-width: 2px;
+  }
+  50% {
+    opacity: 0.9;
+    stroke-width: 2.5px;
+  }
+}
+
+/* 动画类 */
+.connection-animated {
+  animation: connection-draw 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.connection-pulse {
+  animation: connection-pulse 2s ease-in-out infinite;
+}
+
+/* ====== 滚动实时跟随优化 ====== */
+
+/* 关键优化：确保anchor在滚动时实时更新 */
+.chat-container {
+  /* 滚动容器需要特殊处理以支持anchor跟随 */
+  contain: layout; /* 不使用strict，保持anchor跟随能力 */
+  
+  /* 滚动性能优化 */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* 确保锚点元素在滚动时保持位置更新 */
+[data-message-id],
+[data-user-avatar],
+[data-topbar-avatar] {
+  /* 强制浏览器重新计算anchor位置 */
+  contain: none; /* 不限制anchor计算 */
+  
+  /* 性能优化但不影响positioning */
+  will-change: auto; /* 让浏览器决定 */
+}
+
+/* ====== 移动端120Hz优化 ====== */
+
+@media (max-width: 768px) {
+  .connection-overlay {
+    /* 移动端优化：减少重绘 */
+    contain: strict;
+    isolation: isolate;
+    
+    /* 启用GPU加速 */
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+  }
+  
+  .connection-path {
+    /* 移动端：更快的动画 */
+    transition-duration: 0.2s;
+    
+    /* 减少复杂度以支持120Hz */
+    stroke-width: 1.5px;
+  }
+  
+  .connection-path:hover {
+    stroke-width: 2px; /* 移动端减少hover效果复杂度 */
+  }
+}
+
+/* 高刷新率屏幕优化 */
+@media (min-resolution: 120dpi) {
+  .connection-animated {
+    /* 120Hz屏幕：更流畅的动画 */
+    animation-duration: 0.4s;
+  }
+  
+  .connection-path {
+    /* 高DPI屏幕：更精细的线条 */
+    stroke-width: 1.8px;
+  }
+}
+
+/* ====== 深色模式适配 ====== */
+
+@media (prefers-color-scheme: dark) {
+  .connection-path--self {
+    stroke: rgba(96, 165, 250, 0.8); /* 深色模式下更亮的蓝色 */
+  }
+  
+  .connection-path--other {
+    stroke: rgba(52, 211, 153, 0.8); /* 深色模式下更亮的绿色 */
+  }
+  
+  [data-message-type="self"]::after {
+    background: rgba(96, 165, 250, 0.8);
+  }
+  
+  [data-message-type="other"]::before {
+    background: rgba(52, 211, 153, 0.8);
+  }
+}
+
+/* ====== 可访问性优化 ====== */
+
+/* 减少动画的用户偏好 */
+@media (prefers-reduced-motion: reduce) {
+  .connection-animated {
+    animation: none;
+  }
+  
+  .connection-pulse {
+    animation: none;
+  }
+  
+  .connection-path {
+    transition: none;
+  }
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+  .connection-path--self {
+    stroke: #0066cc;
+    stroke-width: 3px;
+  }
+  
+  .connection-path--other {
+    stroke: #00a86b;
+    stroke-width: 3px;
+  }
+}
+
+/* ====== 调试和开发工具 ====== */
+
+/* 开发模式：显示连接区域 */
+.debug-connections .connection-overlay {
+  background: rgba(255, 0, 0, 0.05);
+  border: 1px dashed rgba(255, 0, 0, 0.3);
+}
+
+.debug-connections [data-message-id] {
+  outline: 1px dashed rgba(59, 130, 246, 0.5);
+}
+
+.debug-connections [data-user-avatar],
+.debug-connections [data-topbar-avatar] {
+  outline: 1px dashed rgba(16, 185, 129, 0.5);
+}
+
+/* 性能监控指示器 */
+.debug-performance::after {
+  content: "FPS: " counter(fps);
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  z-index: 9999;
+}
+
+/* ====== 响应式断点优化 ====== */
+
+/* 平板端优化 */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .connection-path {
+    stroke-width: 2px;
+  }
+  
+  .connection-overlay {
+    contain: layout style;
+  }
+}
+
+/* 桌面端优化 */
+@media (min-width: 1024px) {
+  .connection-path {
+    stroke-width: 2.5px;
+  }
+  
+  .connection-path:hover {
+    stroke-width: 3.5px;
+  }
+  
+  .connection-overlay {
+    contain: layout;
+  }
+}
+
+/* ====== 特殊场景处理 ====== */
+
+/* 全屏模式下的连接线 */
+:fullscreen .connection-overlay,
+::backdrop .connection-overlay {
+  z-index: 999999;
+}
+
+/* 打印时隐藏连接线 */
+@media print {
+  .connection-overlay {
+    display: none;
+  }
+}
+
+/* 离线状态指示 */
+.offline .connection-path {
+  stroke-dasharray: 5, 5;
+  opacity: 0.3;
+}
+
+/* 加载状态 */
+.loading .connection-path {
+  animation: connection-pulse 1s ease-in-out infinite;
+}

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three Container Cross-Connection Architecture</title>
+    <link rel="stylesheet" href="./three-container-styles.css">
+</head>
+<body>
+    <!-- 核心架构：三个独立滚动容器 + 连接线覆盖层 -->
+    <div class="chat-interface">
+        
+        <!-- 1. 左侧会话头像容器 -->
+        <div class="conversation-avatars-container" id="conversationAvatars">
+            <div class="scroll-wrapper horizontal-scroll">
+                <!-- 会话头像列表 -->
+                <div class="avatar-list" data-container="conversation">
+                    <!-- 动态生成的会话头像 -->
+                    <div class="conversation-avatar" 
+                         data-avatar-id="conv-user-001" 
+                         data-user-id="user-001"
+                         style="anchor-name: --conv-avatar-user-001;">
+                        <img src="/avatars/user-001.jpg" alt="User 001">
+                    </div>
+                    
+                    <div class="conversation-avatar" 
+                         data-avatar-id="conv-user-002" 
+                         data-user-id="user-002"
+                         style="anchor-name: --conv-avatar-user-002;">
+                        <img src="/avatars/user-002.jpg" alt="User 002">
+                    </div>
+                    
+                    <!-- 更多会话头像... -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 2. 中央消息气泡容器 -->
+        <div class="message-bubbles-container" id="messageBubbles">
+            <div class="scroll-wrapper vertical-scroll">
+                <!-- 消息气泡列表 -->
+                <div class="message-list" data-container="messages">
+                    <!-- 动态生成的消息气泡 -->
+                    <div class="message-bubble other-message" 
+                         data-message-id="msg-001" 
+                         data-sender-id="user-001"
+                         data-message-type="other"
+                         style="anchor-name: --message-msg-001;">
+                        <div class="message-content">Hello, how are you?</div>
+                    </div>
+                    
+                    <div class="message-bubble self-message" 
+                         data-message-id="msg-002" 
+                         data-sender-id="user-self"
+                         data-message-type="self"
+                         style="anchor-name: --message-msg-002;">
+                        <div class="message-content">I'm doing well, thanks!</div>
+                    </div>
+                    
+                    <!-- 更多消息气泡... -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 3. 右侧账号头像容器 -->
+        <div class="account-avatars-container" id="accountAvatars">
+            <div class="scroll-wrapper horizontal-scroll">
+                <!-- 账号头像列表 -->
+                <div class="avatar-list" data-container="accounts">
+                    <!-- 动态生成的账号头像 -->
+                    <div class="account-avatar" 
+                         data-avatar-id="acc-user-self" 
+                         data-user-id="user-self"
+                         style="anchor-name: --acc-avatar-user-self;">
+                        <img src="/avatars/user-self.jpg" alt="Self">
+                    </div>
+                    
+                    <div class="account-avatar" 
+                         data-avatar-id="acc-user-003" 
+                         data-user-id="user-003"
+                         style="anchor-name: --acc-avatar-user-003;">
+                        <img src="/avatars/user-003.jpg" alt="User 003">
+                    </div>
+                    
+                    <!-- 更多账号头像... -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 4. 连接线覆盖层 - 关键组件 -->
+        <div class="connection-overlay" id="connectionOverlay">
+            <!-- SVG连接线渲染区域 -->
+            <svg class="connection-svg" id="connectionSvg" 
+                 viewBox="0 0 100 100" 
+                 preserveAspectRatio="none">
+                <defs>
+                    <!-- 连接线渐变定义 -->
+                    <linearGradient id="connectionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:rgba(59,130,246,0.2)"/>
+                        <stop offset="50%" style="stop-color:rgba(59,130,246,0.8)"/>
+                        <stop offset="100%" style="stop-color:rgba(59,130,246,0.2)"/>
+                    </linearGradient>
+                    
+                    <linearGradient id="selfConnectionGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:rgba(34,197,94,0.2)"/>
+                        <stop offset="50%" style="stop-color:rgba(34,197,94,0.8)"/>
+                        <stop offset="100%" style="stop-color:rgba(34,197,94,0.2)"/>
+                    </linearGradient>
+                </defs>
+                
+                <!-- 动态生成的连接线路径 -->
+                <!-- 使用CSS Anchor Positioning动态定位 -->
+                <path id="connection-msg-001-to-conv-user-001" 
+                      class="connection-line other-connection"
+                      style="position-anchor: --message-msg-001; position-area: start;"
+                      stroke="url(#connectionGradient)" 
+                      stroke-width="2" 
+                      fill="none"/>
+                
+                <path id="connection-msg-002-to-acc-user-self" 
+                      class="connection-line self-connection"
+                      style="position-anchor: --message-msg-002; position-area: end;"
+                      stroke="url(#selfConnectionGradient)" 
+                      stroke-width="2" 
+                      fill="none"/>
+            </svg>
+        </div>
+        
+        <!-- 5. 调试信息面板 -->
+        <div class="debug-panel" id="debugPanel">
+            <div class="debug-stats">
+                <div>连接数: <span id="connectionCount">0</span></div>
+                <div>可见连接: <span id="visibleConnections">0</span></div>
+                <div>FPS: <span id="currentFps">0</span></div>
+                <div>内存: <span id="memoryUsage">0MB</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 连接系统脚本 -->
+    <script type="module" src="./three-container-connection-system.js"></script>
+</body>
+</html>

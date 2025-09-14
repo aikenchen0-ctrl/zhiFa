@@ -1,0 +1,453 @@
+/**
+ * Three Container Cross-Connection Layout
+ * 三容器跨越式连接线系统CSS架构
+ * 核心设计：独立滚动容器 + CSS Anchor Positioning + 统一覆盖层
+ */
+
+/* ========================= 
+   基础重置和变量定义 
+========================= */
+:root {
+    /* 布局变量 */
+    --container-gap: 8px;
+    --avatar-container-width: 80px;
+    --message-container-flex: 1;
+    
+    /* z-index层级定义 */
+    --z-index-containers: 1;          /* 三个滚动容器 */
+    --z-index-connection-overlay: 10;  /* 连接线覆盖层 */
+    --z-index-debug-panel: 20;         /* 调试面板 */
+    
+    /* 连接线颜色 */
+    --connection-color-other: rgba(59, 130, 246, 0.8);    /* 他人消息 - 蓝色 */
+    --connection-color-self: rgba(34, 197, 94, 0.8);      /* 自己消息 - 绿色 */
+    --connection-stroke-width: 2px;
+    --connection-corner-radius: 8px;
+    
+    /* 性能优化变量 */
+    --scroll-behavior: smooth;
+    --transform-style: preserve-3d;
+    --backface-visibility: hidden;
+}
+
+/* 防止滚动条样式影响布局 */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1a1a1a;
+    color: #ffffff;
+    overflow: hidden; /* 防止body滚动 */
+}
+
+/* =========================
+   主聊天界面布局
+========================= */
+.chat-interface {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    position: relative;
+    gap: var(--container-gap);
+    padding: var(--container-gap);
+    
+    /* 性能优化 */
+    will-change: scroll-position;
+    contain: layout style paint;
+}
+
+/* =========================
+   三个独立滚动容器基础样式
+========================= */
+.conversation-avatars-container,
+.message-bubbles-container,
+.account-avatars-container {
+    position: relative;
+    z-index: var(--z-index-containers);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    
+    /* 性能优化 */
+    will-change: transform;
+    contain: layout style paint;
+    transform-style: var(--transform-style);
+    backface-visibility: var(--backface-visibility);
+}
+
+/* 1. 左侧会话头像容器 */
+.conversation-avatars-container {
+    width: var(--avatar-container-width);
+    flex-shrink: 0;
+}
+
+/* 2. 中央消息气泡容器 */
+.message-bubbles-container {
+    flex: var(--message-container-flex);
+    min-width: 0; /* 防止flex布局溢出 */
+}
+
+/* 3. 右侧账号头像容器 */
+.account-avatars-container {
+    width: var(--avatar-container-width);
+    flex-shrink: 0;
+}
+
+/* =========================
+   滚动包装器样式
+========================= */
+.scroll-wrapper {
+    height: 100%;
+    width: 100%;
+    position: relative;
+    
+    /* 优化滚动性能 */
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: var(--scroll-behavior);
+    will-change: scroll-position;
+}
+
+/* 横向滚动（头像容器） */
+.horizontal-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+}
+
+/* 纵向滚动（消息容器） */
+.vertical-scroll {
+    overflow-x: hidden;
+    overflow-y: auto;
+    scroll-snap-type: y proximity;
+}
+
+/* 隐藏滚动条但保持功能 */
+.scroll-wrapper::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+}
+
+.scroll-wrapper::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.scroll-wrapper::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.3);
+    border-radius: 2px;
+}
+
+.scroll-wrapper::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.5);
+}
+
+/* =========================
+   头像和消息元素样式
+========================= */
+.avatar-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px 8px;
+    min-height: 100%;
+    
+    /* 性能优化 */
+    contain: layout style;
+}
+
+.message-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 16px;
+    min-height: 100%;
+    
+    /* 性能优化 */
+    contain: layout style;
+}
+
+/* 会话头像样式 */
+.conversation-avatar,
+.account-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    position: relative;
+    flex-shrink: 0;
+    
+    /* CSS Anchor定位准备 */
+    anchor-name: var(--anchor-name); /* 动态设置 */
+    
+    /* 性能优化 */
+    will-change: transform;
+    transform: translateZ(0);
+    contain: layout style paint;
+    scroll-snap-align: center;
+}
+
+.conversation-avatar img,
+.account-avatar img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    transition: border-color 0.2s ease;
+}
+
+.conversation-avatar:hover img,
+.account-avatar:hover img {
+    border-color: var(--connection-color-other);
+}
+
+/* 消息气泡样式 */
+.message-bubble {
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 18px;
+    position: relative;
+    margin: 4px 0;
+    
+    /* CSS Anchor定位准备 */
+    anchor-name: var(--anchor-name); /* 动态设置 */
+    
+    /* 性能优化 */
+    will-change: transform;
+    transform: translateZ(0);
+    contain: layout style paint;
+    scroll-snap-align: start;
+}
+
+/* 他人消息气泡 */
+.message-bubble.other-message {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    align-self: flex-start;
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/* 自己消息气泡 */
+.message-bubble.self-message {
+    background: rgba(34, 197, 94, 0.2);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    align-self: flex-end;
+    margin-left: auto;
+    margin-right: 0;
+}
+
+.message-content {
+    font-size: 14px;
+    line-height: 1.4;
+    word-wrap: break-word;
+}
+
+/* =========================
+   连接线覆盖层 - 核心组件
+========================= */
+.connection-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--z-index-connection-overlay);
+    pointer-events: none; /* 不影响下层交互 */
+    
+    /* 性能优化 */
+    will-change: transform;
+    contain: layout style paint;
+    transform: translateZ(0);
+}
+
+.connection-svg {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    
+    /* 性能优化 */
+    shape-rendering: optimizeSpeed;
+    text-rendering: optimizeSpeed;
+    
+    /* CSS Anchor Positioning支持 */
+    anchor-default: --message-default;
+}
+
+/* 连接线路径样式 */
+.connection-line {
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    fill: none;
+    opacity: 0.8;
+    
+    /* 动画支持 */
+    transition: opacity 0.3s ease, stroke-width 0.2s ease;
+    
+    /* 性能优化 */
+    will-change: d, opacity, stroke-width;
+    vector-effect: non-scaling-stroke;
+}
+
+/* 他人消息连接线 */
+.connection-line.other-connection {
+    stroke: var(--connection-color-other);
+    stroke-width: var(--connection-stroke-width);
+}
+
+/* 自己消息连接线 */
+.connection-line.self-connection {
+    stroke: var(--connection-color-self);
+    stroke-width: var(--connection-stroke-width);
+}
+
+/* 连接线悬停效果 */
+.connection-line:hover {
+    opacity: 1;
+    stroke-width: calc(var(--connection-stroke-width) + 1px);
+}
+
+/* 连接线动画 */
+@keyframes connectionDraw {
+    from {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 1000;
+    }
+    to {
+        stroke-dasharray: 1000;
+        stroke-dashoffset: 0;
+    }
+}
+
+.connection-line.animated {
+    animation: connectionDraw 0.8s ease-out forwards;
+}
+
+/* =========================
+   调试面板样式
+========================= */
+.debug-panel {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: var(--z-index-debug-panel);
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 12px;
+    color: #ffffff;
+    backdrop-filter: blur(10px);
+    
+    /* 默认隐藏 */
+    display: none;
+    
+    /* 性能优化 */
+    will-change: transform;
+    contain: layout style paint;
+}
+
+.debug-panel.visible {
+    display: block;
+}
+
+.debug-stats {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.debug-stats div {
+    display: flex;
+    justify-content: space-between;
+    min-width: 150px;
+}
+
+.debug-stats span {
+    font-weight: bold;
+    color: #00ff88;
+}
+
+/* =========================
+   移动端响应式优化
+========================= */
+@media (max-width: 768px) {
+    .chat-interface {
+        gap: 4px;
+        padding: 4px;
+    }
+    
+    .conversation-avatars-container,
+    .account-avatars-container {
+        width: 60px;
+    }
+    
+    .conversation-avatar,
+    .account-avatar {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .message-bubble {
+        max-width: 85%;
+        padding: 10px 14px;
+    }
+    
+    .debug-panel {
+        top: 10px;
+        right: 10px;
+        padding: 8px;
+        font-size: 10px;
+    }
+}
+
+/* =========================
+   高刷新率显示器优化
+========================= */
+@media (min-resolution: 120dpi) {
+    .connection-line {
+        stroke-width: calc(var(--connection-stroke-width) * 0.8);
+    }
+    
+    .conversation-avatar img,
+    .account-avatar img {
+        border-width: 1px;
+    }
+}
+
+/* =========================
+   暗色主题优化
+========================= */
+@media (prefers-color-scheme: dark) {
+    .chat-interface {
+        background: #0a0a0a;
+    }
+    
+    .conversation-avatars-container,
+    .message-bubbles-container,
+    .account-avatars-container {
+        background: rgba(255, 255, 255, 0.03);
+        border-color: rgba(255, 255, 255, 0.08);
+    }
+}
+
+/* =========================
+   CSS Anchor Positioning Polyfill支持
+========================= */
+@supports not (anchor-name: --test) {
+    /* 当不支持原生CSS Anchor时的fallback */
+    .connection-overlay {
+        /* 使用JavaScript计算位置 */
+        position: absolute;
+    }
+}
+
+/* 内存压力下的性能优化 */
+.memory-pressure-high .connection-line {
+    animation: none !important;
+    transition: none !important;
+}

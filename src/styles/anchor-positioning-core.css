@@ -1,0 +1,385 @@
+/**
+ * CSS Anchor Positioning 核心系统
+ * 解决滚动实时跟随、跨容器定位、动态anchor绑定
+ */
+
+/* ====== Anchor Positioning 基础设置 ====== */
+
+/* 全局anchor支持检测 */
+@supports (anchor-name: --test) {
+  :root {
+    --anchor-support: native;
+  }
+}
+
+@supports not (anchor-name: --test) {
+  :root {
+    --anchor-support: polyfill;
+  }
+}
+
+/* ====== Anchor命名规则和绑定系统 ====== */
+
+/* 动态Anchor命名基类 */
+.anchor-element {
+  /* 基础anchor元素样式 */
+  position: relative;
+  
+  /* 确保anchor在滚动时能正确计算位置 */
+  contain: none; /* 不限制定位上下文 */
+  isolation: auto; /* 允许定位传播 */
+  
+  /* 强制重新计算anchor位置 */
+  will-change: auto; /* 让浏览器决定优化策略 */
+}
+
+/* 会话头像anchor设置 */
+.conversation-avatar {
+  /* 会话头像anchor命名模式：--conv-avatar-{userId} */
+  anchor-name: var(--conv-avatar-anchor, --conv-avatar-default);
+  
+  /* 确保在滚动容器中正确跟随 */
+  position: relative;
+  z-index: 1;
+  
+  /* anchor元素优化 */
+  contain: size layout; /* 优化但不影响positioning */
+  will-change: auto;
+}
+
+/* 消息气泡anchor设置 */
+.message-bubble {
+  /* 消息气泡anchor命名模式：--message-{msgId} */
+  anchor-name: var(--message-anchor, --message-default);
+  
+  /* 消息气泡定位优化 */
+  position: relative;
+  contain: size layout style;
+  will-change: auto;
+  
+  /* 确保连接点位置精确 */
+  transform-style: preserve-3d;
+}
+
+/* 账号头像anchor设置 */
+.account-avatar {
+  /* 账号头像anchor命名模式：--acc-avatar-{userId} */
+  anchor-name: var(--acc-avatar-anchor, --acc-avatar-default);
+  
+  /* 顶部栏anchor元素 */
+  position: relative;
+  contain: size layout;
+  will-change: auto;
+}
+
+/* ====== Anchor跟随机制核心 ====== */
+
+/* 滚动容器anchor优化 */
+.scrollable-container {
+  /* 关键：允许anchor位置在滚动时更新 */
+  contain: none; /* 不使用contain:strict，保持anchor计算能力 */
+  
+  /* 滚动性能优化 */
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
+  
+  /* 确保滚动时anchor更新 */
+  will-change: scroll-position; /* 明确告知浏览器滚动意图 */
+}
+
+/* Anchor跟随增强器 */
+.anchor-follower {
+  /* 监听anchor变化的元素基类 */
+  position: absolute;
+  
+  /* 核心：使用CSS anchor positioning */
+  position-anchor: var(--target-anchor);
+  
+  /* 默认anchor定位：跟随目标元素 */
+  top: anchor(top);
+  left: anchor(left);
+  
+  /* 确保跟随响应性 */
+  will-change: top, left, transform;
+}
+
+/* ====== 跨容器定位解决方案 ====== */
+
+/* 跨容器连接线定位层 */
+.cross-container-layer {
+  /* 独立于所有容器的绝对定位层 */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 20; /* 确保在所有容器之上 */
+  
+  /* 跨容器优化 */
+  contain: none; /* 允许访问所有容器的anchor */
+  isolation: isolate;
+  
+  /* 性能优化 */
+  will-change: auto;
+  transform: translateZ(0);
+}
+
+/* 跨容器anchor绑定 */
+.cross-container-anchor {
+  /* 能够跨容器引用anchor的元素 */
+  position: absolute;
+  
+  /* 多anchor支持 */
+  position-anchor: var(--primary-anchor);
+  position-try-fallbacks: 
+    --fallback-anchor-1,
+    --fallback-anchor-2;
+  
+  /* 跟随主anchor */
+  top: anchor(var(--primary-anchor) top);
+  left: anchor(var(--primary-anchor) left);
+  
+  /* 跨容器跟随优化 */
+  will-change: top, left;
+}
+
+/* ====== 滚动时的实时跟随优化 ====== */
+
+/* 滚动监听器 */
+.scroll-anchor-listener {
+  /* 滚动时anchor位置更新 */
+  position: sticky;
+  top: 0;
+  height: 0;
+  overflow: visible;
+  
+  /* 触发anchor重新计算 */
+  will-change: transform;
+}
+
+/* IntersectionObserver辅助 */
+.intersection-anchor {
+  /* 配合IntersectionObserver的anchor元素 */
+  position: relative;
+  
+  /* 确保在视口变化时重新计算 */
+  contain: none;
+  will-change: auto;
+}
+
+/* 视口anchor跟随 */
+.viewport-anchor-follower {
+  /* 基于视口的anchor跟随 */
+  position: fixed;
+  
+  /* 使用视口单位确保跟随 */
+  top: calc(anchor(top) - var(--scroll-offset, 0px));
+  left: calc(anchor(left) - var(--scroll-left, 0px));
+  
+  /* 滚动补偿动画 */
+  transition: top 0.1s ease-out, left 0.1s ease-out;
+}
+
+/* ====== Anchor定位精度优化 ====== */
+
+/* 高精度anchor定位 */
+.precision-anchor {
+  /* 亚像素精度anchor */
+  position: relative;
+  
+  /* 使用transform确保精确定位 */
+  transform: translate3d(0, 0, 0);
+  will-change: transform;
+  
+  /* 防止模糊 */
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Anchor边界优化 */
+.anchor-boundary {
+  /* 定义anchor的有效范围 */
+  position: relative;
+  
+  /* 边界内的anchor有效性 */
+  contain: size;
+  overflow: visible;
+  
+  /* 边界计算优化 */
+  will-change: auto;
+}
+
+/* ====== 动态Anchor管理 ====== */
+
+/* 动态anchor生成器 */
+.dynamic-anchor[data-anchor-id] {
+  /* 根据data属性动态设置anchor-name */
+  anchor-name: var(--dynamic-anchor-name);
+  position: relative;
+  
+  /* 动态anchor优化 */
+  contain: size layout;
+  will-change: auto;
+}
+
+/* Anchor状态管理 */
+.anchor-active {
+  /* 活跃状态的anchor */
+  z-index: 10;
+  will-change: transform, anchor-name;
+}
+
+.anchor-inactive {
+  /* 非活跃状态的anchor */
+  will-change: auto;
+}
+
+/* ====== 移动端Anchor优化 ====== */
+
+@media (max-width: 768px) {
+  .scrollable-container {
+    /* 移动端滚动优化 */
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    
+    /* 移动端anchor跟随优化 */
+    will-change: scroll-position, transform;
+  }
+  
+  .anchor-element {
+    /* 移动端anchor性能优化 */
+    contain: size layout;
+    will-change: auto;
+  }
+  
+  .cross-container-layer {
+    /* 移动端跨容器优化 */
+    transform: translate3d(0, 0, 0);
+    will-change: transform;
+  }
+}
+
+/* ====== 高刷新率设备优化 ====== */
+
+@media (min-refresh-rate: 90hz) {
+  .viewport-anchor-follower {
+    /* 高刷新率设备的平滑跟随 */
+    transition: 
+      top 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      left 0.08s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+  
+  .scrollable-container {
+    /* 高刷新率滚动优化 */
+    scroll-behavior: smooth;
+    will-change: scroll-position;
+  }
+}
+
+@media (min-refresh-rate: 120hz) {
+  .viewport-anchor-follower {
+    /* 120Hz设备超平滑跟随 */
+    transition: 
+      top 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94),
+      left 0.05s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  }
+}
+
+/* ====== Polyfill集成优化 ====== */
+
+/* Polyfill激活时的优化 */
+[data-has-anchor-polyfill] .anchor-element {
+  /* Polyfill模式下的anchor优化 */
+  position: relative;
+  
+  /* 确保polyfill能正确计算位置 */
+  contain: none;
+  will-change: auto;
+}
+
+[data-has-anchor-polyfill] .cross-container-layer {
+  /* Polyfill模式的跨容器支持 */
+  position: fixed;
+  
+  /* 辅助polyfill计算 */
+  will-change: transform;
+  contain: none;
+}
+
+/* 原生支持时的优化 */
+[data-has-native-anchor] .anchor-element {
+  /* 原生支持时的高性能设置 */
+  contain: size layout;
+  will-change: auto;
+}
+
+/* ====== 调试和开发工具 ====== */
+
+/* 调试模式：显示anchor范围 */
+.debug-anchors .anchor-element {
+  outline: 2px dashed rgba(59, 130, 246, 0.5);
+  outline-offset: 2px;
+}
+
+.debug-anchors .anchor-element::before {
+  content: attr(data-anchor-name, "anchor");
+  position: absolute;
+  top: -20px;
+  left: 0;
+  background: rgba(59, 130, 246, 0.8);
+  color: white;
+  padding: 2px 6px;
+  font-size: 11px;
+  border-radius: 3px;
+  white-space: nowrap;
+  z-index: 1000;
+}
+
+/* Anchor连接线可视化 */
+.debug-anchors .cross-container-anchor {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px dashed rgba(16, 185, 129, 0.5);
+}
+
+/* 性能监控 */
+.debug-performance .anchor-element {
+  /* 性能监控模式 */
+  will-change: transform; /* 强制监控 */
+}
+
+/* ====== 兼容性和降级 ====== */
+
+/* 不支持anchor positioning的降级 */
+@supports not (anchor-name: --test) {
+  .cross-container-anchor {
+    /* 降级为JavaScript控制的定位 */
+    position: absolute;
+    /* JavaScript将设置top和left */
+  }
+}
+
+/* 不支持contain属性的降级 */
+@supports not (contain: layout) {
+  .anchor-element {
+    /* 降级优化 */
+    position: relative;
+    overflow: visible;
+  }
+}
+
+/* 低端设备的简化模式 */
+@media (max-width: 480px) and (max-resolution: 150dpi) {
+  .viewport-anchor-follower {
+    /* 低端设备禁用过渡动画 */
+    transition: none;
+  }
+  
+  .cross-container-layer {
+    /* 简化跨容器处理 */
+    will-change: auto;
+    transform: none;
+  }
+}

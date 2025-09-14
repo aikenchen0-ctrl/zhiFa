@@ -1,0 +1,333 @@
+/**
+ * Mobile 120Hz Optimization CSS (Legacy Support)
+ * GPU-accelerated styles for high refresh rate displays
+ * 注意：此文件为向后兼容保留，新项目请使用 mobile-120hz-optimization.css
+ */
+
+/* 导入新的120Hz优化系统 */
+@import url('../styles/mobile-120hz-optimization.css');
+
+/* Force hardware acceleration for connection container */
+.connection-container {
+  will-change: transform;
+  transform: translateZ(0);
+  contain: layout style paint;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Optimized connection line base styles */
+.connection-line {
+  position: absolute;
+  pointer-events: none;
+  backface-visibility: hidden;
+  perspective: 1000px;
+  
+  /* GPU acceleration */
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  
+  /* Layout containment */
+  contain: layout style paint;
+  
+  /* Optimize for mobile touch */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* High performance connection rendering */
+.connection-line.optimized {
+  /* Force GPU layer creation */
+  transform: translate3d(0, 0, 0);
+  
+  /* Optimize rendering pipeline */
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 1px;
+  
+  /* Prevent layout thrashing */
+  position: absolute;
+  top: 0;
+  left: 0;
+  
+  /* Smooth animations on 120Hz displays */
+  animation-timing-function: linear;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Quality levels for adaptive rendering */
+.connection-line[data-quality="high"] {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.2);
+  opacity: 1;
+}
+
+.connection-line[data-quality="medium"] {
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.2));
+  box-shadow: none;
+  opacity: 0.9;
+}
+
+.connection-line[data-quality="low"] {
+  filter: none;
+  box-shadow: none;
+  opacity: 0.7;
+}
+
+/* Viewport-based visibility optimization */
+.connection-line.out-of-viewport {
+  display: none;
+  contain: none;
+  will-change: auto;
+}
+
+.connection-line.in-viewport {
+  display: block;
+  contain: layout style paint;
+  will-change: transform, opacity;
+}
+
+/* Smooth scroll optimizations */
+.scroll-container {
+  /* Enable smooth scrolling */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  
+  /* Optimize scroll performance */
+  contain: layout style paint;
+  will-change: scroll-position;
+  
+  /* Touch optimizations */
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+
+/* Touch interaction optimizations */
+.touch-optimized {
+  /* Reduce touch delay */
+  touch-action: manipulation;
+  
+  /* Prevent text selection */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  
+  /* Optimize touch feedback */
+  cursor: pointer;
+  transition: transform 0.1s ease-out;
+}
+
+.touch-optimized:active {
+  transform: scale(0.98);
+}
+
+/* 120Hz specific animations */
+@media (min-resolution: 120dpi) {
+  .connection-line {
+    animation-duration: 8.33ms; /* 120Hz frame time */
+  }
+}
+
+/* High refresh rate optimizations */
+@media (prefers-reduced-motion: no-preference) and (min-resolution: 120dpi) {
+  .connection-line.animated {
+    /* Smooth 120fps animations */
+    transition: transform 8.33ms linear,
+                opacity 8.33ms linear;
+  }
+  
+  .connection-pulse {
+    animation: pulse-120hz 1s infinite;
+  }
+}
+
+/* 120Hz pulse animation */
+@keyframes pulse-120hz {
+  0% { opacity: 0.7; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 0.7; transform: scale(1); }
+}
+
+/* Memory-efficient gradient styles */
+.connection-gradient {
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    currentColor 20%, 
+    currentColor 80%, 
+    transparent 100%
+  );
+  
+  /* Optimize gradient rendering */
+  background-attachment: local;
+  background-size: 100% 100%;
+}
+
+/* Adaptive quality system */
+:root {
+  --connection-quality: high;
+  --animation-state: running;
+  --optimization-level: 3;
+}
+
+/* Low quality mode */
+:root[data-quality="low"] {
+  --connection-quality: low;
+  --optimization-level: 1;
+}
+
+.connection-line {
+  --current-quality: var(--connection-quality);
+  animation-play-state: var(--animation-state);
+}
+
+/* Performance-based adaptations */
+@media (max-width: 768px) and (max-height: 1024px) {
+  /* Mobile optimizations */
+  .connection-container {
+    /* Reduce layer complexity */
+    isolation: isolate;
+    
+    /* Optimize repaints */
+    contain: strict;
+  }
+  
+  .connection-line {
+    /* Simplify mobile rendering */
+    filter: none;
+    box-shadow: none;
+    
+    /* Reduce GPU memory usage */
+    transform-style: flat;
+  }
+}
+
+/* Ultra-high DPI displays (phones with >300 DPI) */
+@media (min-resolution: 300dpi) {
+  .connection-line {
+    /* Prevent blurry rendering */
+    image-rendering: crisp-edges;
+    image-rendering: -webkit-crisp-edges;
+    image-rendering: pixelated;
+  }
+}
+
+/* Battery optimization for mobile */
+@media (prefers-reduced-motion: reduce) {
+  .connection-line {
+    animation: none !important;
+    transition: none !important;
+    will-change: auto;
+  }
+}
+
+/* Memory pressure adaptations */
+.memory-pressure-low .connection-line {
+  /* Disable non-essential effects */
+  filter: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  
+  /* Reduce will-change usage */
+  will-change: transform;
+}
+
+/* Loading state optimizations */
+.connection-line.loading {
+  /* Skeleton loading with minimal resources */
+  background: linear-gradient(90deg, 
+    rgba(255,255,255,0.1) 25%, 
+    rgba(255,255,255,0.2) 50%, 
+    rgba(255,255,255,0.1) 75%
+  );
+  background-size: 200% 100%;
+  animation: loading-shimmer 1.5s infinite;
+}
+
+@keyframes loading-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Intersection Observer optimizations */
+.connection-line[data-intersection="visible"] {
+  contain: layout style paint;
+  will-change: transform, opacity;
+}
+
+.connection-line[data-intersection="hidden"] {
+  contain: size;
+  will-change: auto;
+  visibility: hidden;
+}
+
+/* WebGL fallback styles */
+.webgl-not-supported .connection-line {
+  /* Fallback to CSS-only rendering */
+  background: currentColor;
+  border-radius: 0.5px;
+  height: 1px;
+  transform-origin: left center;
+}
+
+/* Container queries for responsive optimization */
+@container (max-width: 400px) {
+  .connection-line {
+    /* Ultra-compact mobile view */
+    opacity: 0.6;
+    filter: none;
+  }
+}
+
+@container (min-width: 800px) {
+  .connection-line {
+    /* Enhanced desktop experience */
+    filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.4));
+  }
+}
+
+/* Debug performance mode */
+.debug-performance .connection-line {
+  outline: 1px solid rgba(255, 0, 0, 0.5);
+}
+
+.debug-performance .connection-line::after {
+  content: attr(data-performance-score);
+  position: absolute;
+  top: -20px;
+  left: 0;
+  font-size: 10px;
+  color: #ff0000;
+  background: rgba(0, 0, 0, 0.8);
+  padding: 2px 4px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* Print media optimizations */
+@media print {
+  .connection-line {
+    /* Optimize for print */
+    filter: none !important;
+    box-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+    will-change: auto !important;
+    transform: none !important;
+    
+    /* Ensure visibility in print */
+    color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}
+
+/* Reduced data mode */
+@media (prefers-reduced-data: reduce) {
+  .connection-line {
+    /* Minimal data usage */
+    background: currentColor;
+    filter: none;
+    box-shadow: none;
+    animation: none;
+  }
+}
