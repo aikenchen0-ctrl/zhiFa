@@ -588,16 +588,35 @@
           const path = this.svgPaths[i];
           
           try {
+            // 强制重新计算辅助元素位置 - CSS Anchor核心优化
+            helper.bubble.style.transform = '';
+            helper.avatar.style.transform = '';
+            
+            // 强制重新布局
+            helper.bubble.offsetHeight;
+            helper.avatar.offsetHeight;
+            
             // 获取锚点位置
             const bubbleRect = helper.bubble.getBoundingClientRect();
             const avatarRect = helper.avatar.getBoundingClientRect();
             const containerRect = document.querySelector('.main-container').getBoundingClientRect();
+            
+            // 验证位置是否有效
+            if (bubbleRect.width === 0 || avatarRect.width === 0) {
+              console.warn(`连接线 ${i} 位置无效:`, { bubbleRect, avatarRect });
+              continue;
+            }
             
             // 转换为相对于容器的坐标
             const bubbleX = bubbleRect.left - containerRect.left;
             const bubbleY = bubbleRect.top - containerRect.top;
             const avatarX = avatarRect.left - containerRect.left;
             const avatarY = avatarRect.top - containerRect.top;
+            
+            // 调试日志 - 显示位置变化
+            if (i === 0) { // 只显示第一个连接线的位置
+              console.log(`🔍 连接线0位置: 气泡(${bubbleX.toFixed(1)}, ${bubbleY.toFixed(1)}) → 头像(${avatarX.toFixed(1)}, ${avatarY.toFixed(1)})`);
+            }
             
             // 生成L型圆角路径
             const pathData = this.generateLShapePath(
@@ -675,14 +694,27 @@
           btn.textContent = this.connectionsVisible ? '隐藏连接线' : '显示连接线';
         });
         
-        // 刷新锚点
+        // 刷新锚点 - 增强CSS Anchor调试
         document.getElementById('refresh-anchors').addEventListener('click', () => {
+          console.log('🔧 手动刷新开始...');
+          
           if (typeof window.polyfillCSSAnchorPositioning === 'function') {
+            // 强制重新计算所有锚点
             window.polyfillCSSAnchorPositioning();
+            console.log('✅ Polyfill重新计算完成');
+            
+            // 多重延迟确保更新完成
             setTimeout(() => {
               this.updateConnectionPaths();
+              console.log('🔧 第一次连接线更新完成');
             }, 100);
-            console.log('🔧 手动刷新锚点和连接线');
+            
+            setTimeout(() => {
+              this.updateConnectionPaths();
+              console.log('🔧 第二次连接线更新完成');
+            }, 300);
+          } else {
+            console.warn('❌ Polyfill函数不可用');
           }
         });
         
@@ -692,29 +724,56 @@
           console.log('🔄 重新生成连接线');
         });
         
-        // 滚动时自动更新连接线
+        // 滚动时自动更新连接线 - 优化CSS Anchor更新时序
         const containers = document.querySelectorAll('.scroll-container');
         containers.forEach(container => {
           container.addEventListener('scroll', () => {
+            // 立即强制polyfill重新计算
             if (typeof window.polyfillCSSAnchorPositioning === 'function') {
               window.polyfillCSSAnchorPositioning();
             }
+            
+            // 等待两帧确保CSS Anchor位置完全更新
             requestAnimationFrame(() => {
-              this.updateConnectionPaths();
+              requestAnimationFrame(() => {
+                this.updateConnectionPaths();
+                console.log('🔄 滚动触发连接线更新');
+              });
             });
+          });
+          
+          // 额外的滚动结束事件处理
+          let scrollTimeout;
+          container.addEventListener('scroll', () => {
+            clearTimeout(scrollTimeout);
+            scrollTimeout = setTimeout(() => {
+              if (typeof window.polyfillCSSAnchorPositioning === 'function') {
+                window.polyfillCSSAnchorPositioning();
+                requestAnimationFrame(() => {
+                  this.updateConnectionPaths();
+                  console.log('🔄 滚动结束连接线更新');
+                });
+              }
+            }, 50);
           });
         });
       }
       
       startRealTimeUpdate() {
-        // 定期更新连接线位置
-        const updateLoop = () => {
-          if (this.connectionsVisible) {
-            this.updateConnectionPaths();
-          }
-          requestAnimationFrame(updateLoop);
-        };
-        updateLoop();
+        // 禁用实时循环，改用事件驱动 - CSS Anchor优化
+        console.log('🔧 CSS Anchor事件驱动模式启用');
+        
+        // 备用的低频率更新（仅用于调试）
+        if (window.location.search.includes('debug')) {
+          const debugUpdateLoop = () => {
+            if (this.connectionsVisible) {
+              console.log('🔄 调试模式定期更新');
+              this.updateConnectionPaths();
+            }
+            setTimeout(debugUpdateLoop, 1000); // 1秒更新一次
+          };
+          debugUpdateLoop();
+        }
       }
       
       startPerformanceMonitoring() {
