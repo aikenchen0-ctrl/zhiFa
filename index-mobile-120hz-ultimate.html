@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-  <title>📱 CSS Anchor + SVG连接线 - 实时跟随</title>
+  <title>📱 纯CSS Anchor - 实时跟随连接线</title>
   
   <!-- CSS Anchor Positioning Polyfill -->
   <script src="https://unpkg.com/@oddbird/css-anchor-positioning"></script>
@@ -11,8 +11,9 @@
   <style>
     :root {
       --avatar-size: 50px;
-      --connection-color: #ff3366;
       --connection-width: 2px;
+      --corner-radius: 3px;
+      --horizontal-extend: 5px;
     }
     
     * {
@@ -104,7 +105,7 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.7);
       margin: 10px auto;
       font-size: 16px;
-      /* CSS Anchor 锚点定义 - 用于位置获取 */
+      /* CSS Anchor 锚点定义 */
       anchor-name: var(--chat-anchor);
       /* 性能优化 */
       transform: translate3d(0,0,0);
@@ -122,7 +123,7 @@
       font-size: 14px;
       line-height: 1.4;
       border: 1px solid rgba(255,255,255,0.3);
-      /* CSS Anchor 锚点定义 - 用于位置获取 */
+      /* CSS Anchor 锚点定义 */
       anchor-name: var(--bubble-anchor);
       /* 性能优化 */
       transform: translate3d(0,0,0);
@@ -148,59 +149,120 @@
       text-shadow: 0 1px 3px rgba(0,0,0,0.7);
       margin: 10px auto;
       font-size: 16px;
-      /* CSS Anchor 锚点定义 - 用于位置获取 */
+      /* CSS Anchor 锚点定义 */
       anchor-name: var(--account-anchor);
       /* 性能优化 */
       transform: translate3d(0,0,0);
       will-change: transform;
     }
     
-    /* SVG连接线容器 - 覆盖整个区域 */
-    .svg-connections {
+    /* === 纯CSS Anchor连接线实现 === */
+    
+    /* L型连接线容器 - 他人消息(左侧连接) */
+    .connection-other {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
       pointer-events: none;
-      z-index: 50;
+      z-index: 100;
     }
     
-    /* 隐藏的锚点获取辅助元素 */
-    .anchor-helper {
+    /* L型连接线容器 - 自己消息(右侧连接) */
+    .connection-self {
       position: absolute;
-      width: 1px;
-      height: 1px;
-      opacity: 0;
       pointer-events: none;
+      z-index: 100;
     }
     
-    /* 气泡左侧中心锚点 */
-    .bubble-left-center {
+    /* 他人消息: 气泡左侧 → 会话头像右侧 */
+    .connection-other::before {
+      content: '';
+      position: absolute;
+      /* 水平线段: 从气泡左侧开始，向左延伸5px */
       left: anchor(var(--bubble-anchor) left);
       top: anchor(var(--bubble-anchor) center);
-      transform: translateY(-50%);
+      width: var(--horizontal-extend);
+      height: var(--connection-width);
+      background: var(--connection-color);
+      transform: translateX(-100%) translateY(-50%);
+      border-radius: var(--corner-radius);
     }
     
-    /* 气泡右侧中心锚点 */  
-    .bubble-right-center {
+    .connection-other::after {
+      content: '';
+      position: absolute;
+      /* 垂直线段: 从第一段终点到会话头像中心高度 */
+      left: calc(anchor(var(--bubble-anchor) left) - var(--horizontal-extend));
+      top: min(anchor(var(--bubble-anchor) center), anchor(var(--chat-anchor) center));
+      width: var(--connection-width);
+      height: abs(anchor(var(--bubble-anchor) center) - anchor(var(--chat-anchor) center));
+      background: var(--connection-color);
+      transform: translateX(-50%);
+      border-radius: var(--corner-radius);
+    }
+    
+    /* 自己消息: 气泡右侧 → 账号头像左侧 */
+    .connection-self::before {
+      content: '';
+      position: absolute;
+      /* 水平线段: 从气泡右侧开始，向右延伸5px */
       left: anchor(var(--bubble-anchor) right);
       top: anchor(var(--bubble-anchor) center);
+      width: var(--horizontal-extend);
+      height: var(--connection-width);
+      background: var(--connection-color);
       transform: translateY(-50%);
+      border-radius: var(--corner-radius);
     }
     
-    /* 会话头像右侧中心锚点 */
-    .chat-right-center {
-      left: anchor(var(--chat-anchor) right);
+    .connection-self::after {
+      content: '';
+      position: absolute;
+      /* 垂直线段: 从第一段终点到账号头像中心高度 */
+      left: calc(anchor(var(--bubble-anchor) right) + var(--horizontal-extend));
+      top: min(anchor(var(--bubble-anchor) center), anchor(var(--account-anchor) center));
+      width: var(--connection-width);
+      height: abs(anchor(var(--bubble-anchor) center) - anchor(var(--account-anchor) center));
+      background: var(--connection-color);
+      transform: translateX(-50%);
+      border-radius: var(--corner-radius);
+    }
+    
+    /* 连接线的最终水平段 */
+    .connection-other-final {
+      position: absolute;
+      pointer-events: none;
+      z-index: 100;
+    }
+    
+    .connection-other-final::before {
+      content: '';
+      position: absolute;
+      /* 从垂直段终点到会话头像右侧 */
+      left: calc(anchor(var(--bubble-anchor) left) - var(--horizontal-extend));
       top: anchor(var(--chat-anchor) center);
+      width: calc(anchor(var(--chat-anchor) right) - (anchor(var(--bubble-anchor) left) - var(--horizontal-extend)));
+      height: var(--connection-width);
+      background: var(--connection-color);
       transform: translateY(-50%);
+      border-radius: var(--corner-radius);
     }
     
-    /* 账号头像左侧中心锚点 */
-    .account-left-center {
-      left: anchor(var(--account-anchor) left);
+    .connection-self-final {
+      position: absolute;
+      pointer-events: none;
+      z-index: 100;
+    }
+    
+    .connection-self-final::before {
+      content: '';
+      position: absolute;
+      /* 从垂直段终点到账号头像左侧 */
+      left: calc(anchor(var(--bubble-anchor) right) + var(--horizontal-extend));
       top: anchor(var(--account-anchor) center);
+      width: calc(anchor(var(--account-anchor) left) - (anchor(var(--bubble-anchor) right) + var(--horizontal-extend)));
+      height: var(--connection-width);
+      background: var(--connection-color);
       transform: translateY(-50%);
+      border-radius: var(--corner-radius);
     }
     
     /* 控制按钮 */
@@ -282,7 +344,7 @@
 <body>
   <!-- 性能监控 -->
   <div class="monitor">
-    <div>🔧 CSS Anchor + SVG</div>
+    <div>🔧 纯CSS Anchor</div>
     <div>FPS: <span id="fps" class="monitor-value">--</span></div>
     <div>连接线: <span id="connections" class="monitor-value">0</span></div>
     <div>状态: <span id="status" class="monitor-value">初始化</span></div>
@@ -291,8 +353,8 @@
   <!-- 加载界面 -->
   <div id="loading" class="loading">
     <div style="font-size: 32px; margin-bottom: 20px;">🔧</div>
-    <div style="font-size: 18px;">CSS Anchor + SVG</div>
-    <div style="font-size: 14px; opacity: 0.8;">L型圆角连接线</div>
+    <div style="font-size: 18px;">纯CSS Anchor</div>
+    <div style="font-size: 14px; opacity: 0.8;">自动跟随连接线</div>
     <div class="loading-progress">
       <div id="loading-bar" class="loading-bar"></div>
     </div>
@@ -316,24 +378,19 @@
       <div id="account-content"></div>
     </div>
     
-    <!-- SVG连接线容器 -->
-    <svg id="svg-connections" class="svg-connections">
-      <!-- 连接线将在这里动态生成 -->
-    </svg>
-    
-    <!-- 锚点获取辅助容器 -->
-    <div id="anchor-helpers"></div>
+    <!-- 连接线容器 - 纯CSS Anchor定位 -->
+    <div id="connection-container"></div>
   </div>
 
   <!-- 控制按钮 -->
   <div class="controls">
     <button id="toggle-connections" class="control-btn">隐藏连接线</button>
     <button id="refresh-anchors" class="control-btn">刷新锚点</button>
-    <button id="regenerate" class="control-btn">重新生成</button>
+    <button id="test-scroll" class="control-btn">滚动测试</button>
   </div>
 
   <script>
-    class CSSAnchorSVGConnectionEngine {
+    class PureCSSAnchorConnectionEngine {
       constructor() {
         this.connectionsVisible = true;
         this.polyfillReady = false;
@@ -343,14 +400,12 @@
           messages: [],
           accounts: []
         };
-        this.anchorHelpers = [];
-        this.svgPaths = [];
         
         this.init();
       }
       
       async init() {
-        console.log('🔧 初始化 CSS Anchor + SVG 连接引擎...');
+        console.log('🔧 初始化纯CSS Anchor连接引擎...');
         
         // 等待 polyfill 加载
         await this.waitForPolyfill();
@@ -358,23 +413,19 @@
         // 生成测试元素
         await this.generateTestElements();
         
-        // 创建锚点辅助元素
-        this.createAnchorHelpers();
-        
-        // 创建SVG连接线
-        await this.createSVGConnections();
+        // 创建纯CSS连接线
+        this.createCSSConnections();
         
         // 设置事件监听
         this.setupEventListeners();
         
-        // 开始性能监控和实时更新
+        // 开始性能监控
         this.startPerformanceMonitoring();
-        this.startRealTimeUpdate();
         
         // 隐藏加载界面
         this.hideLoading();
         
-        console.log('✅ CSS Anchor + SVG 连接引擎初始化完成');
+        console.log('✅ 纯CSS Anchor连接引擎初始化完成');
       }
       
       async waitForPolyfill() {
@@ -415,7 +466,7 @@
       }
       
       async generateTestElements() {
-        const total = 20; // 先用少量元素测试
+        const total = 10; // 减少到10个以便观察
         const batchSize = 5;
         
         const chatContent = document.getElementById('chat-content');
@@ -448,7 +499,6 @@
               background: hsl(${hue}, 70%, 50%);
             `;
             chatAvatar.textContent = String.fromCharCode(65 + (i % 26));
-            chatAvatar.setAttribute('data-index', i);
             chatFragment.appendChild(chatAvatar);
             this.elements.chat.push(chatAvatar);
             
@@ -457,11 +507,10 @@
             messageBubble.className = `message-bubble ${isSelf ? 'self' : ''}`;
             messageBubble.style.cssText = `
               --bubble-anchor: --bubble-${i};
-              background: ${isSelf ? 'rgba(0,255,100,0.3)' : 'hsla('+hue+', 60%, 60%, 0.3)'};
             `;
-            messageBubble.textContent = `${isSelf ? '我' : '用户'} ${i + 1}: 测试L型圆角连接线的实时跟随效果。`;
-            messageBubble.setAttribute('data-index', i);
+            messageBubble.textContent = `${isSelf ? '我' : '用户'} ${i + 1}: 测试纯CSS Anchor连接线的自动跟随`;
             messageBubble.setAttribute('data-sender', isSelf ? 'self' : 'other');
+            messageBubble.setAttribute('data-index', i);
             messageFragment.appendChild(messageBubble);
             this.elements.messages.push(messageBubble);
             
@@ -473,7 +522,6 @@
               background: hsl(${(hue + 60) % 360}, 70%, 50%);
             `;
             accountAvatar.textContent = (i + 1).toString().padStart(2, '0');
-            accountAvatar.setAttribute('data-index', i);
             accountFragment.appendChild(accountAvatar);
             this.elements.accounts.push(accountAvatar);
           }
@@ -489,291 +537,124 @@
         console.log(`✅ 生成了 ${total} 个测试元素`);
       }
       
-      createAnchorHelpers() {
-        const helpersContainer = document.getElementById('anchor-helpers');
-        helpersContainer.innerHTML = '';
+      createCSSConnections() {
+        const connectionContainer = document.getElementById('connection-container');
+        connectionContainer.innerHTML = '';
         
         const total = this.elements.messages.length;
         
         for (let i = 0; i < total; i++) {
-          const isSelf = this.elements.messages[i].getAttribute('data-sender') === 'self';
+          const message = this.elements.messages[i];
+          const isSelf = message.getAttribute('data-sender') === 'self';
+          const hue = (i * 137) % 360;
+          const connectionColor = `hsl(${hue}, 80%, 60%)`;
           
-          // 气泡边缘中心锚点辅助元素
-          const bubbleHelper = document.createElement('div');
-          bubbleHelper.className = `anchor-helper ${isSelf ? 'bubble-right-center' : 'bubble-left-center'}`;
-          bubbleHelper.style.cssText = `
-            --bubble-anchor: --bubble-${i};
-          `;
-          bubbleHelper.setAttribute('data-type', isSelf ? 'bubble-right' : 'bubble-left');
-          bubbleHelper.setAttribute('data-index', i);
-          helpersContainer.appendChild(bubbleHelper);
+          // 创建L型连接线的三个部分
+          const connection1 = document.createElement('div');
+          const connection2 = document.createElement('div');
+          const connection3 = document.createElement('div');
           
-          // 头像边缘中心锚点辅助元素
           if (isSelf) {
-            // 自己的消息连接到账号头像左侧
-            const accountHelper = document.createElement('div');
-            accountHelper.className = 'anchor-helper account-left-center';
-            accountHelper.style.cssText = `
+            // 自己的消息：气泡右侧 → 账号头像左侧
+            connection1.className = 'connection-self';
+            connection2.className = 'connection-self-final';
+            
+            connection1.style.cssText = `
+              --bubble-anchor: --bubble-${i};
               --account-anchor: --account-${i};
+              --connection-color: ${connectionColor};
             `;
-            accountHelper.setAttribute('data-type', 'account-left');
-            accountHelper.setAttribute('data-index', i);
-            helpersContainer.appendChild(accountHelper);
+            
+            connection2.style.cssText = `
+              --bubble-anchor: --bubble-${i};
+              --account-anchor: --account-${i};
+              --connection-color: ${connectionColor};
+            `;
           } else {
-            // 他人的消息连接到会话头像右侧
-            const chatHelper = document.createElement('div');
-            chatHelper.className = 'anchor-helper chat-right-center';
-            chatHelper.style.cssText = `
+            // 他人的消息：气泡左侧 → 会话头像右侧
+            connection1.className = 'connection-other';
+            connection2.className = 'connection-other-final';
+            
+            connection1.style.cssText = `
+              --bubble-anchor: --bubble-${i};
               --chat-anchor: --chat-${i};
+              --connection-color: ${connectionColor};
             `;
-            chatHelper.setAttribute('data-type', 'chat-right');
-            chatHelper.setAttribute('data-index', i);
-            helpersContainer.appendChild(chatHelper);
+            
+            connection2.style.cssText = `
+              --bubble-anchor: --bubble-${i};
+              --chat-anchor: --chat-${i};
+              --connection-color: ${connectionColor};
+            `;
           }
           
-          this.anchorHelpers.push({
-            bubble: bubbleHelper,
-            avatar: isSelf ? helpersContainer.lastElementChild.previousElementSibling : helpersContainer.lastElementChild,
-            isSelf,
-            index: i
+          connectionContainer.appendChild(connection1);
+          connectionContainer.appendChild(connection2);
+          
+          this.connectionCount += 2;
+        }
+        
+        // 强制polyfill计算所有连接线
+        if (typeof window.polyfillCSSAnchorPositioning === 'function') {
+          requestAnimationFrame(() => {
+            window.polyfillCSSAnchorPositioning();
+            console.log('🔧 纯CSS连接线polyfill计算完成');
           });
         }
         
-        console.log(`✅ 创建了 ${this.anchorHelpers.length} 组锚点辅助元素`);
-      }
-      
-      async createSVGConnections() {
-        const svg = document.getElementById('svg-connections');
-        svg.innerHTML = '';
-        
-        // 强制 polyfill 重新计算位置
-        if (typeof window.polyfillCSSAnchorPositioning === 'function') {
-          window.polyfillCSSAnchorPositioning();
-        }
-        
-        // 等待一帧确保位置计算完成
-        await new Promise(resolve => requestAnimationFrame(resolve));
-        
-        this.svgPaths = [];
-        
-        for (let i = 0; i < this.anchorHelpers.length; i++) {
-          const helper = this.anchorHelpers[i];
-          const hue = (i * 137) % 360;
-          const color = `hsl(${hue}, 80%, 60%)`;
-          
-          // 创建SVG路径元素
-          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-          path.setAttribute('stroke', color);
-          path.setAttribute('stroke-width', '2');
-          path.setAttribute('fill', 'none');
-          path.setAttribute('stroke-linejoin', 'round');
-          path.setAttribute('stroke-linecap', 'round');
-          path.setAttribute('data-index', i);
-          
-          svg.appendChild(path);
-          this.svgPaths.push(path);
-        }
-        
-        // 初始更新连接线路径
-        this.updateConnectionPaths();
-        
-        this.connectionCount = this.svgPaths.length;
         document.getElementById('connections').textContent = this.connectionCount;
-        console.log(`✅ 创建了 ${this.connectionCount} 条SVG连接线`);
-      }
-      
-      updateConnectionPaths() {
-        for (let i = 0; i < this.anchorHelpers.length; i++) {
-          const helper = this.anchorHelpers[i];
-          const path = this.svgPaths[i];
-          
-          try {
-            // 强制重新计算辅助元素位置 - CSS Anchor核心优化
-            helper.bubble.style.transform = '';
-            helper.avatar.style.transform = '';
-            
-            // 强制重新布局
-            helper.bubble.offsetHeight;
-            helper.avatar.offsetHeight;
-            
-            // 获取锚点位置
-            const bubbleRect = helper.bubble.getBoundingClientRect();
-            const avatarRect = helper.avatar.getBoundingClientRect();
-            const containerRect = document.querySelector('.main-container').getBoundingClientRect();
-            
-            // 验证位置是否有效
-            if (bubbleRect.width === 0 || avatarRect.width === 0) {
-              console.warn(`连接线 ${i} 位置无效:`, { bubbleRect, avatarRect });
-              continue;
-            }
-            
-            // 转换为相对于容器的坐标
-            const bubbleX = bubbleRect.left - containerRect.left;
-            const bubbleY = bubbleRect.top - containerRect.top;
-            const avatarX = avatarRect.left - containerRect.left;
-            const avatarY = avatarRect.top - containerRect.top;
-            
-            // 调试日志 - 显示位置变化
-            if (i === 0) { // 只显示第一个连接线的位置
-              console.log(`🔍 连接线0位置: 气泡(${bubbleX.toFixed(1)}, ${bubbleY.toFixed(1)}) → 头像(${avatarX.toFixed(1)}, ${avatarY.toFixed(1)})`);
-            }
-            
-            // 生成L型圆角路径
-            const pathData = this.generateLShapePath(
-              bubbleX, bubbleY,
-              avatarX, avatarY,
-              helper.isSelf
-            );
-            
-            path.setAttribute('d', pathData);
-          } catch (error) {
-            console.warn(`更新连接线 ${i} 失败:`, error);
-          }
-        }
-      }
-      
-      generateLShapePath(bubbleX, bubbleY, avatarX, avatarY, isSelf) {
-        const cornerRadius = 3; // 圆角半径
-        const horizontalExtend = 5; // 水平延伸5px
-        
-        let startX, startY, endX, endY;
-        let firstCornerX, firstCornerY, secondCornerX, secondCornerY;
-        
-        if (isSelf) {
-          // 自己的消息：从气泡右侧开始，连接到账号头像左侧
-          startX = bubbleX;
-          startY = bubbleY;
-          endX = avatarX;
-          endY = avatarY;
-          
-          // 第一段：向右延伸5px
-          firstCornerX = startX + horizontalExtend;
-          firstCornerY = startY;
-          
-          // 第二段：垂直到头像高度
-          secondCornerX = firstCornerX;
-          secondCornerY = endY;
-          
-        } else {
-          // 他人的消息：从气泡左侧开始，连接到会话头像右侧
-          startX = bubbleX;
-          startY = bubbleY;
-          endX = avatarX;
-          endY = avatarY;
-          
-          // 第一段：向左延伸5px
-          firstCornerX = startX - horizontalExtend;
-          firstCornerY = startY;
-          
-          // 第二段：垂直到头像高度
-          secondCornerX = firstCornerX;
-          secondCornerY = endY;
-        }
-        
-        // 生成带圆角的SVG路径
-        const pathData = `
-          M ${startX} ${startY}
-          L ${firstCornerX - (isSelf ? cornerRadius : -cornerRadius)} ${firstCornerY}
-          Q ${firstCornerX} ${firstCornerY} ${firstCornerX} ${firstCornerY + (endY > startY ? cornerRadius : -cornerRadius)}
-          L ${secondCornerX} ${secondCornerY - (endY > startY ? cornerRadius : -cornerRadius)}
-          Q ${secondCornerX} ${secondCornerY} ${secondCornerX + (isSelf ? -cornerRadius : cornerRadius)} ${secondCornerY}
-          L ${endX} ${endY}
-        `.replace(/\s+/g, ' ').trim();
-        
-        return pathData;
+        console.log(`✅ 创建了 ${this.connectionCount} 个纯CSS连接线元素`);
       }
       
       setupEventListeners() {
         // 切换连接线显示
         document.getElementById('toggle-connections').addEventListener('click', () => {
           this.connectionsVisible = !this.connectionsVisible;
-          const svg = document.getElementById('svg-connections');
-          svg.style.display = this.connectionsVisible ? 'block' : 'none';
+          const container = document.getElementById('connection-container');
+          container.style.display = this.connectionsVisible ? 'block' : 'none';
           
           const btn = document.getElementById('toggle-connections');
           btn.textContent = this.connectionsVisible ? '隐藏连接线' : '显示连接线';
         });
         
-        // 刷新锚点 - 增强CSS Anchor调试
+        // 刷新锚点 - 纯CSS Anchor方式
         document.getElementById('refresh-anchors').addEventListener('click', () => {
-          console.log('🔧 手动刷新开始...');
+          console.log('🔧 手动刷新CSS Anchor...');
           
           if (typeof window.polyfillCSSAnchorPositioning === 'function') {
-            // 强制重新计算所有锚点
             window.polyfillCSSAnchorPositioning();
-            console.log('✅ Polyfill重新计算完成');
-            
-            // 多重延迟确保更新完成
-            setTimeout(() => {
-              this.updateConnectionPaths();
-              console.log('🔧 第一次连接线更新完成');
-            }, 100);
-            
-            setTimeout(() => {
-              this.updateConnectionPaths();
-              console.log('🔧 第二次连接线更新完成');
-            }, 300);
+            console.log('✅ CSS Anchor Polyfill重新计算完成');
           } else {
             console.warn('❌ Polyfill函数不可用');
           }
         });
         
-        // 重新生成
-        document.getElementById('regenerate').addEventListener('click', async () => {
-          await this.createSVGConnections();
-          console.log('🔄 重新生成连接线');
+        // 滚动测试
+        document.getElementById('test-scroll').addEventListener('click', () => {
+          const containers = document.querySelectorAll('.scroll-container');
+          containers[1].scrollTo({
+            top: containers[1].scrollTop + 100,
+            behavior: 'smooth'
+          });
+          console.log('🔄 测试滚动触发');
         });
         
-        // 滚动时自动更新连接线 - 优化CSS Anchor更新时序
+        // 滚动时让polyfill自动处理 - 不需要手动干预
         const containers = document.querySelectorAll('.scroll-container');
-        containers.forEach(container => {
+        containers.forEach((container, index) => {
           container.addEventListener('scroll', () => {
-            // 立即强制polyfill重新计算
-            if (typeof window.polyfillCSSAnchorPositioning === 'function') {
-              window.polyfillCSSAnchorPositioning();
-            }
+            console.log(`🔄 容器${index + 1}滚动 - CSS Anchor自动跟随`);
             
-            // 等待两帧确保CSS Anchor位置完全更新
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                this.updateConnectionPaths();
-                console.log('🔄 滚动触发连接线更新');
-              });
-            });
-          });
-          
-          // 额外的滚动结束事件处理
-          let scrollTimeout;
-          container.addEventListener('scroll', () => {
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => {
-              if (typeof window.polyfillCSSAnchorPositioning === 'function') {
+            // 只在需要时手动触发polyfill重新计算
+            if (typeof window.polyfillCSSAnchorPositioning === 'function') {
+              // 使用节流避免频繁调用
+              clearTimeout(container.scrollTimeout);
+              container.scrollTimeout = setTimeout(() => {
                 window.polyfillCSSAnchorPositioning();
-                requestAnimationFrame(() => {
-                  this.updateConnectionPaths();
-                  console.log('🔄 滚动结束连接线更新');
-                });
-              }
-            }, 50);
+              }, 16); // 60fps
+            }
           });
         });
-      }
-      
-      startRealTimeUpdate() {
-        // 禁用实时循环，改用事件驱动 - CSS Anchor优化
-        console.log('🔧 CSS Anchor事件驱动模式启用');
-        
-        // 备用的低频率更新（仅用于调试）
-        if (window.location.search.includes('debug')) {
-          const debugUpdateLoop = () => {
-            if (this.connectionsVisible) {
-              console.log('🔄 调试模式定期更新');
-              this.updateConnectionPaths();
-            }
-            setTimeout(debugUpdateLoop, 1000); // 1秒更新一次
-          };
-          debugUpdateLoop();
-        }
       }
       
       startPerformanceMonitoring() {
@@ -809,7 +690,7 @@
     
     // 启动应用
     document.addEventListener('DOMContentLoaded', () => {
-      new CSSAnchorSVGConnectionEngine();
+      new PureCSSAnchorConnectionEngine();
     });
   </script>
 </body>
