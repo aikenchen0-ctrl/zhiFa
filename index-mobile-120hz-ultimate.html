@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>📱 移动端120Hz极限性能测试</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    :root {
+      --glass-bg: rgba(255, 255, 255, 0.06);
+      --glass-border: rgba(255, 255, 255, 0.12);
+      --connection-width: 1.5px;
+      --corner-radius: 4px;
+      --avatar-size: 32px;
+      --bubble-padding: 4px 8px;
+    }
+    
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+      touch-action: none;
+      /* 强制硬件加速 */
+      transform: translate3d(0,0,0);
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      /* 优化渲染性能 */
+      will-change: transform;
+    }
+    
+    .glass {
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      /* 硬件加速 */
+      transform: translate3d(0,0,0);
+      -webkit-backface-visibility: hidden;
+    }
+    
+    /* 高性能横向容器布局 */
+    .horizontal-container-wrapper {
+      display: flex;
+      width: 100vw;
+      height: calc(100vh - 100px);
+      gap: 2px;
+      padding: 2px;
+      /* 硬件加速 */
+      transform: translate3d(0,0,0);
+      will-change: transform;
+    }
+    
+    .mobile-container {
+      flex: 1;
+      height: 100%;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 6px;
+      position: relative;
+      min-width: 0;
+      /* 滚动优化 */
+      scroll-behavior: auto; /* 禁用平滑滚动以提升性能 */
+      /* 硬件加速 */
+      transform: translate3d(0,0,0);
+      will-change: scroll-position, transform;
+      -webkit-backface-visibility: hidden;
+    }
+    
+    .scroll-content {
+      padding: 4px;
+      /* 硬件加速 */
+      transform: translate3d(0,0,0);
+    }
+    
+    /* 超轻量化元素样式 */
+    .chat-avatar, .account-avatar {
+      width: var(--avatar-size);
+      height: var(--avatar-size);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      margin: 4px auto;
+      font-size: 10px;
+      position: relative;
+      flex-shrink: 0;
+      /* 性能优化 */
+      transform: translate3d(0,0,0);
+      -webkit-backface-visibility: hidden;
+    }
+    
+    .message-bubble {
+      max-width: calc(100% - 16px);
+      padding: var(--bubble-padding);
+      border-radius: 6px;
+      color: white;
+      margin: 4px auto;
+      font-size: 10px;
+      line-height: 1.2;
+      position: relative;
+      flex-shrink: 0;
+      word-break: break-word;
+      /* 性能优化 */
+      transform: translate3d(0,0,0);
+      -webkit-backface-visibility: hidden;
+    }
+    
+    .bubble-other {
+      background: rgba(156, 163, 175, 0.2);
+      border: 1px solid rgba(156, 163, 175, 0.3);
+      margin-left: 6px;
+      margin-right: auto;
+    }
+    
+    .bubble-self {
+      background: rgba(59, 130, 246, 0.2);
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      margin-right: 6px;
+      margin-left: auto;
+    }
+    
+    /* 高性能Canvas - 120Hz优化 */
+    #performanceCanvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 100;
+      /* 关键优化：强制GPU渲染 */
+      transform: translate3d(0,0,0);
+      will-change: transform;
+      -webkit-backface-visibility: hidden;
+      backface-visibility: hidden;
+      /* 120Hz优化 */
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: optimize-contrast;
+    }
+    
+    /* 性能监控面板 - 120Hz专用 */
+    .perf-monitor {
+      position: fixed;
+      top: 2px;
+      right: 2px;
+      background: rgba(0, 0, 0, 0.95);
+      color: #00ff00;
+      padding: 3px 5px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 8px;
+      z-index: 1000;
+      max-width: 110px;
+      line-height: 1.1;
+      /* 性能优化 */
+      transform: translate3d(0,0,0);
+      -webkit-backface-visibility: hidden;
+    }
+    
+    .perf-value {
+      color: #ffff00;
+      font-weight: bold;
+    }
+    
+    .perf-warning {
+      color: #ff6666;
+      font-weight: bold;
+    }
+    
+    .perf-excellent {
+      color: #00ff88;
+      font-weight: bold;
+    }
+    
+    /* 控制面板 */
+    .control-panel {
+      position: fixed;
+      bottom: 2px;
+      left: 50%;
+      transform: translate3d(-50%, 0, 0);
+      z-index: 1000;
+      display: flex;
+      gap: 3px;
+      flex-wrap: nowrap;
+      justify-content: center;
+      max-width: 95vw;
+      overflow-x: auto;
+      /* 性能优化 */
+      -webkit-backface-visibility: hidden;
+    }
+    
+    .control-btn {
+      padding: 5px 7px;
+      border-radius: 3px;
+      font-size: 8px;
+      font-weight: bold;
+      color: white;
+      border: none;
+      cursor: pointer;
+      transition: none; /* 禁用动画提升性能 */
+      min-width: 45px;
+      text-align: center;
+      flex-shrink: 0;
+      white-space: nowrap;
+      /* 性能优化 */
+      transform: translate3d(0,0,0);
+      -webkit-backface-visibility: hidden;
+    }
+    
+    /* 加载状态 */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      color: white;
+      transform: translate3d(0,0,0);
+    }
+    
+    .loading-progress {
+      width: 80%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+      margin: 15px 0;
+      overflow: hidden;
+    }
+    
+    .loading-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      width: 0%;
+      transition: width 0.2s;
+    }
+    
+    /* 容器标题 */
+    .container-title {
+      position: sticky;
+      top: 0;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      text-align: center;
+      padding: 2px;
+      font-size: 9px;
+      font-weight: bold;
+      z-index: 10;
+      /* 性能优化 */
+      transform: translate3d(0,0,0);
+      -webkit-backface-visibility: hidden;
+    }
+    
+    /* 标题区域 */
+    .title-section {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 1000;
+      padding: 6px;
+      text-align: center;
+      /* 性能优化 */
+      transform: translate3d(0,0,0);
+      -webkit-backface-visibility: hidden;
+    }
+    
+    .title-section h1 {
+      font-size: 12px;
+      font-weight: bold;
+      color: white;
+      margin: 0 0 2px 0;
+    }
+    
+    .title-section p {
+      font-size: 9px;
+      color: rgba(255, 255, 255, 0.8);
+      margin: 0;
+    }
+    
+    /* 主容器区域 */
+    .main-container {
+      margin-top: 50px;
+      margin-bottom: 35px;
+      height: calc(100vh - 85px);
+    }
+    
+    /* 调试模式简化 */
+    .debug-mode .chat-avatar,
+    .debug-mode .account-avatar { 
+      outline: 1px solid rgba(0, 255, 0, 0.6);
+    }
+    
+    .debug-mode .message-bubble { 
+      outline: 1px solid rgba(255, 0, 0, 0.6);
+    }
+    
+    /* 滚动条极简化 */
+    .mobile-container::-webkit-scrollbar {
+      width: 1px;
+    }
+    
+    .mobile-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .mobile-container::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 1px;
+    }
+  </style>
+</head>
+<body>
+  
+  <!-- 加载遮罩 -->
+  <div id="loadingOverlay" class="loading-overlay">
+    <div style="font-size: 20px; margin-bottom: 8px;">🚀</div>
+    <div style="font-size: 14px;">120Hz极限优化中...</div>
+    <div class="loading-progress">
+      <div id="loadingBar" class="loading-bar"></div>
+    </div>
+    <div id="loadingText" style="font-size: 12px;">初始化中...</div>
+  </div>
+  
+  <!-- 性能监控面板 - 120Hz专用 -->
+  <div id="perfMonitor" class="perf-monitor">
+    <div>📱 120Hz测试</div>
+    <div>FPS: <span id="fps" class="perf-value">--</span></div>
+    <div>帧时: <span id="frameTime" class="perf-value">--</span>ms</div>
+    <div>连接: <span id="connectionCount" class="perf-value">0</span></div>
+    <div>GPU: <span id="gpuStatus" class="perf-value">检测中</span></div>
+    <div>刷新率: <span id="refreshRate" class="perf-value">--</span>Hz</div>
+    <div>状态: <span id="systemStatus" class="perf-value">准备中</span></div>
+  </div>
+
+  <!-- 标题区域 -->
+  <div class="title-section">
+    <h1>📱 120Hz极限性能测试</h1>
+    <p>1000连接线 | GPU加速 | 智能裁剪</p>
+  </div>
+
+  <!-- 主容器区域 -->
+  <div class="main-container">
+    <div class="horizontal-container-wrapper">
+      
+      <!-- 容器1：会话头像 -->
+      <div class="glass mobile-container" id="chatAvatarContainer">
+        <div class="container-title">💬 会话</div>
+        <div class="scroll-content" id="chatAvatarContent"></div>
+      </div>
+
+      <!-- 容器2：消息气泡 -->
+      <div class="glass mobile-container" id="messageBubbleContainer">
+        <div class="container-title">💭 消息</div>
+        <div class="scroll-content" id="messageBubbleContent"></div>
+      </div>
+
+      <!-- 容器3：账号头像 -->
+      <div class="glass mobile-container" id="accountAvatarContainer">
+        <div class="container-title">👤 账号</div>
+        <div class="scroll-content" id="accountAvatarContent"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 控制面板 -->
+  <div class="control-panel">
+    <button id="toggleRender" class="control-btn" style="background: #ef4444;">
+      ⏸️ 暂停
+    </button>
+    <button id="toggleDebug" class="control-btn" style="background: #6b7280;">
+      🔍 调试
+    </button>
+    <button id="optimizeMode" class="control-btn" style="background: #10b981;">
+      ⚡ GPU
+    </button>
+    <button id="autoScroll" class="control-btn" style="background: #8b5cf6;">
+      📜 滚动
+    </button>
+    <button id="resetTest" class="control-btn" style="background: #3b82f6;">
+      🔄 重置
+    </button>
+    <button id="stressTest" class="control-btn" style="background: #f59e0b;">
+      🔥 压力
+    </button>
+  </div>
+
+  <!-- 120Hz优化Canvas -->
+  <canvas id="performanceCanvas"></canvas>
+  
+  <script>
+    // 120Hz高性能连接引擎
+    class Ultra120HzConnectionEngine {
+      constructor() {
+        this.canvas = null;
+        this.ctx = null;
+        this.connections = [];
+        this.enabled = true;
+        this.debugMode = false;
+        this.gpuOptimized = true;
+        this.animationId = null;
+        
+        // 120Hz优化参数
+        this.targetFPS = 120;
+        this.frameInterval = 1000 / this.targetFPS; // 8.33ms per frame
+        this.lastFrameTime = 0;
+        this.frameCounter = 0;
+        this.visibilityThreshold = 30;
+        
+        // 缓存优化
+        this.cachedElements = new Map();
+        this.elementPool = [];
+        this.lastPositions = new Map();
+        
+        // GPU检测
+        this.gpuSupported = false;
+        this.refreshRate = this.detectRefreshRate();
+        
+        this.init();
+      }
+      
+      async init() {
+        this.canvas = document.getElementById('performanceCanvas');
+        if (!this.canvas) return;
+        
+        // 高性能Canvas上下文
+        const contextOptions = {
+          alpha: true,
+          desynchronized: true,
+          powerPreference: 'high-performance',
+          antialias: false, // 禁用抗锯齿提升性能
+          preserveDrawingBuffer: false
+        };
+        
+        this.ctx = this.canvas.getContext('2d', contextOptions);
+        
+        // GPU特性检测
+        this.detectGPUFeatures();
+        
+        this.resizeCanvas();
+        
+        window.addEventListener('resize', () => {
+          this.resizeCanvas();
+        });
+        
+        this.log('✅ 120Hz连接引擎初始化完成');
+        document.getElementById('refreshRate').textContent = this.refreshRate;
+      }
+      
+      detectRefreshRate() {
+        // 检测设备刷新率
+        let refreshRate = 60; // 默认值
+        
+        if (screen && screen.frequency) {
+          refreshRate = screen.frequency;
+        } else if (window.screen && window.screen.refreshRate) {
+          refreshRate = window.screen.refreshRate;
+        } else {
+          // 通过requestAnimationFrame检测
+          const start = performance.now();
+          let frameCount = 0;
+          
+          const detect = (timestamp) => {
+            frameCount++;
+            if (timestamp - start < 1000) {
+              requestAnimationFrame(detect);
+            } else {
+              refreshRate = Math.round(frameCount);
+            }
+          };
+          
+          requestAnimationFrame(detect);
+        }
+        
+        // 常见刷新率适配
+        if (refreshRate > 110) refreshRate = 120;
+        else if (refreshRate > 80) refreshRate = 90;
+        else refreshRate = 60;
+        
+        return refreshRate;
+      }
+      
+      detectGPUFeatures() {
+        // 检测WebGL支持
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+        
+        if (gl) {
+          this.gpuSupported = true;
+          const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+          if (debugInfo) {
+            const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+            document.getElementById('gpuStatus').textContent = 'WebGL';
+          } else {
+            document.getElementById('gpuStatus').textContent = '已启用';
+          }
+        } else {
+          document.getElementById('gpuStatus').textContent = '软件渲染';
+          document.getElementById('gpuStatus').className = 'perf-warning';
+        }
+      }
+      
+      resizeCanvas() {
+        const dpr = Math.min(window.devicePixelRatio || 1, 2); // 限制DPR避免过度渲染
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        this.canvas.width = width * dpr;
+        this.canvas.height = height * dpr;
+        this.canvas.style.width = width + 'px';
+        this.canvas.style.height = height + 'px';
+        
+        this.ctx.scale(dpr, dpr);
+        
+        // 优化Canvas渲染设置
+        this.ctx.imageSmoothingEnabled = false; // 禁用图像平滑
+        this.ctx.lineCap = 'butt'; // 使用最快的线条端点
+        this.ctx.lineJoin = 'miter';
+      }
+      
+      createConnections(count) {
+        this.connections = [];
+        this.cachedElements.clear();
+        
+        // 批量查询DOM元素并缓存
+        const chatAvatars = [];
+        const bubbles = [];
+        const accountAvatars = [];
+        
+        for (let i = 0; i < count; i++) {
+          chatAvatars[i] = document.querySelector(`[data-connection="chat-avatar-${i}"]`);
+          bubbles[i] = document.querySelector(`[data-connection="bubble-${i}"]`);
+          accountAvatars[i] = document.querySelector(`[data-connection="account-avatar-${i}"]`);
+        }
+        
+        // 创建连接对象
+        for (let i = 0; i < count; i++) {
+          if (chatAvatars[i] && bubbles[i] && accountAvatars[i]) {
+            const connection = {
+              id: i,
+              chatAvatar: chatAvatars[i],
+              bubble: bubbles[i],
+              accountAvatar: accountAvatars[i],
+              type: i % 3 === 2 ? 'self' : 'other',
+              color: this.getConnectionColor(i),
+              lastVisible: true,
+              cached: false
+            };
+            
+            this.connections.push(connection);
+            this.cachedElements.set(`connection-${i}`, connection);
+          }
+        }
+        
+        document.getElementById('connectionCount').textContent = this.connections.length;
+        this.log(`🔗 创建了 ${this.connections.length} 个120Hz连接`);
+      }
+      
+      getConnectionColor(index) {
+        // 使用预计算的颜色以提升性能
+        const hue = (index * 37) % 360; // 更快的分布算法
+        return `hsl(${hue}, 60%, 55%)`;
+      }
+      
+      startRendering() {
+        const render = (currentTime) => {
+          if (!this.enabled) return;
+          
+          // 120Hz帧率控制
+          if (currentTime - this.lastFrameTime >= this.frameInterval) {
+            
+            // 清除画布
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            // 智能渲染
+            if (this.gpuOptimized) {
+              this.drawVisibleConnectionsOptimized();
+            } else {
+              this.drawVisibleConnections();
+            }
+            
+            this.lastFrameTime = currentTime;
+          }
+          
+          this.animationId = requestAnimationFrame(render);
+        };
+        
+        this.animationId = requestAnimationFrame(render);
+      }
+      
+      drawVisibleConnectionsOptimized() {
+        const viewportHeight = window.innerHeight;
+        let visibleCount = 0;
+        
+        // 批量处理可见性检测
+        const visibleConnections = [];
+        
+        for (let i = 0; i < this.connections.length; i++) {
+          const connection = this.connections[i];
+          
+          if (this.isConnectionVisibleFast(connection, viewportHeight)) {
+            visibleConnections.push(connection);
+            visibleCount++;
+          }
+        }
+        
+        // 批量绘制连接线
+        this.batchDrawConnections(visibleConnections);
+        
+        document.getElementById('connectionCount').textContent = `${visibleCount}/${this.connections.length}`;
+      }
+      
+      drawVisibleConnections() {
+        this.connections.forEach(connection => {
+          this.drawOptimizedConnection(connection);
+        });
+      }
+      
+      isConnectionVisibleFast(connection, viewportHeight) {
+        // 快速可见性检测 - 只检查气泡位置
+        const bubbleRect = connection.bubble.getBoundingClientRect();
+        const threshold = this.visibilityThreshold;
+        
+        return bubbleRect.top < viewportHeight + threshold && 
+               bubbleRect.bottom > -threshold;
+      }
+      
+      batchDrawConnections(connections) {
+        // 批量绘制优化
+        this.ctx.lineWidth = 1.5;
+        this.ctx.lineCap = 'butt';
+        
+        for (let i = 0; i < connections.length; i++) {
+          this.drawOptimizedConnection(connections[i]);
+        }
+      }
+      
+      drawOptimizedConnection(connection) {
+        // 获取位置信息
+        const bubbleRect = connection.bubble.getBoundingClientRect();
+        const chatRect = connection.chatAvatar.getBoundingClientRect();
+        const accountRect = connection.accountAvatar.getBoundingClientRect();
+        
+        if (!bubbleRect.width || !chatRect.width || !accountRect.width) return;
+        
+        // 位置缓存检查
+        const posKey = `${connection.id}`;
+        const currentPos = {
+          bx: bubbleRect.left, by: bubbleRect.top,
+          cx: chatRect.left, cy: chatRect.top,
+          ax: accountRect.left, ay: accountRect.top
+        };
+        
+        const lastPos = this.lastPositions.get(posKey);
+        if (lastPos && this.positionsEqual(currentPos, lastPos)) {
+          return; // 位置未变化，跳过绘制
+        }
+        
+        this.lastPositions.set(posKey, currentPos);
+        
+        // 超高性能绘制
+        const bubbleCenterY = bubbleRect.top + bubbleRect.height * 0.5;
+        const chatCenterY = chatRect.top + chatRect.height * 0.5;
+        const accountCenterY = accountRect.top + accountRect.height * 0.5;
+        
+        this.ctx.strokeStyle = connection.color;
+        this.ctx.beginPath();
+        
+        // 连接线1: 会话头像 → 消息气泡
+        this.drawFastPath(
+          chatRect.right, chatCenterY,
+          bubbleRect.left, bubbleCenterY
+        );
+        
+        // 连接线2: 消息气泡 → 账号头像  
+        this.drawFastPath(
+          bubbleRect.right, bubbleCenterY,
+          accountRect.left, accountCenterY
+        );
+        
+        this.ctx.stroke();
+      }
+      
+      drawFastPath(startX, startY, endX, endY) {
+        // 超快速路径绘制 - 最小化操作
+        const midX = startX + 4; // 固定延伸距离
+        
+        this.ctx.moveTo(startX, startY);
+        this.ctx.lineTo(midX, startY);
+        this.ctx.lineTo(midX, endY);
+        this.ctx.lineTo(endX, endY);
+      }
+      
+      positionsEqual(pos1, pos2) {
+        const threshold = 1; // 1px容差
+        return Math.abs(pos1.bx - pos2.bx) < threshold &&
+               Math.abs(pos1.by - pos2.by) < threshold &&
+               Math.abs(pos1.cx - pos2.cx) < threshold &&
+               Math.abs(pos1.cy - pos2.cy) < threshold &&
+               Math.abs(pos1.ax - pos2.ax) < threshold &&
+               Math.abs(pos1.ay - pos2.ay) < threshold;
+      }
+      
+      toggle() {
+        this.enabled = !this.enabled;
+        
+        if (!this.enabled) {
+          if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+          }
+          this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+          document.getElementById('systemStatus').textContent = '暂停';
+          document.getElementById('systemStatus').className = 'perf-warning';
+        } else {
+          this.startRendering();
+          document.getElementById('systemStatus').textContent = '120Hz';
+          document.getElementById('systemStatus').className = 'perf-excellent';
+        }
+        
+        this.log(`🎨 120Hz渲染: ${this.enabled ? '启用' : '暂停'}`);
+      }
+      
+      setGPUMode(enabled) {
+        this.gpuOptimized = enabled;
+        this.log(`⚡ GPU优化: ${enabled ? '启用' : '禁用'}`);
+      }
+      
+      setDebugMode(enabled) {
+        this.debugMode = enabled;
+        document.body.classList.toggle('debug-mode', enabled);
+        this.log(`🔍 调试模式: ${enabled ? '启用' : '禁用'}`);
+      }
+      
+      log(message) {
+        console.log(`[120Hz引擎] ${message}`);
+      }
+    }
+    
+    // 120Hz专用性能监控器
+    class Ultra120HzMonitor {
+      constructor() {
+        this.frameCount = 0;
+        this.lastTime = performance.now();
+        this.fps = 0;
+        this.frameTime = 0;
+        
+        // 120Hz专用指标
+        this.targetFPS = 120;
+        this.frameTimes = [];
+        this.maxSamples = 60; // 0.5秒的样本
+        
+        this.updateInterval = setInterval(() => {
+          this.updateMemoryUsage();
+        }, 1000);
+      }
+      
+      update() {
+        const now = performance.now();
+        this.frameCount++;
+        
+        // 记录帧时间
+        if (this.frameCount > 1) {
+          const frameTime = now - this.lastTime;
+          this.frameTimes.push(frameTime);
+          
+          if (this.frameTimes.length > this.maxSamples) {
+            this.frameTimes.shift();
+          }
+        }
+        
+        if (now - this.lastTime >= 1000 || this.frameCount >= this.targetFPS) {
+          // 计算FPS
+          this.fps = Math.round(this.frameCount * 1000 / (now - this.lastTime));
+          
+          // 计算平均帧时间
+          if (this.frameTimes.length > 0) {
+            const avgFrameTime = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
+            this.frameTime = Math.round(avgFrameTime * 100) / 100;
+          }
+          
+          // 更新显示
+          document.getElementById('fps').textContent = this.fps;
+          document.getElementById('frameTime').textContent = this.frameTime;
+          
+          // FPS颜色指示
+          const fpsElement = document.getElementById('fps');
+          if (this.fps >= 110) {
+            fpsElement.className = 'perf-excellent';
+          } else if (this.fps >= 90) {
+            fpsElement.className = 'perf-value';
+          } else {
+            fpsElement.className = 'perf-warning';
+          }
+          
+          // 帧时间颜色指示
+          const frameTimeElement = document.getElementById('frameTime');
+          if (this.frameTime <= 8.5) { // 8.33ms是120fps的目标
+            frameTimeElement.className = 'perf-excellent';
+          } else if (this.frameTime <= 11) {
+            frameTimeElement.className = 'perf-value';
+          } else {
+            frameTimeElement.className = 'perf-warning';
+          }
+          
+          this.frameCount = 0;
+          this.lastTime = now;
+        }
+      }
+      
+      updateMemoryUsage() {
+        if (performance.memory) {
+          const used = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+          // 内存显示已移除以简化界面
+        }
+      }
+    }
+    
+    // 120Hz主应用
+    class Ultra120HzApp {
+      constructor() {
+        this.connectionEngine = new Ultra120HzConnectionEngine();
+        this.perfMonitor = new Ultra120HzMonitor();
+        this.elementsGenerated = false;
+        this.autoScrollInterval = null;
+        this.stressTestInterval = null;
+        
+        this.setupEventListeners();
+        this.generateElements();
+      }
+      
+      setupEventListeners() {
+        // 渲染控制
+        document.getElementById('toggleRender').addEventListener('click', () => {
+          this.connectionEngine.toggle();
+          this.updateRenderButton();
+        });
+        
+        // 调试模式
+        document.getElementById('toggleDebug').addEventListener('click', () => {
+          const enabled = document.body.classList.contains('debug-mode');
+          this.connectionEngine.setDebugMode(!enabled);
+          this.updateDebugButton();
+        });
+        
+        // GPU优化
+        document.getElementById('optimizeMode').addEventListener('click', () => {
+          this.toggleGPUMode();
+        });
+        
+        // 自动滚动
+        document.getElementById('autoScroll').addEventListener('click', () => {
+          this.toggleAutoScroll();
+        });
+        
+        // 重置测试
+        document.getElementById('resetTest').addEventListener('click', () => {
+          this.resetTest();
+        });
+        
+        // 压力测试
+        document.getElementById('stressTest').addEventListener('click', () => {
+          this.toggleStressTest();
+        });
+      }
+      
+      async generateElements() {
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingBar = document.getElementById('loadingBar');
+        const loadingText = document.getElementById('loadingText');
+        
+        const count = 1000;
+        const batchSize = 100; // 更大的批次以提升生成速度
+        
+        for (let batch = 0; batch < count / batchSize; batch++) {
+          const start = batch * batchSize;
+          const end = Math.min(start + batchSize, count);
+          
+          const progress = (end / count) * 100;
+          loadingBar.style.width = progress + '%';
+          loadingText.textContent = `120Hz优化 ${end}/${count}`;
+          
+          await this.generateBatchOptimized(start, end);
+          await new Promise(resolve => setTimeout(resolve, 5));
+        }
+        
+        this.setContainerHeights(count);
+        
+        loadingText.textContent = '创建120Hz连接线...';
+        await new Promise(resolve => setTimeout(resolve, 50));
+        this.connectionEngine.createConnections(count);
+        
+        this.connectionEngine.startRendering();
+        this.startPerformanceMonitoring();
+        
+        loadingOverlay.style.opacity = '0';
+        setTimeout(() => {
+          loadingOverlay.style.display = 'none';
+        }, 200);
+        
+        document.getElementById('systemStatus').textContent = '120Hz';
+        document.getElementById('systemStatus').className = 'perf-excellent';
+        this.elementsGenerated = true;
+        
+        console.log('🚀 120Hz优化版本生成完成');
+      }
+      
+      async generateBatchOptimized(start, end) {
+        const chatContainer = document.getElementById('chatAvatarContent');
+        const bubbleContainer = document.getElementById('messageBubbleContent');
+        const accountContainer = document.getElementById('accountAvatarContent');
+        
+        // 使用文档片段优化DOM操作
+        const chatFragment = document.createDocumentFragment();
+        const bubbleFragment = document.createDocumentFragment();
+        const accountFragment = document.createDocumentFragment();
+        
+        for (let i = start; i < end; i++) {
+          // 会话头像
+          const chatAvatar = document.createElement('div');
+          chatAvatar.className = 'chat-avatar';
+          chatAvatar.style.background = `hsl(${(i * 37) % 360}, 60%, 50%)`;
+          chatAvatar.setAttribute('data-connection', `chat-avatar-${i}`);
+          chatAvatar.textContent = String.fromCharCode(65 + (i % 26));
+          chatFragment.appendChild(chatAvatar);
+          
+          // 消息气泡
+          const bubble = document.createElement('div');
+          const isSelf = i % 3 === 2;
+          bubble.className = `message-bubble ${isSelf ? 'bubble-self' : 'bubble-other'}`;
+          bubble.setAttribute('data-connection', `bubble-${i}`);
+          bubble.textContent = `${i + 1}`;
+          bubbleFragment.appendChild(bubble);
+          
+          // 账号头像
+          const accountAvatar = document.createElement('div');
+          accountAvatar.className = 'account-avatar';
+          accountAvatar.style.background = `hsl(${(i * 37 + 30) % 360}, 60%, 45%)`;
+          accountAvatar.setAttribute('data-connection', `account-avatar-${i}`);
+          accountAvatar.textContent = String.fromCharCode(65 + (i % 26));
+          accountFragment.appendChild(accountAvatar);
+        }
+        
+        // 批量插入DOM
+        chatContainer.appendChild(chatFragment);
+        bubbleContainer.appendChild(bubbleFragment);
+        accountContainer.appendChild(accountFragment);
+      }
+      
+      setContainerHeights(count) {
+        const elementHeight = 40; // 32px + 8px margin
+        
+        document.getElementById('chatAvatarContent').style.height = (count * elementHeight) + 'px';
+        document.getElementById('messageBubbleContent').style.height = (count * elementHeight) + 'px';
+        document.getElementById('accountAvatarContent').style.height = (count * elementHeight) + 'px';
+      }
+      
+      updateRenderButton() {
+        const btn = document.getElementById('toggleRender');
+        const enabled = this.connectionEngine.enabled;
+        
+        btn.textContent = enabled ? '⏸️ 暂停' : '▶️ 继续';
+        btn.style.background = enabled ? '#ef4444' : '#10b981';
+      }
+      
+      updateDebugButton() {
+        const btn = document.getElementById('toggleDebug');
+        const enabled = document.body.classList.contains('debug-mode');
+        
+        btn.textContent = enabled ? '🔍 ON' : '🔍 OFF';
+        btn.style.background = enabled ? '#3b82f6' : '#6b7280';
+      }
+      
+      toggleGPUMode() {
+        const btn = document.getElementById('optimizeMode');
+        const enabled = this.connectionEngine.gpuOptimized;
+        
+        this.connectionEngine.setGPUMode(!enabled);
+        
+        btn.textContent = !enabled ? '⚡ ON' : '⚡ OFF';
+        btn.style.background = !enabled ? '#10b981' : '#f59e0b';
+      }
+      
+      toggleAutoScroll() {
+        if (this.autoScrollInterval) {
+          clearInterval(this.autoScrollInterval);
+          this.autoScrollInterval = null;
+          
+          document.getElementById('autoScroll').textContent = '📜 滚动';
+          document.getElementById('autoScroll').style.background = '#8b5cf6';
+          return;
+        }
+        
+        document.getElementById('autoScroll').textContent = '⏸️ 停止';
+        document.getElementById('autoScroll').style.background = '#ef4444';
+        
+        const containers = ['chatAvatarContainer', 'messageBubbleContainer', 'accountAvatarContainer'];
+        let currentContainer = 0;
+        let direction = 1;
+        
+        this.autoScrollInterval = setInterval(() => {
+          const container = document.getElementById(containers[currentContainer]);
+          const currentScroll = container.scrollTop;
+          const maxScroll = container.scrollHeight - container.clientHeight;
+          
+          if (currentScroll >= maxScroll && direction > 0) {
+            direction = -1;
+          } else if (currentScroll <= 0 && direction < 0) {
+            direction = 1;
+            currentContainer = (currentContainer + 1) % containers.length;
+          }
+          
+          container.scrollTop += direction * 4; // 稍快的滚动
+        }, 16); // 60fps滚动
+      }
+      
+      toggleStressTest() {
+        if (this.stressTestInterval) {
+          clearInterval(this.stressTestInterval);
+          this.stressTestInterval = null;
+          
+          document.getElementById('stressTest').textContent = '🔥 压力';
+          document.getElementById('stressTest').style.background = '#f59e0b';
+          return;
+        }
+        
+        document.getElementById('stressTest').textContent = '⏸️ 停止';
+        document.getElementById('stressTest').style.background = '#ef4444';
+        
+        const containers = ['chatAvatarContainer', 'messageBubbleContainer', 'accountAvatarContainer'];
+        
+        this.stressTestInterval = setInterval(() => {
+          containers.forEach(containerId => {
+            const container = document.getElementById(containerId);
+            const randomScroll = Math.random() * (container.scrollHeight - container.clientHeight);
+            container.scrollTop = randomScroll;
+          });
+        }, 8); // 125fps 极限压力测试
+      }
+      
+      resetTest() {
+        // 停止所有测试
+        if (this.autoScrollInterval) {
+          clearInterval(this.autoScrollInterval);
+          this.autoScrollInterval = null;
+          document.getElementById('autoScroll').textContent = '📜 滚动';
+          document.getElementById('autoScroll').style.background = '#8b5cf6';
+        }
+        
+        if (this.stressTestInterval) {
+          clearInterval(this.stressTestInterval);
+          this.stressTestInterval = null;
+          document.getElementById('stressTest').textContent = '🔥 压力';
+          document.getElementById('stressTest').style.background = '#f59e0b';
+        }
+        
+        // 重置滚动位置
+        ['chatAvatarContainer', 'messageBubbleContainer', 'accountAvatarContainer'].forEach(id => {
+          document.getElementById(id).scrollTop = 0;
+        });
+        
+        // 清除缓存
+        this.connectionEngine.lastPositions.clear();
+        
+        console.log('🔄 120Hz测试已重置');
+      }
+      
+      startPerformanceMonitoring() {
+        const monitor = () => {
+          this.perfMonitor.update();
+          requestAnimationFrame(monitor);
+        };
+        monitor();
+      }
+    }
+    
+    // 启动120Hz应用
+    document.addEventListener('DOMContentLoaded', () => {
+      const app = new Ultra120HzApp();
+      
+      // 120Hz专用事件优化
+      document.addEventListener('gesturestart', e => e.preventDefault());
+      document.addEventListener('gesturechange', e => e.preventDefault());
+      document.addEventListener('gestureend', e => e.preventDefault());
+      
+      // 优化触摸事件
+      document.addEventListener('touchmove', e => {
+        if (!e.target.closest('.mobile-container')) {
+          e.preventDefault();
+        }
+      }, { passive: false });
+      
+      // 强制垃圾回收优化
+      if (window.gc) {
+        setInterval(() => {
+          window.gc();
+        }, 10000);
+      }
+    });
+    
+  </script>
+  
+</body>
+</html>
