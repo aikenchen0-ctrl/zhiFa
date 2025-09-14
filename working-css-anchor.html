@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可工作的CSS Anchor连接线系统</title>
+    
+    <!-- CSS Anchor Positioning Polyfill -->
+    <script type="module">
+        if (!CSS.supports('anchor-name', '--test')) {
+            console.log('📦 Loading CSS Anchor Positioning polyfill...');
+            import('https://unpkg.com/@oddbird/css-anchor-positioning')
+                .then(() => {
+                    console.log('✅ Polyfill loaded successfully');
+                    window.anchorReady = true;
+                })
+                .catch(err => {
+                    console.error('❌ Polyfill failed to load:', err);
+                    window.anchorReady = false;
+                });
+        } else {
+            console.log('✅ Native CSS Anchor Positioning supported');
+            window.anchorReady = true;
+        }
+    </script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        /* 主布局：三个垂直滚动容器 */
+        .main-layout {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .conv-container {
+            width: 80px;
+            background: #ffffff;
+            border-right: 1px solid #e4e6ea;
+            overflow-y: auto;
+            padding: 10px 8px;
+        }
+        
+        .msg-container {
+            flex: 1;
+            background: #ffffff;
+            border-right: 1px solid #e4e6ea;
+            overflow-y: auto;
+            padding: 10px 15px;
+        }
+        
+        .acc-container {
+            width: 80px;
+            background: #ffffff;
+            overflow-y: auto;
+            padding: 10px 8px;
+        }
+        
+        /* 连接线覆盖层 */
+        .connection-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            background: rgba(0, 255, 0, 0.02); /* 调试背景 */
+        }
+        
+        /* 锚点元素样式 */
+        .conv-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        .msg-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            margin-bottom: 15px;
+            border-radius: 18px;
+            position: relative;
+        }
+        
+        .msg-bubble.self {
+            background: #0084ff;
+            color: white;
+            margin-left: auto;
+        }
+        
+        .msg-bubble.other {
+            background: #f1f3f5;
+            color: #000;
+        }
+        
+        .acc-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+        }
+        
+        /* 简化的连接线 - 先让基础功能工作 */
+        .simple-connection {
+            position: absolute;
+            height: 4px;
+            background: #ff0000; /* 醒目的红色 */
+            border-radius: 2px;
+            z-index: 50;
+        }
+        
+        /* 控制面板 */
+        .controls {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 9999;
+            max-width: 250px;
+        }
+        
+        .controls h4 {
+            margin-bottom: 10px;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .controls button {
+            margin: 3px;
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            background: #0084ff;
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .controls button:hover {
+            background: #0066cc;
+        }
+        
+        .controls .status {
+            margin-top: 10px;
+            font-size: 11px;
+            color: #666;
+        }
+        
+        .controls .debug-output {
+            margin-top: 10px;
+            font-size: 10px;
+            color: #999;
+            max-height: 150px;
+            overflow-y: auto;
+            background: #f5f5f5;
+            padding: 5px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h4>🔧 CSS Anchor调试系统</h4>
+        <button onclick="initSystem()">🚀 初始化</button>
+        <button onclick="createElement(5)">📊 生成5个测试</button>
+        <button onclick="createElement(20)">📈 生成20个</button>
+        <button onclick="debugAnchors()">🔍 调试锚点</button>
+        <button onclick="testConnections()">⚡ 测试连接线</button>
+        <button onclick="clearDebug()">🧹 清除日志</button>
+        
+        <div class="status" id="statusDisplay">准备初始化...</div>
+        <div class="debug-output" id="debugOutput"></div>
+    </div>
+    
+    <div class="main-layout">
+        <!-- 会话头像容器 -->
+        <div class="conv-container" id="convContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- 消息气泡容器 -->
+        <div class="msg-container" id="msgContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- 账号头像容器 -->
+        <div class="acc-container" id="accContainer">
+            <!-- 动态生成 -->
+        </div>
+        
+        <!-- 连接线覆盖层 -->
+        <div class="connection-overlay" id="connectionOverlay">
+            <!-- 动态生成连接线 -->
+        </div>
+    </div>
+
+    <script>
+        // ========== 系统状态 ==========
+        const SystemState = {
+            ready: false,
+            elementCount: 0,
+            debugMode: true
+        };
+        
+        // ========== 调试日志系统 ==========
+        function log(message, data = null) {
+            const time = new Date().toLocaleTimeString();
+            const logMessage = `[${time}] ${message}`;
+            console.log(logMessage, data || '');
+            
+            const debugDiv = document.getElementById('debugOutput');
+            debugDiv.innerHTML += `<div>${logMessage}</div>`;
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+        }
+        
+        function updateStatus(message) {
+            document.getElementById('statusDisplay').textContent = message;
+            log(`STATUS: ${message}`);
+        }
+        
+        function clearDebug() {
+            document.getElementById('debugOutput').innerHTML = '';
+        }
+        
+        // ========== CSS规则生成 - 简化版本 ==========
+        function generateSimpleCSS(count) {
+            log(`生成${count}个元素的简化CSS规则`);
+            
+            let css = '';
+            
+            // 为每个元素生成锚点定义
+            for (let i = 0; i < count; i++) {
+                css += `
+                .conv-avatar[data-id="${i}"] { anchor-name: --conv-${i}; }
+                .msg-bubble[data-id="${i}"] { anchor-name: --msg-${i}; }
+                .acc-avatar[data-id="${i}"] { anchor-name: --acc-${i}; }
+                `;
+                
+                // 简化连接线规则 - 只做最基本的水平连接
+                const isSelf = i % 2 === 0;
+                if (isSelf) {
+                    // 自己的消息：从消息气泡到账号头像
+                    css += `
+                    .simple-connection[data-id="${i}"] {
+                        position: absolute;
+                        position-anchor: --msg-${i};
+                        left: anchor(right);
+                        top: anchor(center);
+                        width: calc(anchor(--acc-${i} left) - anchor(right));
+                        background: #0084ff;
+                    }
+                    `;
+                } else {
+                    // 他人的消息：从会话头像到消息气泡
+                    css += `
+                    .simple-connection[data-id="${i}"] {
+                        position: absolute;
+                        position-anchor: --conv-${i};
+                        left: anchor(right);
+                        top: anchor(center);
+                        width: calc(anchor(--msg-${i} left) - anchor(right));
+                        background: #667eea;
+                    }
+                    `;
+                }
+            }
+            
+            // 插入CSS规则
+            const oldStyle = document.getElementById('simple-css');
+            if (oldStyle) oldStyle.remove();
+            
+            const style = document.createElement('style');
+            style.id = 'simple-css';
+            style.textContent = css;
+            document.head.appendChild(style);
+            
+            log(`CSS规则生成完成，长度: ${css.length} 字符`);
+            log(`生成的CSS示例: ${css.substring(0, 200)}...`);
+        }
+        
+        // ========== 元素生成 ==========
+        function createElement(count) {
+            if (!SystemState.ready) {
+                updateStatus('请先初始化系统');
+                return;
+            }
+            
+            updateStatus(`创建${count}个元素...`);
+            log(`开始创建${count}个测试元素`);
+            
+            // 生成CSS规则
+            generateSimpleCSS(count);
+            
+            // 清空容器
+            ['convContainer', 'msgContainer', 'accContainer', 'connectionOverlay'].forEach(id => {
+                document.getElementById(id).innerHTML = '';
+            });
+            
+            // 创建元素
+            for (let i = 0; i < count; i++) {
+                const isSelf = i % 2 === 0;
+                
+                // 会话头像
+                const conv = document.createElement('div');
+                conv.className = 'conv-avatar';
+                conv.setAttribute('data-id', i);
+                conv.textContent = `C${i}`;
+                document.getElementById('convContainer').appendChild(conv);
+                
+                // 消息气泡
+                const msg = document.createElement('div');
+                msg.className = `msg-bubble ${isSelf ? 'self' : 'other'}`;
+                msg.setAttribute('data-id', i);
+                msg.textContent = `消息${i}`;
+                document.getElementById('msgContainer').appendChild(msg);
+                
+                // 账号头像
+                const acc = document.createElement('div');
+                acc.className = 'acc-avatar';
+                acc.setAttribute('data-id', i);
+                acc.textContent = `A${i}`;
+                document.getElementById('accContainer').appendChild(acc);
+                
+                // 简化连接线
+                const connection = document.createElement('div');
+                connection.className = 'simple-connection';
+                connection.setAttribute('data-id', i);
+                connection.id = `connection-${i}`;
+                document.getElementById('connectionOverlay').appendChild(connection);
+                
+                log(`创建元素${i}: ${isSelf ? '自己' : '他人'}的消息`);
+            }
+            
+            SystemState.elementCount = count;
+            
+            setTimeout(() => {
+                testConnections();
+                updateStatus(`✅ ${count}个元素创建完成`);
+            }, 1000);
+        }
+        
+        // ========== 调试功能 ==========
+        function debugAnchors() {
+            log('开始调试锚点状态');
+            
+            // 检查CSS支持
+            const anchorSupport = {
+                anchorName: CSS.supports('anchor-name', '--test'),
+                anchorFunction: CSS.supports('left', 'anchor(--test left)'),
+                positionAnchor: CSS.supports('position-anchor', '--test')
+            };
+            
+            log('CSS Anchor支持检查', anchorSupport);
+            
+            // 检查锚点元素
+            const anchors = document.querySelectorAll('[data-id]');
+            log(`找到${anchors.length}个锚点元素`);
+            
+            anchors.forEach((el, index) => {
+                const id = el.getAttribute('data-id');
+                const className = el.className;
+                const rect = el.getBoundingClientRect();
+                
+                log(`锚点${index}: id=${id}, class=${className}, 位置=(${Math.round(rect.left)}, ${Math.round(rect.top)})`);
+                
+                if (index < 3) {
+                    // 详细检查前3个元素
+                    const computedStyle = getComputedStyle(el);
+                    log(`  样式详情: anchorName=${computedStyle.anchorName || 'undefined'}`);
+                }
+            });
+        }
+        
+        function testConnections() {
+            log('开始测试连接线状态');
+            
+            const connections = document.querySelectorAll('.simple-connection');
+            log(`找到${connections.length}个连接线元素`);
+            
+            let visibleCount = 0;
+            
+            connections.forEach((conn, index) => {
+                const rect = conn.getBoundingClientRect();
+                const computedStyle = getComputedStyle(conn);
+                const id = conn.getAttribute('data-id');
+                
+                const isVisible = rect.width > 5 && rect.height > 0;
+                if (isVisible) visibleCount++;
+                
+                log(`连接线${index}(id=${id}): 尺寸=${Math.round(rect.width)}×${Math.round(rect.height)}, 位置=(${Math.round(rect.left)}, ${Math.round(rect.top)}), 可见=${isVisible}`);
+                log(`  样式: left=${computedStyle.left}, top=${computedStyle.top}, background=${computedStyle.backgroundColor}`);
+                
+                if (index < 3) {
+                    // 检查锚点关联
+                    log(`  position-anchor=${computedStyle.positionAnchor || 'undefined'}`);
+                }
+            });
+            
+            log(`连接线测试完成: 总数=${connections.length}, 可见=${visibleCount}, 成功率=${((visibleCount/connections.length)*100).toFixed(1)}%`);
+        }
+        
+        // ========== 系统初始化 ==========
+        function initSystem() {
+            updateStatus('系统初始化中...');
+            log('开始初始化CSS Anchor调试系统');
+            
+            function waitForAnchor() {
+                if (window.anchorReady !== undefined) {
+                    if (window.anchorReady) {
+                        SystemState.ready = true;
+                        updateStatus('✅ 系统初始化完成');
+                        log('系统初始化成功，可以开始创建元素');
+                        
+                        // 自动创建5个测试元素
+                        setTimeout(() => createElement(5), 500);
+                    } else {
+                        updateStatus('❌ CSS Anchor Positioning不支持');
+                        log('CSS Anchor Positioning初始化失败');
+                    }
+                } else {
+                    setTimeout(waitForAnchor, 200);
+                }
+            }
+            
+            waitForAnchor();
+        }
+        
+        // ========== 自动启动 ==========
+        document.addEventListener('DOMContentLoaded', () => {
+            log('页面加载完成，准备初始化');
+            setTimeout(initSystem, 500);
+        });
+    </script>
+</body>
+</html>
