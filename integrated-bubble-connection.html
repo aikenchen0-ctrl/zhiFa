@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated Bubble Connection - ULTRATHINK SVG Full Screen 1ms Update</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .main-container {
+            height: 100vh;
+            display: flex;
+            background: transparent;
+        }
+
+        .column {
+            height: 100vh;
+            overflow-y: auto;
+            border-right: 1px solid #e0e0e0;
+            position: relative;
+        }
+
+        .session-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .messages-column {
+            flex: 1;
+            background: transparent;
+            position: relative;
+        }
+
+        .account-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .avatar-item {
+            width: 66px;
+            height: 66px;
+            margin: 10px 0;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .avatar-item.account {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        /* 消息元素 - 包含气泡的容器 */
+        .message-element {
+            margin: 15px 20px;
+            position: relative;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        /* 消息气泡本体 */
+        .message-bubble {
+            background: #e9ecef;
+            border-radius: 18px;
+            padding: 12px 16px;
+            position: relative;
+            word-wrap: break-word;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            flex: 1;
+            z-index: 2;
+        }
+
+        .message-bubble.own {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-text {
+            flex: 1;
+            z-index: 2;
+            position: relative;
+        }
+
+        .message-time {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+
+        /* SVG全屏连接线容器 */
+        .svg-connection {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1;
+            overflow: visible;
+        }
+
+        /* 调试模式 */
+        .debug-mode .message-element {
+            border: 2px solid green;
+            background: rgba(0,255,0,0.05);
+        }
+
+        .debug-mode .message-bubble {
+            border: 2px solid red;
+        }
+
+        .debug-mode .svg-connection {
+            outline: 1px dashed purple !important;
+        }
+
+        /* 控制面板 */
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 2000;
+        }
+
+        .controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .debug-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 2001;
+            max-width: 400px;
+        }
+
+        /* 连接点指示器 */
+        .connection-point {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #ff4444;
+            border-radius: 50%;
+            border: 1px solid white;
+            z-index: 10;
+            display: none;
+        }
+
+        .debug-mode .connection-point {
+            display: block;
+        }
+
+        .connection-point.bubble-left {
+            left: -3px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .connection-point.bubble-right {
+            right: -3px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button onclick="generateTestData(10)">Generate 10 Items</button>
+        <button onclick="generateTestData(100)">Generate 100 Items</button>
+        <button onclick="generateTestData(2000)">Generate 2000 Items</button>
+        <button onclick="updateConnections()">Update Connections</button>
+        <button onclick="toggleDebugMode()">Toggle Debug Mode</button>
+        <button onclick="clearAll()">Clear All</button>
+    </div>
+
+    <div class="debug-info" id="debugInfo">
+        ULTRATHINK SVG Full Screen Connection: Ready<br>
+        使用全屏SVG创建L形连接线，1ms更新频率，只监听头像列
+    </div>
+
+    <div class="main-container">
+        <!-- 会话头像列 -->
+        <div class="column session-avatars-column" id="sessionAvatars">
+        </div>
+
+        <!-- 消息气泡列 -->
+        <div class="column messages-column" id="messagesColumn">
+        </div>
+        
+        <!-- 全屏SVG连接线容器 -->
+        <svg class="svg-connection" id="globalSVG" xmlns="http://www.w3.org/2000/svg">
+        </svg>
+
+        <!-- 账号头像列 -->
+        <div class="column account-avatars-column" id="accountAvatars">
+        </div>
+    </div>
+
+    <script>
+        class UltraThinkSVGConnectionManager {
+            constructor() {
+                this.sessionColumn = document.getElementById('sessionAvatars');
+                this.messageColumn = document.getElementById('messagesColumn');
+                this.accountColumn = document.getElementById('accountAvatars');
+                this.debugInfo = document.getElementById('debugInfo');
+                this.globalSVG = document.getElementById('globalSVG');
+                
+                this.debugMode = false;
+                this.messages = [];
+                this.updateInterval = null;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupGlobalSVG();
+                this.setupEventListeners();
+                this.startHighFrequencyUpdate();
+                console.log('ULTRATHINK SVG Full Screen Connection Manager initialized');
+            }
+
+            setupGlobalSVG() {
+                // 设置全屏SVG的viewBox
+                this.globalSVG.setAttribute('viewBox', `0 0 ${window.innerWidth} ${window.innerHeight}`);
+                this.globalSVG.setAttribute('width', '100%');
+                this.globalSVG.setAttribute('height', '100%');
+                console.log(`🎯 全屏SVG初始化: ${window.innerWidth}x${window.innerHeight}`);
+            }
+
+            setupEventListeners() {
+                // 硬性要求：只监听头像列滚动
+                [this.sessionColumn, this.accountColumn].forEach(column => {
+                    column.addEventListener('scroll', () => {
+                        // 不需要在这里调用updateConnections，因为1ms间隔会自动更新
+                    });
+                });
+
+                // 窗口大小改变
+                window.addEventListener('resize', () => {
+                    this.setupGlobalSVG(); // 重新设置SVG viewBox
+                    this.updateConnections();
+                });
+            }
+
+            // 1ms更新频率的高频连接线更新系统
+            startHighFrequencyUpdate() {
+                if (this.updateInterval) {
+                    clearInterval(this.updateInterval);
+                }
+                
+                // 连接线更新频率1ms
+                this.updateInterval = setInterval(() => {
+                    this.updateConnections();
+                }, 1);
+                
+                console.log('🚀 ULTRATHINK 1ms高频更新系统启动');
+            }
+
+            stopHighFrequencyUpdate() {
+                if (this.updateInterval) {
+                    clearInterval(this.updateInterval);
+                    this.updateInterval = null;
+                    console.log('⏹️ ULTRATHINK 1ms高频更新系统停止');
+                }
+            }
+
+            generateTestData(count = 3) {
+                this.clearAll();
+                
+                const startTime = performance.now();
+                this.updateDebugInfo('generate', `Generating ${count} ULTRATHINK SVG full-screen connections...`);
+                
+                for (let i = 0; i < count; i++) {
+                    // 会话头像
+                    const sessionAvatar = document.createElement('div');
+                    sessionAvatar.className = 'avatar-item session';
+                    sessionAvatar.id = `session-${i}`;
+                    sessionAvatar.textContent = `S${i + 1}`;
+                    this.sessionColumn.appendChild(sessionAvatar);
+
+                    // 消息元素（连接线在全局SVG中）
+                    const isOwn = i % 2 === 0;
+                    const messageElement = document.createElement('div');
+                    messageElement.className = 'message-element';
+                    messageElement.id = `message-${i}`;
+                    messageElement.setAttribute('data-is-own', isOwn);
+                    messageElement.setAttribute('data-session-index', i);
+                    messageElement.setAttribute('data-account-index', i);
+                    
+                    // 创建连接线路径（添加到全局SVG）
+                    const connectionPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    connectionPath.setAttribute('id', `path-${i}`);
+                    connectionPath.setAttribute('stroke', isOwn ? '#e91e63' : '#007bff');
+                    connectionPath.setAttribute('stroke-width', '3');
+                    connectionPath.setAttribute('fill', 'none');
+                    connectionPath.setAttribute('stroke-linecap', 'round');
+                    connectionPath.setAttribute('stroke-linejoin', 'round');
+                    
+                    this.globalSVG.appendChild(connectionPath);
+                    
+                    // 消息气泡内容
+                    const bubbleHtml = `
+                        <div class="message-bubble ${isOwn ? 'own' : ''}">
+                            <div class="connection-point ${isOwn ? 'bubble-right' : 'bubble-left'}"></div>
+                            <div class="message-text">
+                                ${isOwn ? 'ULTRATHINK右连接 - SVG全屏L形连接线' : 'ULTRATHINK左连接 - SVG全屏L形连接线'}
+                                <div class="message-time">10:${30 + i}0 AM</div>
+                            </div>
+                        </div>
+                    `;
+                    
+                    messageElement.innerHTML = bubbleHtml;
+                    this.messageColumn.appendChild(messageElement);
+
+                    // 账号头像
+                    const accountAvatar = document.createElement('div');
+                    accountAvatar.className = 'avatar-item account';
+                    accountAvatar.id = `account-${i}`;
+                    accountAvatar.textContent = `A${i + 1}`;
+                    this.accountColumn.appendChild(accountAvatar);
+
+                    this.messages.push({
+                        messageId: `message-${i}`,
+                        sessionId: `session-${i}`,
+                        accountId: `account-${i}`,
+                        pathId: `path-${i}`,
+                        isOwn: isOwn
+                    });
+                }
+
+                const generateTime = performance.now() - startTime;
+                
+                // 延迟更新连接线
+                setTimeout(() => {
+                    this.updateConnections();
+                    this.updateDebugInfo('complete', 
+                        `Generated ${count} ULTRATHINK SVG connections in ${Math.round(generateTime)}ms`);
+                }, 200);
+            }
+
+            updateConnections() {
+                const startTime = performance.now();
+                let updatedCount = 0;
+                
+                this.messages.forEach((msg) => {
+                    const messageElement = document.getElementById(msg.messageId);
+                    const sessionElement = document.getElementById(msg.sessionId);
+                    const accountElement = document.getElementById(msg.accountId);
+                    const pathElement = document.getElementById(msg.pathId);
+
+                    if (!messageElement || !sessionElement || !accountElement || !pathElement) return;
+
+                    if (msg.isOwn) {
+                        // 自己的消息：右侧连接到账号头像
+                        this.updateSVGConnection(messageElement, accountElement, pathElement, 'right');
+                        updatedCount++;
+                    } else {
+                        // 别人的消息：左侧连接到会话头像
+                        this.updateSVGConnection(messageElement, sessionElement, pathElement, 'left');
+                        updatedCount++;
+                    }
+                });
+                
+                const updateTime = performance.now() - startTime;
+                if (this.debugMode && updatedCount > 0) {
+                    this.updateDebugInfo('update', 
+                        `Updated ${updatedCount} ULTRATHINK SVG connections in ${Math.round(updateTime)}ms (1ms interval)`);
+                }
+            }
+
+            updateSVGConnection(messageElement, targetAvatar, pathElement, direction) {
+                try {
+                    // 获取消息气泡和目标头像的位置信息
+                    const messageBubble = messageElement.querySelector('.message-bubble');
+                    const bubbleRect = messageBubble.getBoundingClientRect();
+                    const avatarRect = targetAvatar.getBoundingClientRect();
+                    
+                    // 计算连接点坐标（全屏坐标系）
+                    const bubbleConnectionPoint = this.calculateBubbleConnectionPoint(bubbleRect, direction);
+                    const avatarConnectionPoint = this.calculateAvatarConnectionPoint(avatarRect, direction);
+                    
+                    // 创建L形路径，带4px延伸和圆角
+                    const pathData = this.createLShapePath(bubbleConnectionPoint, avatarConnectionPoint, direction);
+                    
+                    // 更新SVG路径
+                    if (pathElement && pathData) {
+                        pathElement.setAttribute('d', pathData);
+                        
+                        // 调试信息
+                        if (this.debugMode) {
+                            this.logConnectionDebug(direction, {
+                                bubblePoint: bubbleConnectionPoint,
+                                avatarPoint: avatarConnectionPoint,
+                                pathData: pathData
+                            });
+                        }
+                    }
+
+                } catch (error) {
+                    console.error(`ULTRATHINK SVG Connection Error [${direction}]:`, error);
+                }
+            }
+
+            // 计算气泡连接点（全屏坐标系）
+            calculateBubbleConnectionPoint(bubbleRect, direction) {
+                if (direction === 'left') {
+                    return {
+                        x: bubbleRect.left,  // 左边框
+                        y: bubbleRect.top + bubbleRect.height / 2  // 垂直中点
+                    };
+                } else {
+                    return {
+                        x: bubbleRect.right,  // 右边框
+                        y: bubbleRect.top + bubbleRect.height / 2  // 垂直中点
+                    };
+                }
+            }
+
+            // 计算头像连接点（全屏坐标系）
+            calculateAvatarConnectionPoint(avatarRect, direction) {
+                if (direction === 'left') {
+                    // 会话头像：右边缘中点
+                    return {
+                        x: avatarRect.right,
+                        y: avatarRect.top + avatarRect.height / 2
+                    };
+                } else {
+                    // 账号头像：左边缘中点
+                    return {
+                        x: avatarRect.left,
+                        y: avatarRect.top + avatarRect.height / 2
+                    };
+                }
+            }
+
+            // 创建L形路径，带4px延伸和圆角转折
+            createLShapePath(bubblePoint, avatarPoint, direction) {
+                const extensionLength = 4; // 4px延伸
+                const cornerRadius = 8; // 圆角半径
+                
+                let pathData = '';
+                
+                if (direction === 'left') {
+                    // 左连接：气泡左侧 -> 会话头像右侧
+                    const x1 = bubblePoint.x;
+                    const y1 = bubblePoint.y;
+                    const x2 = bubblePoint.x - extensionLength; // 向左延伸4px
+                    const y2 = bubblePoint.y;
+                    const x3 = bubblePoint.x - extensionLength;
+                    const y3 = avatarPoint.y;
+                    const x4 = avatarPoint.x;
+                    const y4 = avatarPoint.y;
+                    
+                    // 构建带圆角的L形路径
+                    pathData = `M ${x1} ${y1} L ${x2 + cornerRadius} ${y2}`;
+                    if (Math.abs(y3 - y2) > cornerRadius * 2) {
+                        pathData += ` Q ${x2} ${y2} ${x2} ${y2 + (y3 > y2 ? cornerRadius : -cornerRadius)}`;
+                        pathData += ` L ${x3} ${y3 - (y3 > y2 ? cornerRadius : -cornerRadius)}`;
+                        pathData += ` Q ${x3} ${y3} ${x3 + cornerRadius} ${y3}`;
+                    } else {
+                        pathData += ` Q ${x2} ${y2} ${x2} ${y3}`;
+                        pathData += ` Q ${x3} ${y3} ${x3 + cornerRadius} ${y3}`;
+                    }
+                    pathData += ` L ${x4} ${y4}`;
+                    
+                } else {
+                    // 右连接：气泡右侧 -> 账号头像左侧
+                    const x1 = bubblePoint.x;
+                    const y1 = bubblePoint.y;
+                    const x2 = bubblePoint.x + extensionLength; // 向右延伸4px
+                    const y2 = bubblePoint.y;
+                    const x3 = bubblePoint.x + extensionLength;
+                    const y3 = avatarPoint.y;
+                    const x4 = avatarPoint.x;
+                    const y4 = avatarPoint.y;
+                    
+                    // 构建带圆角的L形路径
+                    pathData = `M ${x1} ${y1} L ${x2 - cornerRadius} ${y2}`;
+                    if (Math.abs(y3 - y2) > cornerRadius * 2) {
+                        pathData += ` Q ${x2} ${y2} ${x2} ${y2 + (y3 > y2 ? cornerRadius : -cornerRadius)}`;
+                        pathData += ` L ${x3} ${y3 - (y3 > y2 ? cornerRadius : -cornerRadius)}`;
+                        pathData += ` Q ${x3} ${y3} ${x3 - cornerRadius} ${y3}`;
+                    } else {
+                        pathData += ` Q ${x2} ${y2} ${x2} ${y3}`;
+                        pathData += ` Q ${x3} ${y3} ${x3 - cornerRadius} ${y3}`;
+                    }
+                    pathData += ` L ${x4} ${y4}`;
+                }
+                
+                return pathData;
+            }
+
+            // 调试日志
+            logConnectionDebug(direction, data) {
+                console.log(`🎯 ULTRATHINK SVG [${direction.toUpperCase()}] 连接调试:`, {
+                    bubblePoint: `${Math.round(data.bubblePoint.x)},${Math.round(data.bubblePoint.y)}`,
+                    avatarPoint: `${Math.round(data.avatarPoint.x)},${Math.round(data.avatarPoint.y)}`,
+                    pathData: data.pathData.substring(0, 100) + '...',
+                    method: '🎯 SVG全屏 - L形连接线+圆角转折'
+                });
+            }
+
+            toggleDebugMode() {
+                this.debugMode = !this.debugMode;
+                document.body.classList.toggle('debug-mode', this.debugMode);
+                
+                if (this.debugMode) {
+                    this.updateDebugInfo('mode', 'Debug Mode: ENABLED - 绿框=消息元素，红框=气泡，紫框=SVG连接线');
+                    this.updateConnections();
+                } else {
+                    this.updateDebugInfo('mode', 'Debug Mode: DISABLED');
+                }
+            }
+
+            updateDebugInfo(type, info) {
+                const timestamp = new Date().toLocaleTimeString();
+                this.debugInfo.innerHTML = `
+                    <strong>ULTRATHINK SVG Full Screen Connection - ${type.toUpperCase()}:</strong><br>
+                    <strong>Time:</strong> ${timestamp}<br>
+                    <strong>Info:</strong> ${info}<br>
+                    <strong>原理:</strong> SVG全屏 + 1ms更新频率 + 只监听头像列<br>
+                    <strong>优势:</strong> 自然跟随滚动，精确坐标计算，完美L形路径
+                `;
+            }
+
+            clearAll() {
+                this.sessionColumn.innerHTML = '';
+                this.messageColumn.innerHTML = '';
+                this.accountColumn.innerHTML = '';
+                this.globalSVG.innerHTML = ''; // 清除所有SVG路径
+                this.messages = [];
+                this.updateDebugInfo('status', 'ULTRATHINK SVG Full Screen Connection: Cleared');
+            }
+
+            // 销毁管理器时停止高频更新
+            destroy() {
+                this.stopHighFrequencyUpdate();
+            }
+        }
+
+        // 初始化
+        let ultraThinkManager;
+        
+        function initializeManager() {
+            if (!ultraThinkManager) {
+                ultraThinkManager = new UltraThinkSVGConnectionManager();
+                window.ultraThinkManager = ultraThinkManager; // 暴露到全局
+                setTimeout(() => {
+                    ultraThinkManager.generateTestData(10);
+                }, 500);
+            }
+        }
+        
+        // 尝试多种初始化方式
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeManager);
+        } else {
+            initializeManager();
+        }
+
+        // 页面卸载时清理
+        window.addEventListener('beforeunload', () => {
+            if (ultraThinkManager) {
+                ultraThinkManager.destroy();
+            }
+        });
+
+        // 全局函数
+        function generateTestData(count) {
+            if (ultraThinkManager) {
+                ultraThinkManager.generateTestData(count);
+            }
+        }
+
+        function updateConnections() {
+            if (ultraThinkManager) {
+                ultraThinkManager.updateConnections();
+            }
+        }
+
+        function toggleDebugMode() {
+            if (ultraThinkManager) {
+                ultraThinkManager.toggleDebugMode();
+            }
+        }
+
+        function clearAll() {
+            if (ultraThinkManager) {
+                ultraThinkManager.clearAll();
+            }
+        }
+    </script>
+</body>
+</html>
