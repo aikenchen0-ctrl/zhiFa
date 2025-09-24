@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixiJS v8 移动端聊天UI系统 - 完整演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #fff, #f0f0f0);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            margin-bottom: 10px;
+        }
+        
+        .demos-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+        
+        .demo-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            text-decoration: none;
+            color: white;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .demo-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+        
+        .demo-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+        
+        .demo-card h3 {
+            font-size: 1.4rem;
+            margin-bottom: 12px;
+            color: #fff;
+        }
+        
+        .demo-card p {
+            opacity: 0.85;
+            line-height: 1.5;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .demo-card .features {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .demo-card .badge {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            display: inline-block;
+        }
+        
+        .primary {
+            background: linear-gradient(135deg, rgba(33, 150, 243, 0.3), rgba(21, 101, 192, 0.3));
+            border-color: rgba(33, 150, 243, 0.5);
+        }
+        
+        .secondary {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.3), rgba(46, 125, 50, 0.3));
+            border-color: rgba(76, 175, 80, 0.5);
+        }
+        
+        .info {
+            background: linear-gradient(135deg, rgba(156, 39, 176, 0.3), rgba(106, 27, 154, 0.3));
+            border-color: rgba(156, 39, 176, 0.5);
+        }
+        
+        .warning {
+            background: linear-gradient(135deg, rgba(255, 152, 0, 0.3), rgba(245, 124, 0, 0.3));
+            border-color: rgba(255, 152, 0, 0.5);
+        }
+        
+        .success {
+            background: linear-gradient(135deg, rgba(76, 175, 80, 0.3), rgba(56, 142, 60, 0.3));
+            border-color: rgba(76, 175, 80, 0.5);
+        }
+        
+        .status {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding: 30px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            text-align: center;
+            opacity: 0.8;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .demos-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 PixiJS v8 移动端聊天UI系统</h1>
+            <p>完整的移动端聊天界面 - 纯PixiJS v8实现</p>
+            <p>支持实时连接线、Vision UI材质、复杂交互</p>
+        </div>
+        
+        <div class="status">
+            <strong>✅ 系统状态：</strong> 开发服务器运行中 | PixiJS v8.4.1 | 移动端优化完成<br>
+            <strong>🎯 核心功能：</strong> 上万头像滚动 | 实时连接线 | 半透明材质 | 触摸优化 | 详细日志
+        </div>
+        
+        <div class="demos-grid">
+            <a href="src/pixi-mobile-connection-system.html" class="demo-card primary">
+                <span class="icon">📱</span>
+                <h3>移动端连接线系统</h3>
+                <p>完整的移动端三区域布局，包含连接线系统和触摸优化</p>
+                <div class="features">
+                    <span class="badge">移动端</span>
+                    <span class="badge">连接线</span>
+                    <span class="badge">v8语法</span>
+                </div>
+            </a>
+            
+            <a href="src/pixi-ui-components-demo.html" class="demo-card success">
+                <span class="icon">🎨</span>
+                <h3>UI组件系统演示</h3>
+                <p>完整的聊天UI组件：底部栏、顶部栏、消息气泡、Vision材质</p>
+                <div class="features">
+                    <span class="badge">UI组件</span>
+                    <span class="badge">Vision UI</span>
+                    <span class="badge">交互</span>
+                </div>
+            </a>
+            
+            <a href="src/sidebar-system-demo.html" class="demo-card secondary">
+                <span class="icon">📋</span>
+                <h3>侧边栏系统</h3>
+                <p>左右侧边栏：会话头像列表、工作流图标、虚拟化滚动</p>
+                <div class="features">
+                    <span class="badge">虚拟滚动</span>
+                    <span class="badge">1万头像</span>
+                    <span class="badge">高性能</span>
+                </div>
+            </a>
+            
+            <a href="src/pixi-v8-mobile-fresh.html" class="demo-card info">
+                <span class="icon">✨</span>
+                <h3>v8移动端优化版</h3>
+                <p>使用最新PixiJS v8语法的移动端优化版本</p>
+                <div class="features">
+                    <span class="badge">PixiJS v8</span>
+                    <span class="badge">移动优化</span>
+                    <span class="badge">新语法</span>
+                </div>
+            </a>
+            
+            <a href="src/pixi-connection-fixed.html" class="demo-card warning">
+                <span class="icon">🔧</span>
+                <h3>连接线修复版</h3>
+                <p>修复所有连接线问题的稳定版本，包含详细调试信息</p>
+                <div class="features">
+                    <span class="badge">修复版</span>
+                    <span class="badge">稳定</span>
+                    <span class="badge">调试</span>
+                </div>
+            </a>
+            
+            <a href="src/mobile-demo.html" class="demo-card secondary">
+                <span class="icon">🎮</span>
+                <h3>移动端演示</h3>
+                <p>移动端触摸、性能管理、设备适配的完整演示</p>
+                <div class="features">
+                    <span class="badge">触摸</span>
+                    <span class="badge">性能</span>
+                    <span class="badge">适配</span>
+                </div>
+            </a>
+            
+            <a href="src/pixi-v8-correct-syntax.html" class="demo-card info">
+                <span class="icon">📚</span>
+                <h3>v8正确语法</h3>
+                <p>展示PixiJS v8正确语法和最佳实践的示例</p>
+                <div class="features">
+                    <span class="badge">语法</span>
+                    <span class="badge">最佳实践</span>
+                    <span class="badge">教程</span>
+                </div>
+            </a>
+            
+            <a href="src/pixi-quick-test.html" class="demo-card warning">
+                <span class="icon">⚡</span>
+                <h3>快速测试</h3>
+                <p>快速验证PixiJS基础功能和性能的测试页面</p>
+                <div class="features">
+                    <span class="badge">测试</span>
+                    <span class="badge">快速</span>
+                    <span class="badge">验证</span>
+                </div>
+            </a>
+        </div>
+        
+        <div class="footer">
+            <h3>🎯 技术特性</h3>
+            <p><strong>核心技术：</strong> PixiJS v8.4.1 | WebGL渲染 | 移动端优化 | TypeScript支持</p>
+            <p><strong>UI功能：</strong> Vision UI材质 | 实时连接线 | 虚拟滚动 | 触摸手势 | 响应式布局</p>
+            <p><strong>性能优化：</strong> 对象池 | 视窗裁剪 | 内存管理 | 帧率监控 | 移动端适配</p>
+            <p><strong>开发工具：</strong> 详细日志 | 性能监控 | 调试面板 | 移动端调试器</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 PixiJS v8 移动端聊天UI系统 - 演示中心');
+            console.log('📱 移动端访问优化：触摸手势 | 性能监控 | 设备适配');
+            
+            // 检测移动端
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+            if (isMobile) {
+                console.log('📱 检测到移动设备，已启用移动端优化');
+                document.body.style.fontSize = '16px'; // 防止缩放
+            }
+            
+            // 添加点击统计
+            document.querySelectorAll('.demo-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const title = card.querySelector('h3').textContent;
+                    console.log(\`🔗 访问演示: \${title}\`);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
