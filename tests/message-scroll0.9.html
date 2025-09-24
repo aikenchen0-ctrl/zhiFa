@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>消息间距滚动测试 - 几百条消息类型组合</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* ============= CSS变量定义 ============= */
+    :root {
+      --message-border-radius: 6px;
+      --message-padding: 8px 8px;
+      --message-gap: 12px;
+      --avatar-size: 37px;
+      --bubble-height: 37px;
+      --text-line-height: 1.2;
+      --quote-bar-width: 3px;
+      --quote-bar-color: rgba(255, 255, 255, 0.6);
+      --glass-blur: 20px;
+      --text-shadow-enhanced: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 0, 0, 0.25), 0 1px 1px rgba(0, 0, 0, 0.5);
+      --sender-name-shadow: 0 2px 6px rgba(0, 0, 0, 1), 0 0 16px rgba(255, 255, 255, 0.9), 0 0 8px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.6);
+    }
+
+    /* ============= 基础样式 ============= */
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    /* ============= 滚动容器样式 ============= */
+    .scroll-container {
+      height: 80vh;
+      max-width: 800px;
+      margin: 0 auto;
+      overflow-y: auto;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 20px;
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    .scroll-container::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .scroll-container::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .scroll-container::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+    }
+
+    .scroll-container::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    .header-info {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      backdrop-filter: blur(10px);
+      z-index: 1000;
+    }
+
+    /* ============= 消息基础Block ============= */
+    .message {
+      width: 100%;
+      margin-bottom: var(--message-gap);
+    }
+
+    .message__container {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--message-gap);
+      max-width: 100%;
+    }
+
+    .message__avatar {
+      flex-shrink: 0;
+      width: var(--avatar-size);
+      height: var(--avatar-size);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .message__content {
+      flex: 1;
+      position: relative;
+      min-width: 0;
+    }
+
+    .message__sender {
+      position: absolute;
+      top: -18px;
+      left: 8px;
+      font-size: 0.75rem;
+      color: white;
+      text-shadow: var(--sender-name-shadow);
+      z-index: 20;
+      white-space: nowrap;
+    }
+
+    .message__bubble {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: var(--message-border-radius);
+      padding: var(--message-padding);
+      backdrop-filter: blur(var(--glass-blur));
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      position: relative;
+      max-width: 100%;
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+
+    .message__text {
+      color: white;
+      line-height: var(--text-line-height);
+      text-shadow: var(--text-shadow-enhanced);
+      margin: 0;
+    }
+
+    /* ============= 自己发送的消息 ============= */
+    .message--self .message__container {
+      flex-direction: row-reverse;
+    }
+
+    .message--self .message__bubble {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    .message--self .message__sender {
+      right: 8px;
+      left: auto;
+    }
+
+    /* ============= 群聊名样式 ============= */
+    .message__group-name {
+      margin-left: 6px;
+      opacity: 0.8;
+    }
+
+    /* ============= 系统消息样式 ============= */
+    .message--no-bubble .message__container {
+      justify-content: center;
+    }
+
+    .message--no-bubble .message__text {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.875rem;
+      text-align: center;
+      background: rgba(0, 0, 0, 0.2);
+      padding: 6px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(8px);
+    }
+
+    /* ============= 引用消息样式 ============= */
+    .message__quote {
+      margin-bottom: 8px;
+      padding-left: var(--quote-bar-width);
+      border-left: var(--quote-bar-width) solid var(--quote-bar-color);
+      background: rgba(0, 0, 0, 0.15);
+      border-radius: 4px;
+      padding: 6px 8px;
+    }
+
+    .message__quote-content {
+      /* 容器样式 */
+    }
+
+    .message__quote-author {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 2px;
+      font-weight: 500;
+    }
+
+    .message__quote-text {
+      font-size: 0.8rem;
+      color: rgba(255, 255, 255, 0.8);
+      line-height: 1.3;
+    }
+
+    /* ============= AI草稿样式 ============= */
+    .message--ai-draft .message__bubble {
+      border: 2px dashed rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.1);
+      position: relative;
+    }
+
+    .message__ai-indicator {
+      position: absolute;
+      top: -8px;
+      right: 8px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      border-radius: 8px;
+      backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* ============= 响应式设计 ============= */
+    @media (max-width: 768px) {
+      :root {
+        --message-gap: 8px;
+        --avatar-size: 32px;
+        --message-padding: 6px 8px;
+      }
+
+      body {
+        padding: 12px;
+      }
+
+      .scroll-container {
+        height: 85vh;
+        padding: 12px;
+      }
+
+      .header-info {
+        top: 12px;
+        right: 12px;
+        padding: 8px 12px;
+        font-size: 0.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header-info">
+    <div>🔍 消息间距滚动测试</div>
+    <div>📊 总计: <span id="message-count">0</span> 条消息</div>
+    <div>📏 间距: 桌面 12px | 移动 8px</div>
+  </div>
+
+  <div class="scroll-container" id="messageContainer">
+    <!-- 消息将由JavaScript动态生成 -->
+  </div>
+
+  <script>
+    // 消息类型配置
+    const messageTypes = {
+      type1: { hasAvatar: true, hasSender: true, hasGroup: false },    // 有头像含名
+      type2: { hasAvatar: true, hasSender: true, hasGroup: true },     // 有头像含名含群聊名
+      type3: { hasAvatar: false, hasSender: true, hasGroup: false },   // 无头像含名
+      type4: { hasAvatar: false, hasSender: true, hasGroup: true },    // 无头像含名含群聊名
+      type5: { hasAvatar: true, hasSender: false, hasGroup: false },   // 有头像隐藏名字
+      type6: { hasAvatar: false, hasSender: false, hasGroup: false },  // 无头像隐藏名字
+      type7: { isSystem: true },                                        // 系统消息
+      type8: { hasQuote: true },                                        // 引用消息
+      type9: { isAiDraft: true }                                        // AI草稿
+    };
+
+    // 用户名和群组名
+    const names = ['张三', '李四', '王五', '赵六', '钱七', '孙八', '周九', '吴十', '张小明', '王小红', '李小华'];
+    const groups = ['开发组', '设计组', '产品组', '测试组', '运营组', '市场组'];
+    const avatarColors = [
+      'from-red-500 to-pink-500',
+      'from-blue-500 to-cyan-500', 
+      'from-green-400 to-blue-500',
+      'from-yellow-400 to-red-500',
+      'from-purple-500 to-pink-500',
+      'from-indigo-500 to-purple-500'
+    ];
+
+    // 消息内容模板
+    const messageTexts = [
+      '这是一条测试消息，用来观察不同类型消息的间距效果。',
+      '短消息',
+      '这是一条比较长的消息内容，可以用来测试文本换行和气泡高度的变化情况，看看是否会影响消息之间的间距。',
+      '💻 代码已经提交到仓库了',
+      '🎉 项目进度更新：已完成 80%',
+      '📊 今天的数据分析报告',
+      '⚡ 系统性能优化完成',
+      '🔧 修复了登录问题',
+      '📝 会议纪要已经整理完毕，请查收',
+      '✅ 任务完成',
+      '❓ 有个问题需要讨论一下'
+    ];
+
+    const quoteTexts = [
+      '之前的消息内容',
+      '引用的原始消息',
+      '这是被引用的消息文本'
+    ];
+
+    // 生成随机消息
+    function generateMessage(index) {
+      const typeKeys = Object.keys(messageTypes);
+      const randomType = typeKeys[Math.floor(Math.random() * typeKeys.length)];
+      const config = messageTypes[randomType];
+      const isSelf = Math.random() < 0.3; // 30%概率是自己的消息
+      
+      let messageClasses = ['message'];
+      let messageHtml = '';
+
+      // 添加类型和发送者类
+      messageClasses.push(`message--${randomType}`);
+      messageClasses.push(isSelf ? 'message--self' : 'message--other');
+      
+      // 系统消息特殊处理
+      if (config.isSystem) {
+        messageClasses.push('message--no-bubble');
+        return `
+          <div class="${messageClasses.join(' ')}">
+            <div class="message__container">
+              <div class="message__content">
+                <div class="message__text">
+                  ${names[Math.floor(Math.random() * names.length)]} 加入了群聊
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // AI草稿特殊处理
+      if (config.isAiDraft) {
+        messageClasses.push('message--ai-draft');
+      }
+
+      // 引用消息特殊处理
+      if (config.hasQuote) {
+        messageClasses.push('message--has-quote');
+      }
+
+      // 构建消息容器
+      messageHtml += `<div class="${messageClasses.join(' ')}"><div class="message__container">`;
+
+      // 添加头像
+      if (config.hasAvatar) {
+        const colorClass = avatarColors[Math.floor(Math.random() * avatarColors.length)];
+        const avatarText = isSelf ? '我' : names[Math.floor(Math.random() * names.length)][0];
+        messageHtml += `
+          <div class="message__avatar bg-gradient-to-br ${colorClass}">
+            <span class="text-white text-sm font-medium">${avatarText}</span>
+          </div>
+        `;
+      }
+
+      // 消息内容
+      messageHtml += '<div class="message__content"><div class="relative">';
+
+      // 添加发送者名字
+      if (config.hasSender) {
+        const senderName = isSelf ? '张小明' : names[Math.floor(Math.random() * names.length)];
+        if (config.hasGroup) {
+          const groupName = groups[Math.floor(Math.random() * groups.length)];
+          messageHtml += `
+            <div class="message__sender">
+              <span class="message__sender-name">${senderName}</span>
+              <span class="message__group-name">∈ ${groupName}</span>
+            </div>
+          `;
+        } else {
+          messageHtml += `<div class="message__sender">${senderName}</div>`;
+        }
+      }
+
+      // 消息气泡
+      messageHtml += '<div class="message__bubble">';
+
+      // AI标识
+      if (config.isAiDraft) {
+        messageHtml += '<div class="message__ai-indicator">草稿</div>';
+      }
+
+      // 引用内容
+      if (config.hasQuote) {
+        const quoteName = names[Math.floor(Math.random() * names.length)];
+        const quoteText = quoteTexts[Math.floor(Math.random() * quoteTexts.length)];
+        messageHtml += `
+          <div class="message__quote">
+            <div class="message__quote-content">
+              <div class="message__quote-author">${quoteName}</div>
+              <div class="message__quote-text">${quoteText}</div>
+            </div>
+          </div>
+        `;
+      }
+
+      // 消息文本
+      const messageText = messageTexts[Math.floor(Math.random() * messageTexts.length)];
+      messageHtml += `<div class="message__text">${messageText}</div>`;
+
+      messageHtml += '</div></div></div></div></div>';
+      
+      return messageHtml;
+    }
+
+    // 生成大量消息
+    function generateMessages(count = 300) {
+      const container = document.getElementById('messageContainer');
+      const messageCountElement = document.getElementById('message-count');
+      
+      let messagesHtml = '';
+      for (let i = 0; i < count; i++) {
+        messagesHtml += generateMessage(i);
+      }
+      
+      container.innerHTML = messagesHtml;
+      messageCountElement.textContent = count;
+      
+      // 滚动到底部
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // 页面加载后生成消息
+    document.addEventListener('DOMContentLoaded', () => {
+      generateMessages(300);
+      
+      // 添加滚动到顶部/底部的快捷键
+      document.addEventListener('keydown', (e) => {
+        const container = document.getElementById('messageContainer');
+        if (e.key === 'Home') {
+          container.scrollTop = 0;
+        } else if (e.key === 'End') {
+          container.scrollTop = container.scrollHeight;
+        }
+      });
+    });
+
+    // 重新生成消息的函数
+    function regenerateMessages() {
+      generateMessages(300);
+    }
+
+    // 双击容器重新生成消息
+    document.getElementById('messageContainer').addEventListener('dblclick', regenerateMessages);
+  </script>
+</body>
+</html>

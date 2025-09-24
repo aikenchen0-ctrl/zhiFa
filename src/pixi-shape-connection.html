@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixiJS 形状基础连接线测试</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #222;
+            color: #fff;
+            font-family: monospace;
+        }
+        
+        .controls {
+            margin-bottom: 20px;
+        }
+        
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #555;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #666;
+        }
+        
+        .log {
+            background: #111;
+            padding: 10px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 20px;
+            font-size: 12px;
+        }
+        
+        #canvas {
+            border: 2px solid #00ff00;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>🔬 形状基础连接线测试</h2>
+    
+    <div class="controls">
+        <button onclick="initApp()">1. 初始化PixiJS</button>
+        <button onclick="testShapeConnections()">2. 测试形状连接线</button>
+        <button onclick="testLineConnections()">3. 测试纯线条连接</button>
+        <button onclick="testPolygonConnection()">4. 测试多边形连接线</button>
+        <button onclick="clearAll()">清除</button>
+    </div>
+    
+    <div id="canvasContainer"></div>
+    
+    <div class="log" id="log">
+        等待开始测试...
+    </div>
+
+    <script>
+        let app = null;
+        let stage = null;
+        
+        function log(msg) {
+            const logDiv = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            logDiv.innerHTML += `[${time}] ${msg}<br>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(msg);
+        }
+        
+        async function initApp() {
+            try {
+                log('🚀 初始化PixiJS应用...');
+                
+                if (app) app.destroy();
+                
+                app = new PIXI.Application();
+                await app.init({
+                    width: 800,
+                    height: 600,
+                    backgroundColor: 0x000000,
+                    antialias: true
+                });
+                
+                const container = document.getElementById('canvasContainer');
+                container.innerHTML = '';
+                container.appendChild(app.canvas);
+                app.canvas.id = 'canvas';
+                
+                stage = app.stage;
+                
+                log(`✅ PixiJS ${PIXI.VERSION} 初始化成功`);
+                log(`Canvas: ${app.canvas.width}x${app.canvas.height}`);
+                
+            } catch (error) {
+                log(`❌ 初始化失败: ${error.message}`);
+            }
+        }
+        
+        // 方法1：基于形状的连接线
+        function testShapeConnections() {
+            if (!app) { log('❌ 请先初始化'); return; }
+            
+            log('🔷 测试方法1：形状基础连接线...');
+            
+            try {
+                // 创建三个模拟元素
+                const conv = createAvatar(50, 100, 0x4CAF50, 'C1');
+                const msg = createBubble(200, 100, 0x2196F3, '消息1');
+                const acc = createAvatar(600, 100, 0xFF9800, 'A1');
+                
+                stage.addChild(conv);
+                stage.addChild(msg);
+                stage.addChild(acc);
+                
+                // 方法1: 用矩形形状绘制连接线
+                const connection1 = new PIXI.Graphics();
+                
+                // 绘制L型连接线作为形状路径
+                const points = [
+                    75, 125,    // 会话头像右边缘
+                    120, 125,   // 水平延伸
+                    120, 125,   // 转角点1
+                    120, 125,   // 转角点2
+                    120, 125,   // 垂直段
+                    120, 125,   // 转角点3
+                    120, 125,   // 转角点4
+                    200, 125    // 消息气泡左边缘
+                ];
+                
+                // 使用polygon绘制连接线
+                connection1.poly([
+                    75, 125,   // 起点
+                    120, 125,  // 水平
+                    120, 125,  // 转角
+                    200, 125   // 终点
+                ]);
+                connection1.fill(0xFF0000);
+                
+                stage.addChild(connection1);
+                log('✅ 形状连接线方法1完成');
+                
+                // 方法2: 用矩形条拼接L型
+                drawLShapeWithRects(75, 200, 200, 200, 0x00FF00, 4);
+                log('✅ 形状连接线方法2完成');
+                
+            } catch (error) {
+                log(`❌ 形状连接线失败: ${error.message}`);
+            }
+        }
+        
+        // 方法2：纯线条连接线
+        function testLineConnections() {
+            if (!app) { log('❌ 请先初始化'); return; }
+            
+            log('📏 测试方法2：纯线条连接线...');
+            
+            try {
+                // 简单直线
+                const line1 = new PIXI.Graphics();
+                line1.lineStyle(4, 0xFF0000, 1);
+                line1.moveTo(100, 300);
+                line1.lineTo(300, 300);
+                stage.addChild(line1);
+                log('✅ 简单直线完成');
+                
+                // L型线条
+                const line2 = new PIXI.Graphics();
+                line2.lineStyle(4, 0x00FF00, 1);
+                line2.moveTo(100, 350);
+                line2.lineTo(150, 350);
+                line2.lineTo(150, 400);
+                line2.lineTo(300, 400);
+                stage.addChild(line2);
+                log('✅ L型线条完成');
+                
+            } catch (error) {
+                log(`❌ 纯线条连接失败: ${error.message}`);
+            }
+        }
+        
+        // 方法3：多边形连接线
+        function testPolygonConnection() {
+            if (!app) { log('❌ 请先初始化'); return; }
+            
+            log('🔶 测试方法3：多边形连接线...');
+            
+            try {
+                // 用多边形绘制带宽度的连接线
+                const polyLine = new PIXI.Graphics();
+                
+                // L型路径的多边形近似
+                const lineWidth = 4;
+                const path = [
+                    // 水平段的矩形
+                    100, 450 - lineWidth/2,
+                    150, 450 - lineWidth/2,
+                    150, 450 + lineWidth/2,
+                    100, 450 + lineWidth/2,
+                    // 垂直段的矩形  
+                    150 - lineWidth/2, 450,
+                    150 + lineWidth/2, 450,
+                    150 + lineWidth/2, 500,
+                    150 - lineWidth/2, 500,
+                    // 水平段的矩形
+                    150, 500 - lineWidth/2,
+                    300, 500 - lineWidth/2,
+                    300, 500 + lineWidth/2,
+                    150, 500 + lineWidth/2
+                ];
+                
+                polyLine.poly(path);
+                polyLine.fill(0x0000FF);
+                stage.addChild(polyLine);
+                log('✅ 多边形连接线完成');
+                
+            } catch (error) {
+                log(`❌ 多边形连接失败: ${error.message}`);
+            }
+        }
+        
+        // 辅助函数：创建头像
+        function createAvatar(x, y, color, text) {
+            const container = new PIXI.Container();
+            
+            const bg = new PIXI.Graphics();
+            bg.roundRect(-25, -25, 50, 50, 10);
+            bg.fill(color);
+            container.addChild(bg);
+            
+            const label = new PIXI.Text({
+                text: text,
+                style: { fontSize: 12, fill: 0xffffff, fontWeight: 'bold' }
+            });
+            label.anchor.set(0.5);
+            container.addChild(label);
+            
+            container.x = x;
+            container.y = y;
+            return container;
+        }
+        
+        // 辅助函数：创建消息气泡
+        function createBubble(x, y, color, text) {
+            const container = new PIXI.Container();
+            
+            const bg = new PIXI.Graphics();
+            bg.roundRect(-60, -20, 120, 40, 15);
+            bg.fill(color);
+            container.addChild(bg);
+            
+            const label = new PIXI.Text({
+                text: text,
+                style: { fontSize: 12, fill: 0xffffff }
+            });
+            label.anchor.set(0.5);
+            container.addChild(label);
+            
+            container.x = x;
+            container.y = y;
+            return container;
+        }
+        
+        // 用矩形拼接L型
+        function drawLShapeWithRects(x1, y1, x2, y2, color, thickness) {
+            const midX = x1 + 50; // 转角位置
+            
+            // 水平段
+            const hRect = new PIXI.Graphics();
+            hRect.rect(x1, y1 - thickness/2, midX - x1, thickness);
+            hRect.fill(color);
+            stage.addChild(hRect);
+            
+            // 垂直段  
+            const vRect = new PIXI.Graphics();
+            vRect.rect(midX - thickness/2, Math.min(y1, y2), thickness, Math.abs(y2 - y1));
+            vRect.fill(color);
+            stage.addChild(vRect);
+            
+            // 水平段2
+            const hRect2 = new PIXI.Graphics();
+            hRect2.rect(midX, y2 - thickness/2, x2 - midX, thickness);
+            hRect2.fill(color);
+            stage.addChild(hRect2);
+        }
+        
+        function clearAll() {
+            if (stage) {
+                stage.removeChildren();
+                log('🧹 清除所有内容');
+            }
+        }
+        
+        // 页面加载完成
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🎯 形状连接线测试系统已加载');
+            log('💡 假设：连接线需要基于形状而非纯线条');
+        });
+    </script>
+</body>
+</html>

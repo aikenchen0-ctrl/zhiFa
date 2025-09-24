@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>极简连接线测试 - 问题隔离调试</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+            padding: 20px;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .controls {
+            padding: 20px;
+            background: #ecf0f1;
+            border-bottom: 1px solid #bdc3c7;
+        }
+
+        .button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .button:hover {
+            background: #2980b9;
+        }
+
+        .button.active {
+            background: #27ae60;
+        }
+
+        .log {
+            background: #2c3e50;
+            color: #00ff00;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            height: 150px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .test-area {
+            position: relative;
+            height: 400px;
+            background: #fff;
+            border: 2px solid #34495e;
+            margin: 20px;
+            overflow: hidden;
+        }
+
+        /* 基础节点样式 */
+        .node {
+            position: absolute;
+            width: 100px;
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: 2px solid #5a67d8;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            cursor: grab;
+            user-select: none;
+            z-index: 10;
+        }
+
+        .node:active {
+            cursor: grabbing;
+        }
+
+        .node.source {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-color: #e53e3e;
+        }
+
+        .node.target {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            border-color: #3182ce;
+        }
+
+        /* CSS 连接线实现 */
+        .css-connection {
+            position: absolute;
+            background: #e53e3e;
+            transform-origin: left center;
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* Canvas 容器 */
+        .canvas-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* SVG 容器 */
+        .svg-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* 状态显示 */
+        .status {
+            padding: 10px 20px;
+            background: #f8f9fa;
+            border-top: 1px solid #dee2e6;
+            font-size: 14px;
+        }
+
+        .status-item {
+            margin: 5px 0;
+            padding: 5px 10px;
+            background: white;
+            border-radius: 4px;
+            border-left: 4px solid #28a745;
+        }
+
+        .status-item.error {
+            border-left-color: #dc3545;
+            background: #f8d7da;
+        }
+
+        .implementation-tabs {
+            display: flex;
+            background: #e9ecef;
+            margin: 20px;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: #6c757d;
+            color: white;
+            cursor: pointer;
+            border: none;
+            font-size: 14px;
+        }
+
+        .tab.active {
+            background: #28a745;
+        }
+
+        .tab:hover {
+            background: #5a6268;
+        }
+
+        .tab.active:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="header">
+            <h1>极简连接线测试 - 问题隔离调试</h1>
+            <p>测试三种连接线实现：CSS、Canvas、SVG</p>
+        </div>
+
+        <div class="controls">
+            <button class="button" onclick="runBasicTest()">基础连接测试</button>
+            <button class="button" onclick="testDynamicUpdate()">动态更新测试</button>
+            <button class="button" onclick="performanceTest()">性能测试</button>
+            <button class="button" onclick="clearLog()">清空日志</button>
+            <button class="button" onclick="resetPositions()">重置位置</button>
+        </div>
+
+        <div class="implementation-tabs">
+            <button class="tab active" onclick="switchImplementation('css')">CSS 实现</button>
+            <button class="tab" onclick="switchImplementation('canvas')">Canvas 实现</button>
+            <button class="tab" onclick="switchImplementation('svg')">SVG 实现</button>
+        </div>
+
+        <div class="log" id="debugLog"></div>
+
+        <div class="test-area" id="testArea">
+            <!-- 源节点 -->
+            <div class="node source" id="sourceNode" style="left: 50px; top: 50px;">
+                Source
+            </div>
+            
+            <!-- 目标节点 -->
+            <div class="node target" id="targetNode" style="left: 300px; top: 200px;">
+                Target
+            </div>
+
+            <!-- CSS 连接线 -->
+            <div class="css-connection" id="cssConnection"></div>
+
+            <!-- Canvas 层 -->
+            <canvas class="canvas-layer" id="canvasLayer"></canvas>
+
+            <!-- SVG 层 -->
+            <svg class="svg-layer" id="svgLayer">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+                            refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#e53e3e" />
+                    </marker>
+                </defs>
+                <path id="svgConnection" stroke="#e53e3e" stroke-width="3" 
+                      fill="none" marker-end="url(#arrowhead)"/>
+            </svg>
+        </div>
+
+        <div class="status" id="statusPanel">
+            <div class="status-item">等待测试开始...</div>
+        </div>
+    </div>
+
+    <script>
+        // 全局状态
+        let currentImplementation = 'css';
+        let sourceNode = null;
+        let targetNode = null;
+        let isDragging = false;
+        let dragOffset = { x: 0, y: 0 };
+
+        // 日志系统
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('debugLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'success' ? '#51cf66' : '#00ff00';
+            
+            logElement.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('debugLog').innerHTML = '';
+            log('日志已清空');
+        }
+
+        // 状态更新
+        function updateStatus(message, isError = false) {
+            const statusPanel = document.getElementById('statusPanel');
+            const statusClass = isError ? 'status-item error' : 'status-item';
+            statusPanel.innerHTML = `<div class="${statusClass}">${message}</div>`;
+        }
+
+        // 初始化
+        function init() {
+            log('初始化连接线测试系统...');
+            
+            sourceNode = document.getElementById('sourceNode');
+            targetNode = document.getElementById('targetNode');
+            
+            // 设置Canvas尺寸
+            const canvas = document.getElementById('canvasLayer');
+            const testArea = document.getElementById('testArea');
+            canvas.width = testArea.offsetWidth;
+            canvas.height = testArea.offsetHeight;
+            
+            // 设置SVG尺寸
+            const svg = document.getElementById('svgLayer');
+            svg.setAttribute('width', testArea.offsetWidth);
+            svg.setAttribute('height', testArea.offsetHeight);
+            
+            // 初始化拖拽
+            initDragAndDrop();
+            
+            // 绘制初始连接线
+            drawConnection();
+            
+            log('初始化完成');
+            updateStatus('系统已就绪，当前实现：CSS');
+        }
+
+        // 拖拽功能
+        function initDragAndDrop() {
+            [sourceNode, targetNode].forEach(node => {
+                node.addEventListener('mousedown', startDrag);
+            });
+
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', endDrag);
+        }
+
+        function startDrag(e) {
+            isDragging = true;
+            const rect = e.target.getBoundingClientRect();
+            const testAreaRect = document.getElementById('testArea').getBoundingClientRect();
+            
+            dragOffset.x = e.clientX - rect.left;
+            dragOffset.y = e.clientY - rect.top;
+            
+            e.target.style.zIndex = '20';
+            log(`开始拖拽节点: ${e.target.textContent}`);
+        }
+
+        function drag(e) {
+            if (!isDragging) return;
+            
+            const activeNode = document.querySelector('.node:active') || 
+                              (sourceNode.style.zIndex === '20' ? sourceNode : targetNode);
+            
+            if (activeNode) {
+                const testAreaRect = document.getElementById('testArea').getBoundingClientRect();
+                const x = e.clientX - testAreaRect.left - dragOffset.x;
+                const y = e.clientY - testAreaRect.top - dragOffset.y;
+                
+                activeNode.style.left = Math.max(0, Math.min(x, testAreaRect.width - activeNode.offsetWidth)) + 'px';
+                activeNode.style.top = Math.max(0, Math.min(y, testAreaRect.height - activeNode.offsetHeight)) + 'px';
+                
+                // 实时更新连接线
+                drawConnection();
+            }
+        }
+
+        function endDrag(e) {
+            if (isDragging) {
+                isDragging = false;
+                sourceNode.style.zIndex = '10';
+                targetNode.style.zIndex = '10';
+                log('拖拽结束，连接线已更新');
+            }
+        }
+
+        // 获取节点中心坐标
+        function getNodeCenter(node) {
+            const rect = node.getBoundingClientRect();
+            const testAreaRect = document.getElementById('testArea').getBoundingClientRect();
+            
+            return {
+                x: rect.left - testAreaRect.left + rect.width / 2,
+                y: rect.top - testAreaRect.top + rect.height / 2
+            };
+        }
+
+        // 计算连接线参数
+        function calculateConnection() {
+            const sourceCenter = getNodeCenter(sourceNode);
+            const targetCenter = getNodeCenter(targetNode);
+            
+            const dx = targetCenter.x - sourceCenter.x;
+            const dy = targetCenter.y - sourceCenter.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            
+            return {
+                start: sourceCenter,
+                end: targetCenter,
+                distance: distance,
+                angle: angle,
+                dx: dx,
+                dy: dy
+            };
+        }
+
+        // CSS 连接线实现
+        function drawCSSConnection() {
+            const connection = calculateConnection();
+            const cssLine = document.getElementById('cssConnection');
+            
+            cssLine.style.left = connection.start.x + 'px';
+            cssLine.style.top = connection.start.y + 'px';
+            cssLine.style.width = connection.distance + 'px';
+            cssLine.style.height = '3px';
+            cssLine.style.transform = `rotate(${connection.angle}deg)`;
+            cssLine.style.display = 'block';
+            
+            log(`CSS连接线: 长度=${connection.distance.toFixed(2)}px, 角度=${connection.angle.toFixed(2)}°`);
+        }
+
+        // Canvas 连接线实现
+        function drawCanvasConnection() {
+            const canvas = document.getElementById('canvasLayer');
+            const ctx = canvas.getContext('2d');
+            const connection = calculateConnection();
+            
+            // 清空画布
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制连接线
+            ctx.beginPath();
+            ctx.moveTo(connection.start.x, connection.start.y);
+            ctx.lineTo(connection.end.x, connection.end.y);
+            ctx.strokeStyle = '#e53e3e';
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // 绘制箭头
+            const arrowSize = 10;
+            const arrowAngle = Math.atan2(connection.dy, connection.dx);
+            
+            ctx.beginPath();
+            ctx.moveTo(connection.end.x, connection.end.y);
+            ctx.lineTo(
+                connection.end.x - arrowSize * Math.cos(arrowAngle - Math.PI / 6),
+                connection.end.y - arrowSize * Math.sin(arrowAngle - Math.PI / 6)
+            );
+            ctx.moveTo(connection.end.x, connection.end.y);
+            ctx.lineTo(
+                connection.end.x - arrowSize * Math.cos(arrowAngle + Math.PI / 6),
+                connection.end.y - arrowSize * Math.sin(arrowAngle + Math.PI / 6)
+            );
+            ctx.stroke();
+            
+            log(`Canvas连接线: 起点(${connection.start.x.toFixed(1)}, ${connection.start.y.toFixed(1)}) 终点(${connection.end.x.toFixed(1)}, ${connection.end.y.toFixed(1)})`);
+        }
+
+        // SVG 连接线实现
+        function drawSVGConnection() {
+            const connection = calculateConnection();
+            const svgPath = document.getElementById('svgConnection');
+            
+            // 创建路径
+            const pathData = `M ${connection.start.x} ${connection.start.y} L ${connection.end.x} ${connection.end.y}`;
+            svgPath.setAttribute('d', pathData);
+            
+            log(`SVG连接线: 路径=${pathData}`);
+        }
+
+        // 主绘制函数
+        function drawConnection() {
+            try {
+                // 隐藏所有实现
+                document.getElementById('cssConnection').style.display = 'none';
+                document.getElementById('canvasLayer').getContext('2d').clearRect(0, 0, 
+                    document.getElementById('canvasLayer').width, 
+                    document.getElementById('canvasLayer').height);
+                document.getElementById('svgConnection').setAttribute('d', '');
+                
+                // 根据当前实现绘制
+                switch(currentImplementation) {
+                    case 'css':
+                        drawCSSConnection();
+                        break;
+                    case 'canvas':
+                        drawCanvasConnection();
+                        break;
+                    case 'svg':
+                        drawSVGConnection();
+                        break;
+                }
+                
+                updateStatus(`连接线已更新 - 当前实现：${currentImplementation.toUpperCase()}`);
+            } catch (error) {
+                log(`绘制连接线时发生错误: ${error.message}`, 'error');
+                updateStatus(`绘制失败: ${error.message}`, true);
+            }
+        }
+
+        // 切换实现
+        function switchImplementation(implementation) {
+            currentImplementation = implementation;
+            
+            // 更新按钮状态
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            log(`切换到 ${implementation.toUpperCase()} 实现`);
+            drawConnection();
+        }
+
+        // 测试函数
+        function runBasicTest() {
+            log('开始基础连接测试...', 'info');
+            
+            // 测试步骤1: 验证节点位置
+            const sourcePos = getNodeCenter(sourceNode);
+            const targetPos = getNodeCenter(targetNode);
+            log(`源节点位置: (${sourcePos.x}, ${sourcePos.y})`);
+            log(`目标节点位置: (${targetPos.x}, ${targetPos.y})`);
+            
+            // 测试步骤2: 计算连接参数
+            const connection = calculateConnection();
+            log(`连接距离: ${connection.distance.toFixed(2)}px`);
+            log(`连接角度: ${connection.angle.toFixed(2)}°`);
+            
+            // 测试步骤3: 绘制连接线
+            drawConnection();
+            
+            log('基础连接测试完成', 'success');
+        }
+
+        function testDynamicUpdate() {
+            log('开始动态更新测试...', 'info');
+            
+            let step = 0;
+            const maxSteps = 50;
+            const originalPos = {
+                x: parseInt(targetNode.style.left),
+                y: parseInt(targetNode.style.top)
+            };
+            
+            const interval = setInterval(() => {
+                // 移动目标节点
+                const angle = (step * 360 / maxSteps) * Math.PI / 180;
+                const radius = 50;
+                const newX = originalPos.x + Math.cos(angle) * radius;
+                const newY = originalPos.y + Math.sin(angle) * radius;
+                
+                targetNode.style.left = newX + 'px';
+                targetNode.style.top = newY + 'px';
+                
+                // 更新连接线
+                drawConnection();
+                
+                step++;
+                if (step >= maxSteps) {
+                    clearInterval(interval);
+                    targetNode.style.left = originalPos.x + 'px';
+                    targetNode.style.top = originalPos.y + 'px';
+                    drawConnection();
+                    log('动态更新测试完成', 'success');
+                }
+            }, 50);
+        }
+
+        function performanceTest() {
+            log('开始性能测试...', 'info');
+            
+            const iterations = 1000;
+            const startTime = performance.now();
+            
+            for (let i = 0; i < iterations; i++) {
+                drawConnection();
+            }
+            
+            const endTime = performance.now();
+            const duration = endTime - startTime;
+            const fps = 1000 / (duration / iterations);
+            
+            log(`性能测试结果:`, 'success');
+            log(`- 总耗时: ${duration.toFixed(2)}ms`);
+            log(`- 平均每次: ${(duration / iterations).toFixed(3)}ms`);
+            log(`- 理论FPS: ${fps.toFixed(1)}`);
+        }
+
+        function resetPositions() {
+            sourceNode.style.left = '50px';
+            sourceNode.style.top = '50px';
+            targetNode.style.left = '300px';
+            targetNode.style.top = '200px';
+            drawConnection();
+            log('节点位置已重置');
+            updateStatus('节点位置已重置到初始状态');
+        }
+
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+
+        // 窗口大小改变时重新绘制
+        window.addEventListener('resize', () => {
+            setTimeout(() => {
+                const canvas = document.getElementById('canvasLayer');
+                const testArea = document.getElementById('testArea');
+                canvas.width = testArea.offsetWidth;
+                canvas.height = testArea.offsetHeight;
+                
+                const svg = document.getElementById('svgLayer');
+                svg.setAttribute('width', testArea.offsetWidth);
+                svg.setAttribute('height', testArea.offsetHeight);
+                
+                drawConnection();
+                log('窗口大小改变，连接线已重新绘制');
+            }, 100);
+        });
+    </script>
+</body>
+</html>

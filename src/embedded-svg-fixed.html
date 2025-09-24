@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Embedded SVG Fixed - Connection Lines as Part of Message Bubbles</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .main-container {
+            height: 100vh;
+            display: flex;
+            background: transparent;
+        }
+
+        .column {
+            height: 100vh;
+            overflow-y: auto;
+            border-right: 1px solid #e0e0e0;
+            position: relative;
+        }
+
+        .session-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .messages-column {
+            flex: 1;
+            background: transparent;
+            position: relative;
+        }
+
+        .account-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .avatar-item {
+            width: 66px;
+            height: 66px;
+            margin: 10px 0;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            position: relative;
+            transition: transform 0.2s ease;
+        }
+
+        .avatar-item:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .avatar-item.account {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .message-item {
+            margin: 15px 20px;
+            position: relative;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .message-content {
+            background: #e9ecef;
+            border-radius: 18px;
+            padding: 12px 16px;
+            position: relative;
+            word-wrap: break-word;
+            width: 100%;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .message-content.own {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-text {
+            flex: 1;
+            z-index: 2;
+            position: relative;
+        }
+
+        .message-time {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+
+        /* 嵌入式SVG连接线 - 修正版 */
+        .embedded-connection-svg {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+            overflow: visible;
+        }
+
+        .embedded-connection-svg.left {
+            /* 左侧连接线 - 从气泡左边开始 */
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .embedded-connection-svg.right {
+            /* 右侧连接线 - 从气泡右边开始 */
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .connection-path {
+            stroke: #007bff;
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            opacity: 0.8;
+        }
+
+        .connection-path.own {
+            stroke: #e91e63;
+        }
+
+        .message-item:hover .connection-path {
+            opacity: 1;
+            stroke-width: 4;
+        }
+
+        /* 控制面板 */
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 2000;
+        }
+
+        .controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .debug-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 2001;
+            max-width: 400px;
+        }
+
+        /* 调试边框 */
+        .debug-mode .message-content {
+            border: 2px solid red;
+        }
+
+        .debug-mode .embedded-connection-svg {
+            border: 1px dashed yellow;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button onclick="generateTestData(10)">Generate 10 Items</button>
+        <button onclick="generateTestData(100)">Generate 100 Items</button>
+        <button onclick="generateTestData(1000)">Generate 1000 Items</button>
+        <button onclick="updateConnections()">Update Connections</button>
+        <button onclick="toggleDebugMode()">Debug Mode</button>
+        <button onclick="clearAll()">Clear All</button>
+        <button onclick="performanceTest()">Performance Test</button>
+    </div>
+
+    <div class="debug-info" id="debugInfo">
+        Embedded SVG Mode: Ready
+    </div>
+
+    <div class="main-container">
+        <!-- 会话头像列 -->
+        <div class="column session-avatars-column" id="sessionAvatars">
+        </div>
+
+        <!-- 消息气泡列 -->
+        <div class="column messages-column" id="messagesColumn">
+        </div>
+
+        <!-- 账号头像列 -->
+        <div class="column account-avatars-column" id="accountAvatars">
+        </div>
+    </div>
+
+    <script>
+        class EmbeddedSVGConnectionManager {
+            constructor() {
+                this.sessionColumn = document.getElementById('sessionAvatars');
+                this.messageColumn = document.getElementById('messagesColumn');
+                this.accountColumn = document.getElementById('accountAvatars');
+                this.debugInfo = document.getElementById('debugInfo');
+                
+                this.debugMode = false;
+                this.messages = [];
+                
+                // scrollIntoView + 位置监听方案
+                this.intersectionObserver = null;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.setupIntersectionObserver();
+                console.log('Embedded SVG Connection Manager with scrollIntoView + 位置监听 initialized');
+            }
+
+            // 设置Intersection Observer监听头像可见性
+            setupIntersectionObserver() {
+                const options = {
+                    root: null,
+                    rootMargin: '50px',
+                    threshold: 0
+                };
+
+                this.intersectionObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (!entry.isIntersecting) {
+                            // 头像不可见时，触发重新计算连接线
+                            this.updateConnections();
+                        }
+                    });
+                }, options);
+            }
+
+            setupEventListeners() {
+                // 滚动监听 - scrollIntoView + 位置监听方案
+                [this.sessionColumn, this.messageColumn, this.accountColumn].forEach(column => {
+                    column.addEventListener('scroll', () => {
+                        this.updateConnections();
+                    });
+                });
+
+                // 窗口大小改变
+                window.addEventListener('resize', () => {
+                    this.updateConnections();
+                });
+            }
+
+            generateTestData(count = 3) {
+                this.clearAll();
+                
+                const startTime = performance.now();
+                this.updateDebugInfo('generate', `Generating ${count} items...`);
+                
+                // 生成指定数量的测试项目
+                for (let i = 0; i < count; i++) {
+                    // 会话头像
+                    const sessionAvatar = document.createElement('div');
+                    sessionAvatar.className = 'avatar-item session';
+                    sessionAvatar.id = `session-${i}`;
+                    sessionAvatar.textContent = `S${i + 1}`;
+                    this.sessionColumn.appendChild(sessionAvatar);
+
+                    // 消息气泡 - 嵌入SVG连接线
+                    const isOwn = i % 2 === 0;
+                    const messageItem = document.createElement('div');
+                    messageItem.className = 'message-item';
+                    messageItem.id = `message-${i}`;
+                    messageItem.setAttribute('data-is-own', isOwn);
+                    messageItem.setAttribute('data-session-index', i);
+                    messageItem.setAttribute('data-account-index', i);
+                    
+                    messageItem.innerHTML = `
+                        <div class="message-content ${isOwn ? 'own' : ''}">
+                            ${!isOwn ? `
+                            <!-- 嵌入式左侧连接线 -->
+                            <svg class="embedded-connection-svg left" xmlns="http://www.w3.org/2000/svg" width="200" height="100">
+                                <path class="connection-path" d="" />
+                            </svg>
+                            ` : ''}
+                            ${isOwn ? `
+                            <!-- 嵌入式右侧连接线 -->
+                            <svg class="embedded-connection-svg right" xmlns="http://www.w3.org/2000/svg" width="200" height="100">
+                                <path class="connection-path own" d="" />
+                            </svg>
+                            ` : ''}
+                            <div class="message-text">
+                                ${isOwn ? '自己的消息 - 嵌入式SVG连接到右侧账号头像' : '别人的消息 - 嵌入式SVG连接到左侧会话头像'}
+                                <div class="message-time">10:${30 + i}0 AM</div>
+                            </div>
+                        </div>
+                    `;
+                    this.messageColumn.appendChild(messageItem);
+
+                    // 账号头像
+                    const accountAvatar = document.createElement('div');
+                    accountAvatar.className = 'avatar-item account';
+                    accountAvatar.id = `account-${i}`;
+                    accountAvatar.textContent = `A${i + 1}`;
+                    this.accountColumn.appendChild(accountAvatar);
+
+                    this.messages.push({
+                        messageId: `message-${i}`,
+                        sessionId: `session-${i}`,
+                        accountId: `account-${i}`,
+                        isOwn: isOwn
+                    });
+                }
+
+                const generateTime = performance.now() - startTime;
+                
+                // 延迟更新连接线和设置监听器
+                setTimeout(() => {
+                    const updateStartTime = performance.now();
+                    
+                    // 为新生成的头像设置Intersection Observer
+                    this.messages.forEach(msg => {
+                        const sessionElement = document.getElementById(msg.sessionId);
+                        const accountElement = document.getElementById(msg.accountId);
+                        
+                        if (sessionElement) this.intersectionObserver.observe(sessionElement);
+                        if (accountElement) this.intersectionObserver.observe(accountElement);
+                    });
+                    
+                    this.updateConnections();
+                    const updateTime = performance.now() - updateStartTime;
+                    
+                    this.updateDebugInfo('complete', 
+                        `Generated ${count} items in ${Math.round(generateTime)}ms, setup observers and updated connections in ${Math.round(updateTime)}ms. Total: ${this.messages.length} messages with ${count} connections.`);
+                }, 200);
+            }
+
+            updateConnections() {
+                const startTime = performance.now();
+                let updatedCount = 0;
+                
+                this.messages.forEach((msg, index) => {
+                    const messageElement = document.getElementById(msg.messageId);
+                    const sessionElement = document.getElementById(msg.sessionId);
+                    const accountElement = document.getElementById(msg.accountId);
+
+                    if (!messageElement || !sessionElement || !accountElement) return;
+
+                    if (msg.isOwn) {
+                        // 自己的消息：更新右侧连接线
+                        this.updateEmbeddedConnection(messageElement, accountElement, 'right');
+                        updatedCount++;
+                    } else {
+                        // 别人的消息：更新左侧连接线
+                        this.updateEmbeddedConnection(messageElement, sessionElement, 'left');
+                        updatedCount++;
+                    }
+                });
+                
+                const updateTime = performance.now() - startTime;
+                if (this.debugMode) {
+                    this.updateDebugInfo('update', `Updated ${updatedCount} connections in ${Math.round(updateTime)}ms (${Math.round(updateTime/updatedCount*1000)/1000}ms per connection)`);
+                }
+            }
+
+            // scrollIntoView + 位置监听方案：增强的头像位置获取
+            getEnhancedAvatarPosition(targetAvatar) {
+                // 检查头像是否在可视区域内
+                const avatarRect = targetAvatar.getBoundingClientRect();
+                const parentColumn = targetAvatar.parentElement;
+                const columnRect = parentColumn.getBoundingClientRect();
+                
+                // 判断头像是否在父容器的可视区域内
+                const isVisible = (
+                    avatarRect.top >= columnRect.top &&
+                    avatarRect.bottom <= columnRect.bottom &&
+                    avatarRect.left >= columnRect.left &&
+                    avatarRect.right <= columnRect.right
+                );
+
+                if (!isVisible) {
+                    // 头像不完全可见，使用scrollIntoView确保可见
+                    targetAvatar.scrollIntoView({
+                        behavior: 'auto',
+                        block: 'nearest',
+                        inline: 'nearest'
+                    });
+                    
+                    // 重新获取位置（scrollIntoView后）
+                    return targetAvatar.getBoundingClientRect();
+                }
+                
+                return avatarRect;
+            }
+
+            updateEmbeddedConnection(messageElement, targetAvatar, direction) {
+                const svg = messageElement.querySelector(`.embedded-connection-svg.${direction}`);
+                const path = svg?.querySelector('.connection-path');
+                
+                if (!svg || !path) return;
+
+                try {
+                    // scrollIntoView + 位置监听方案：获取精确的头像位置
+                    const messageContent = messageElement.querySelector('.message-content');
+                    const messageRect = messageContent.getBoundingClientRect();
+                    const avatarRect = this.getEnhancedAvatarPosition(targetAvatar);
+
+                    // 计算连接点 - 严格按照需求描述
+                    let bubbleConnectionPoint, avatarConnectionPoint;
+
+                    if (direction === 'left') {
+                        // 会话头像：从消息气泡左侧边框的垂直线中点开始 → 会话头像最右侧边缘的中点
+                        bubbleConnectionPoint = {
+                            x: messageRect.left,
+                            y: messageRect.top + messageRect.height / 2
+                        };
+                        avatarConnectionPoint = {
+                            x: avatarRect.right,
+                            y: avatarRect.top + avatarRect.height / 2
+                        };
+                    } else {
+                        // 账号头像：从消息气泡右侧边框的垂直线中点开始 → 账号头像最左侧边缘的中点
+                        bubbleConnectionPoint = {
+                            x: messageRect.right,
+                            y: messageRect.top + messageRect.height / 2
+                        };
+                        avatarConnectionPoint = {
+                            x: avatarRect.left,
+                            y: avatarRect.top + avatarRect.height / 2
+                        };
+                    }
+
+                    // 计算偏移量
+                    const deltaX = avatarConnectionPoint.x - bubbleConnectionPoint.x;
+                    const deltaY = avatarConnectionPoint.y - bubbleConnectionPoint.y;
+
+                    // SVG配置
+                    const horizontalOffset = 5; // 先水平延伸5px
+                    const padding = 10;
+                    
+                    const svgWidth = Math.abs(deltaX) + horizontalOffset + padding * 2;
+                    const svgHeight = Math.abs(deltaY) + padding * 2;
+
+                    svg.setAttribute('width', svgWidth);
+                    svg.setAttribute('height', svgHeight);
+                    svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+                    // 按需求计算路径点：水平延伸5px → 圆角转折 → 垂直延伸 → 圆角转折 → 水平延伸到头像
+                    let startX, startY, endX, endY;
+
+                    if (direction === 'left') {
+                        startX = svgWidth - padding;
+                        startY = deltaY < 0 ? svgHeight - padding : padding;
+                        endX = padding;
+                        endY = deltaY < 0 ? padding : svgHeight - padding;
+                    } else {
+                        startX = padding;
+                        startY = deltaY < 0 ? svgHeight - padding : padding;
+                        endX = svgWidth - padding;
+                        endY = deltaY < 0 ? padding : svgHeight - padding;
+                    }
+
+                    // 生成符合需求的路径（5px水平延伸 + 圆角转折）
+                    const pathData = this.generateEmbeddedPath(startX, startY, endX, endY, direction);
+                    path.setAttribute('d', pathData);
+
+                    // 更新调试信息
+                    if (this.debugMode) {
+                        this.updateDebugInfo('connection', direction, bubbleConnectionPoint, avatarConnectionPoint, {
+                            svgWidth, svgHeight, startX, startY, endX, endY, deltaX, deltaY,
+                            avatarSize: '66×66px 圆角正方形',
+                            method: 'scrollIntoView + 位置监听',
+                            avatarVisible: this.isAvatarVisible(targetAvatar)
+                        });
+                    }
+
+                } catch (error) {
+                    console.warn(`${direction} connection error:`, error);
+                }
+            }
+
+            // 辅助方法：检查头像是否可见
+            isAvatarVisible(avatar) {
+                const rect = avatar.getBoundingClientRect();
+                const parentRect = avatar.parentElement.getBoundingClientRect();
+                return rect.top >= parentRect.top && rect.bottom <= parentRect.bottom;
+            }
+
+            generateEmbeddedPath(startX, startY, endX, endY, direction) {
+                const horizontalOffset = 5;
+                const cornerRadius = 8;
+                
+                // 第一个转折点：水平延伸5px后
+                const firstTurnX = startX + (direction === 'left' ? -horizontalOffset : horizontalOffset);
+                const firstTurnY = startY;
+                
+                // 第二个转折点：垂直延伸到目标高度
+                const secondTurnX = firstTurnX;
+                const secondTurnY = endY;
+
+                // 如果距离太小，使用直线
+                if (Math.abs(endY - startY) < cornerRadius * 2 || 
+                    Math.abs(endX - secondTurnX) < cornerRadius) {
+                    return `M ${startX} ${startY} L ${endX} ${endY}`;
+                }
+
+                // 生成带圆角的路径
+                const verticalDirection = endY > startY ? 1 : -1;
+                const horizontalDirection = direction === 'left' ? -1 : 1;
+
+                return `M ${startX} ${startY} 
+                        L ${firstTurnX - cornerRadius * horizontalDirection} ${firstTurnY}
+                        Q ${firstTurnX} ${firstTurnY} ${firstTurnX} ${firstTurnY + cornerRadius * verticalDirection}
+                        L ${secondTurnX} ${secondTurnY - cornerRadius * verticalDirection}
+                        Q ${secondTurnX} ${secondTurnY} ${secondTurnX + cornerRadius * horizontalDirection} ${secondTurnY}
+                        L ${endX} ${endY}`;
+            }
+
+            updateDebugInfo(type, info, bubblePoint = null, avatarPoint = null, pathInfo = null) {
+                if (type === 'connection' && bubblePoint && avatarPoint && pathInfo) {
+                    this.debugInfo.innerHTML = `
+                        <strong>嵌入式SVG ${info.toUpperCase()} 连接调试 - scrollIntoView方案:</strong><br>
+                        <strong>连接规则:</strong> ${info === 'left' ? 
+                            '气泡左侧边框垂直线中点 → 左延伸5px → 圆角转折 → 垂直延伸 → 圆角转折 → 会话头像右边缘中点' : 
+                            '气泡右侧边框垂直线中点 → 右延伸5px → 圆角转折 → 垂直延伸 → 圆角转折 → 账号头像左边缘中点'}<br>
+                        <strong>定位方法:</strong> ${pathInfo.method || 'scrollIntoView + 位置监听'}<br>
+                        <strong>头像可见:</strong> ${pathInfo.avatarVisible ? '✓' : '✗ (已自动调整)'}<br>
+                        <strong>头像规格:</strong> ${pathInfo.avatarSize || '66×66px 圆角正方形'}<br>
+                        <strong>气泡连接点:</strong> (${Math.round(bubblePoint.x)}, ${Math.round(bubblePoint.y)})<br>
+                        <strong>头像连接点:</strong> (${Math.round(avatarPoint.x)}, ${Math.round(avatarPoint.y)})<br>
+                        <strong>SVG尺寸:</strong> ${Math.round(pathInfo.svgWidth)} × ${Math.round(pathInfo.svgHeight)}<br>
+                        <strong>路径:</strong> (${Math.round(pathInfo.startX)}, ${Math.round(pathInfo.startY)}) → (${Math.round(pathInfo.endX)}, ${Math.round(pathInfo.endY)})<br>
+                        <strong>偏移量:</strong> ΔX=${Math.round(pathInfo.deltaX)}, ΔY=${Math.round(pathInfo.deltaY)}
+                    `;
+                } else {
+                    this.debugInfo.innerHTML = `<strong>${type.toUpperCase()}:</strong> ${info}`;
+                }
+            }
+
+            toggleDebugMode() {
+                this.debugMode = !this.debugMode;
+                document.body.classList.toggle('debug-mode', this.debugMode);
+                
+                if (this.debugMode) {
+                    this.updateConnections();
+                } else {
+                    this.debugInfo.textContent = 'Debug mode disabled';
+                }
+            }
+
+            performanceTest() {
+                this.updateDebugInfo('performance', 'Running performance test...');
+                
+                const tests = [
+                    { count: 10, name: '10 items' },
+                    { count: 100, name: '100 items' },
+                    { count: 1000, name: '1000 items' }
+                ];
+                
+                let testIndex = 0;
+                const results = [];
+                
+                const runNextTest = () => {
+                    if (testIndex >= tests.length) {
+                        this.updateDebugInfo('performance', 
+                            `Performance Test Complete:<br>` +
+                            results.map(r => 
+                                `${r.name}: Gen ${r.generateTime}ms, Update ${r.updateTime}ms, Total ${r.totalTime}ms`
+                            ).join('<br>')
+                        );
+                        return;
+                    }
+                    
+                    const test = tests[testIndex];
+                    const startTime = performance.now();
+                    
+                    this.generateTestData(test.count);
+                    
+                    setTimeout(() => {
+                        const updateStartTime = performance.now();
+                        this.updateConnections();
+                        const updateTime = performance.now() - updateStartTime;
+                        const totalTime = performance.now() - startTime;
+                        
+                        results.push({
+                            name: test.name,
+                            generateTime: Math.round(totalTime - updateTime),
+                            updateTime: Math.round(updateTime),
+                            totalTime: Math.round(totalTime)
+                        });
+                        
+                        testIndex++;
+                        setTimeout(runNextTest, 1000);
+                    }, 500);
+                };
+                
+                runNextTest();
+            }
+
+            clearAll() {
+                this.sessionColumn.innerHTML = '';
+                this.messageColumn.innerHTML = '';
+                this.accountColumn.innerHTML = '';
+                this.messages = [];
+                this.updateDebugInfo('status', 'Embedded SVG Mode: Cleared');
+            }
+        }
+
+        // 初始化
+        let connectionManager;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            connectionManager = new EmbeddedSVGConnectionManager();
+            // 自动生成测试数据
+            setTimeout(() => {
+                connectionManager.generateTestData(10);
+            }, 500);
+        });
+
+        // 全局函数
+        function generateTestData(count) {
+            connectionManager.generateTestData(count);
+        }
+
+        function updateConnections() {
+            connectionManager.updateConnections();
+        }
+
+        function toggleDebugMode() {
+            connectionManager.toggleDebugMode();
+        }
+
+        function performanceTest() {
+            connectionManager.performanceTest();
+        }
+
+        function clearAll() {
+            connectionManager.clearAll();
+        }
+    </script>
+</body>
+</html>

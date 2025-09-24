@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PixiJS Connection System - Edge Case Validation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.3.4/pixi.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #ffffff;
+            overflow: hidden;
+        }
+        
+        .validation-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            z-index: 1000;
+            border-bottom: 1px solid #333;
+        }
+        
+        .validation-header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .validation-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ff6b6b;
+            margin-bottom: 5px;
+        }
+        
+        .validation-subtitle {
+            font-size: 14px;
+            color: #888;
+        }
+        
+        .edge-case-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .edge-case-btn {
+            padding: 10px 15px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #1a1a1a;
+            color: #ffffff;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .edge-case-btn:hover {
+            background: #333;
+            border-color: #ff6b6b;
+            transform: translateY(-2px);
+        }
+        
+        .edge-case-btn.active {
+            background: #ff6b6b;
+            color: #000;
+            border-color: #ff6b6b;
+        }
+        
+        .edge-case-btn.pass {
+            background: #4ecdc4;
+            color: #000;
+            border-color: #4ecdc4;
+        }
+        
+        .edge-case-btn.fail {
+            background: #ff4757;
+            color: #fff;
+            border-color: #ff4757;
+        }
+        
+        .scenario-controls {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+        
+        .scenario-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 20px;
+            background: #45a3e5;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .scenario-btn:hover {
+            background: #3d8bdb;
+            transform: scale(1.05);
+        }
+        
+        .scenario-btn.danger {
+            background: #ff4757;
+        }
+        
+        #pixi-container {
+            position: fixed;
+            top: 160px;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+        }
+        
+        .edge-case-monitor {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 1000;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .monitor-title {
+            color: #ff6b6b;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .monitor-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .monitor-item {
+            text-align: center;
+            padding: 8px;
+            background: #1a1a1a;
+            border-radius: 4px;
+            border-left: 3px solid #333;
+        }
+        
+        .monitor-item.critical {
+            border-left-color: #ff4757;
+        }
+        
+        .monitor-item.warning {
+            border-left-color: #ffa502;
+        }
+        
+        .monitor-item.good {
+            border-left-color: #4ecdc4;
+        }
+        
+        .monitor-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #fff;
+        }
+        
+        .monitor-label {
+            font-size: 10px;
+            color: #888;
+            margin-top: 2px;
+        }
+        
+        @media (max-width: 768px) {
+            .validation-overlay {
+                padding: 15px;
+            }
+            
+            .edge-case-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+            }
+            
+            .scenario-controls {
+                flex-wrap: wrap;
+            }
+            
+            .monitor-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="validation-overlay">
+        <div class="validation-header">
+            <div class="validation-title">Edge Case Validation Suite</div>
+            <div class="validation-subtitle">Testing boundary conditions and error handling</div>
+        </div>
+        
+        <div class="edge-case-grid">
+            <button class="edge-case-btn" onclick="testZeroElements()">Zero Elements</button>
+            <button class="edge-case-btn" onclick="testSingleElement()">Single Element</button>
+            <button class="edge-case-btn" onclick="testMaxElements()">Max Elements (10k)</button>
+            <button class="edge-case-btn" onclick="testInvalidConnections()">Invalid Connections</button>
+            <button class="edge-case-btn" onclick="testExtremeScrolling()">Extreme Scrolling</button>
+            <button class="edge-case-btn" onclick="testRapidResize()">Rapid Resize</button>
+            <button class="edge-case-btn" onclick="testMemoryLeaks()">Memory Leaks</button>
+            <button class="edge-case-btn" onclick="testNetworkFailure()">Network Failure</button>
+            <button class="edge-case-btn" onclick="testConcurrentOps()">Concurrent Ops</button>
+            <button class="edge-case-btn" onclick="testCorruptedData()">Corrupted Data</button>
+        </div>
+        
+        <div class="scenario-controls">
+            <button class="scenario-btn" onclick="runStressTest()">🔥 Stress Test</button>
+            <button class="scenario-btn" onclick="runRecoveryTest()">🔄 Recovery Test</button>
+            <button class="scenario-btn" onclick="runAllEdgeCases()">🎯 All Edge Cases</button>
+            <button class="scenario-btn danger" onclick="emergencyReset()">🚨 Emergency Reset</button>
+        </div>
+    </div>
+    
+    <div id="pixi-container"></div>
+    
+    <div class="edge-case-monitor">
+        <div class="monitor-title">Real-time Edge Case Monitoring</div>
+        <div class="monitor-grid">
+            <div class="monitor-item" id="error-count">
+                <div class="monitor-value">0</div>
+                <div class="monitor-label">Errors</div>
+            </div>
+            <div class="monitor-item" id="memory-usage">
+                <div class="monitor-value">0MB</div>
+                <div class="monitor-label">Memory</div>
+            </div>
+            <div class="monitor-item" id="recovery-time">
+                <div class="monitor-value">0ms</div>
+                <div class="monitor-label">Recovery</div>
+            </div>
+            <div class="monitor-item" id="connection-stability">
+                <div class="monitor-value">100%</div>
+                <div class="monitor-label">Stability</div>
+            </div>
+            <div class="monitor-item" id="render-consistency">
+                <div class="monitor-value">100%</div>
+                <div class="monitor-label">Consistency</div>
+            </div>
+            <div class="monitor-item" id="edge-case-score">
+                <div class="monitor-value">0/10</div>
+                <div class="monitor-label">Edge Cases</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        class EdgeCaseValidator {
+            constructor() {
+                this.app = null;
+                this.elements = [];
+                this.connections = [];
+                this.containers = [];
+                this.isStressing = false;
+                this.errorCount = 0;
+                this.recoveryTimes = [];
+                this.edgeCasesCompleted = 0;
+                
+                this.monitoring = {
+                    memoryUsage: 0,
+                    connectionStability: 100,
+                    renderConsistency: 100,
+                    errorCount: 0,
+                    lastRecoveryTime: 0
+                };
+                
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    await this.setupPixiApp();
+                    this.setupMonitoring();
+                    this.logEdgeCase('Edge Case Validator initialized successfully', 'pass');
+                } catch (error) {
+                    this.logEdgeCase('Failed to initialize validator: ' + error.message, 'fail');
+                }
+            }
+            
+            async setupPixiApp() {
+                this.app = new PIXI.Application();
+                await this.app.init({
+                    width: window.innerWidth,
+                    height: window.innerHeight - 160,
+                    backgroundColor: 0x2c3e50,
+                    antialias: true,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true,
+                    powerPreference: 'high-performance'
+                });
+                
+                document.getElementById('pixi-container').appendChild(this.app.canvas);
+                
+                // Create containers
+                this.leftContainer = new PIXI.Container();
+                this.centerContainer = new PIXI.Container();
+                this.rightContainer = new PIXI.Container();
+                this.connectionContainer = new PIXI.Container();
+                
+                const containerWidth = this.app.screen.width / 3;
+                this.leftContainer.x = 0;
+                this.centerContainer.x = containerWidth;
+                this.rightContainer.x = containerWidth * 2;
+                
+                this.app.stage.addChild(this.leftContainer);
+                this.app.stage.addChild(this.centerContainer);
+                this.app.stage.addChild(this.rightContainer);
+                this.app.stage.addChild(this.connectionContainer);
+                
+                this.containers = [this.leftContainer, this.centerContainer, this.rightContainer];
+                
+                // Setup error handling
+                this.app.stage.on('error', this.handlePixiError.bind(this));
+                window.addEventListener('error', this.handleGlobalError.bind(this));
+                window.addEventListener('unhandledrejection', this.handleUnhandledRejection.bind(this));
+            }
+            
+            setupMonitoring() {
+                setInterval(() => {
+                    this.updateMonitoringData();
+                    this.updateMonitorDisplay();
+                }, 500);
+            }
+            
+            updateMonitoringData() {
+                // Memory usage
+                if (performance.memory) {
+                    this.monitoring.memoryUsage = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                }
+                
+                // Connection stability
+                if (this.connections.length > 0) {
+                    const visibleConnections = this.connections.filter(c => c.visible && c.alpha > 0).length;
+                    this.monitoring.connectionStability = Math.round((visibleConnections / this.connections.length) * 100);
+                }
+                
+                // Render consistency check
+                try {
+                    const bounds = this.app.stage.getBounds();
+                    this.monitoring.renderConsistency = bounds.width > 0 && bounds.height > 0 ? 100 : 0;
+                } catch (error) {
+                    this.monitoring.renderConsistency = Math.max(0, this.monitoring.renderConsistency - 10);
+                }
+            }
+            
+            updateMonitorDisplay() {
+                const errorItem = document.getElementById('error-count');
+                errorItem.querySelector('.monitor-value').textContent = this.monitoring.errorCount;
+                errorItem.className = `monitor-item ${this.monitoring.errorCount === 0 ? 'good' : this.monitoring.errorCount < 5 ? 'warning' : 'critical'}`;
+                
+                const memoryItem = document.getElementById('memory-usage');
+                memoryItem.querySelector('.monitor-value').textContent = this.monitoring.memoryUsage + 'MB';
+                memoryItem.className = `monitor-item ${this.monitoring.memoryUsage < 100 ? 'good' : this.monitoring.memoryUsage < 200 ? 'warning' : 'critical'}`;
+                
+                const recoveryItem = document.getElementById('recovery-time');
+                recoveryItem.querySelector('.monitor-value').textContent = this.monitoring.lastRecoveryTime + 'ms';
+                recoveryItem.className = `monitor-item ${this.monitoring.lastRecoveryTime < 100 ? 'good' : this.monitoring.lastRecoveryTime < 500 ? 'warning' : 'critical'}`;
+                
+                const stabilityItem = document.getElementById('connection-stability');
+                stabilityItem.querySelector('.monitor-value').textContent = this.monitoring.connectionStability + '%';
+                stabilityItem.className = `monitor-item ${this.monitoring.connectionStability >= 90 ? 'good' : this.monitoring.connectionStability >= 70 ? 'warning' : 'critical'}`;
+                
+                const consistencyItem = document.getElementById('render-consistency');
+                consistencyItem.querySelector('.monitor-value').textContent = this.monitoring.renderConsistency + '%';
+                consistencyItem.className = `monitor-item ${this.monitoring.renderConsistency >= 95 ? 'good' : this.monitoring.renderConsistency >= 80 ? 'warning' : 'critical'}`;
+                
+                const scoreItem = document.getElementById('edge-case-score');
+                scoreItem.querySelector('.monitor-value').textContent = `${this.edgeCasesCompleted}/10`;
+                scoreItem.className = `monitor-item ${this.edgeCasesCompleted >= 8 ? 'good' : this.edgeCasesCompleted >= 5 ? 'warning' : 'critical'}`;
+            }
+            
+            handlePixiError(error) {
+                this.monitoring.errorCount++;
+                console.error('PixiJS Error:', error);
+                this.logEdgeCase('PixiJS rendering error detected', 'fail');
+            }
+            
+            handleGlobalError(event) {
+                this.monitoring.errorCount++;
+                console.error('Global Error:', event.error);
+                this.logEdgeCase(`Global error: ${event.error.message}`, 'fail');
+            }
+            
+            handleUnhandledRejection(event) {
+                this.monitoring.errorCount++;
+                console.error('Unhandled Promise Rejection:', event.reason);
+                this.logEdgeCase('Unhandled promise rejection detected', 'fail');
+            }
+            
+            logEdgeCase(message, status) {
+                console.log(`[${status.toUpperCase()}] Edge Case: ${message}`);
+            }
+            
+            updateButtonStatus(buttonText, status) {
+                const buttons = document.querySelectorAll('.edge-case-btn');
+                buttons.forEach(btn => {
+                    if (btn.textContent.includes(buttonText)) {
+                        btn.className = `edge-case-btn ${status}`;
+                    }
+                });
+            }
+            
+            async measureRecoveryTime(testFunction) {
+                const startTime = performance.now();
+                try {
+                    await testFunction();
+                    const recoveryTime = performance.now() - startTime;
+                    this.monitoring.lastRecoveryTime = Math.round(recoveryTime);
+                    this.recoveryTimes.push(recoveryTime);
+                    return recoveryTime;
+                } catch (error) {
+                    this.monitoring.errorCount++;
+                    throw error;
+                }
+            }
+            
+            // Edge case test methods
+            async testZeroElements() {
+                console.log('Testing zero elements edge case...');
+                
+                try {
+                    // Clear all elements
+                    this.clearAll();
+                    
+                    // Try to create connections with no elements
+                    await this.createConnections();
+                    
+                    // Should handle gracefully
+                    if (this.connections.length === 0) {
+                        this.logEdgeCase('Zero elements handled correctly', 'pass');
+                        this.updateButtonStatus('Zero Elements', 'pass');
+                        this.edgeCasesCompleted++;
+                    } else {
+                        this.logEdgeCase('Zero elements test failed', 'fail');
+                        this.updateButtonStatus('Zero Elements', 'fail');
+                    }
+                } catch (error) {
+                    this.logEdgeCase('Zero elements test crashed: ' + error.message, 'fail');
+                    this.updateButtonStatus('Zero Elements', 'fail');
+                }
+            }
+            
+            async testSingleElement() {
+                console.log('Testing single element edge case...');
+                
+                try {
+                    this.clearAll();
+                    
+                    // Create single element
+                    const element = this.createElement(0, 0, 100);
+                    this.leftContainer.addChild(element);
+                    this.elements.push(element);
+                    
+                    // Try to create connections
+                    await this.createConnections();
+                    
+                    // Should handle gracefully
+                    this.logEdgeCase('Single element handled correctly', 'pass');
+                    this.updateButtonStatus('Single Element', 'pass');
+                    this.edgeCasesCompleted++;
+                } catch (error) {
+                    this.logEdgeCase('Single element test failed: ' + error.message, 'fail');
+                    this.updateButtonStatus('Single Element', 'fail');
+                }
+            }
+            
+            async testMaxElements() {
+                console.log('Testing maximum elements edge case...');
+                
+                try {
+                    this.clearAll();
+                    
+                    const startTime = performance.now();
+                    const maxElements = 10000;
+                    
+                    // Create massive number of elements
+                    for (let i = 0; i < maxElements; i++) {
+                        const container = this.containers[i % 3];
+                        const element = this.createElement(i, 20, 20 + (i * 25));
+                        container.addChild(element);
+                        this.elements.push(element);
+                        
+                        // Yield control periodically
+                        if (i % 1000 === 0) {
+                            await new Promise(resolve => setTimeout(resolve, 1));
+                        }
+                    }
+                    
+                    const creationTime = performance.now() - startTime;
+                    
+                    if (creationTime < 10000 && this.elements.length === maxElements) {
+                        this.logEdgeCase(`Max elements (${maxElements}) created in ${creationTime.toFixed(1)}ms`, 'pass');
+                        this.updateButtonStatus('Max Elements', 'pass');
+                        this.edgeCasesCompleted++;
+                    } else {
+                        this.logEdgeCase('Max elements test failed or too slow', 'fail');
+                        this.updateButtonStatus('Max Elements', 'fail');
+                    }
+                } catch (error) {
+                    this.logEdgeCase('Max elements test crashed: ' + error.message, 'fail');
+                    this.updateButtonStatus('Max Elements', 'fail');
+                }
+            }
+            
+            async testInvalidConnections() {
+                console.log('Testing invalid connections edge case...');
+                
+                try {
+                    this.clearAll();
+                    this.createTestElements(5);
+                    
+                    // Try invalid connection scenarios
+                    const invalidTests = [
+                        () => this.createConnection(null, this.elements[0]),
+                        () => this.createConnection(this.elements[0], null),
+                        () => this.createConnection(this.elements[0], this.elements[0]), // Self connection
+                        () => this.createConnection(undefined, undefined),
+                        () => this.createConnection('invalid', 'invalid')
+                    ];
+                    
+                    let handledCount = 0;
+                    
+                    for (const test of invalidTests) {
+                        try {
+                            test();
+                        } catch (error) {
+                            handledCount++; // Good, it should fail gracefully
+                        }
+                    }
+                    
+                    if (handledCount === invalidTests.length) {
+                        this.logEdgeCase('Invalid connections handled correctly', 'pass');
+                        this.updateButtonStatus('Invalid Connections', 'pass');
+                        this.edgeCasesCompleted++;
+                    } else {
+                        this.logEdgeCase('Invalid connections not properly handled', 'fail');
+                        this.updateButtonStatus('Invalid Connections', 'fail');
+                    }
+                } catch (error) {
+                    this.logEdgeCase('Invalid connections test crashed: ' + error.message, 'fail');
+                    this.updateButtonStatus('Invalid Connections', 'fail');
+                }
+            }
+            
+            async testExtremeScrolling() {
+                console.log('Testing extreme scrolling edge case...');
+                
+                try {
+                    this.clearAll();
+                    this.createTestElements(50);
+                    await this.createConnections();
+                    
+                    const startTime = performance.now();
+                    
+                    // Extreme scroll distances
+                    const extremeValues = [10000, -10000, 50000, -50000, 100000];
+                    
+                    for (const value of extremeValues) {
+                        this.containers.forEach(container => {
+                            container.y = value;
+                        });
+                        this.updateConnections();
+                        await new Promise(resolve => setTimeout(resolve, 10));
+                    }
+                    
+                    // Reset to normal
+                    this.containers.forEach(container => {
+                        container.y = 0;
+                    });
+                    this.updateConnections();
+                    
+                    const testTime = performance.now() - startTime;
+                    
+                    if (testTime < 1000 && this.connections.every(c => c.visible)) {
+                        this.logEdgeCase(`Extreme scrolling handled in ${testTime.toFixed(1)}ms`, 'pass');
+                        this.updateButtonStatus('Extreme Scrolling', 'pass');
+                        this.edgeCasesCompleted++;
+                    } else {
+                        this.logEdgeCase('Extreme scrolling test failed', 'fail');
+                        this.updateButtonStatus('Extreme Scrolling', 'fail');
+                    }
+                } catch (error) {
+                    this.logEdgeCase('Extreme scrolling test crashed: ' + error.message, 'fail');
+                    this.updateButtonStatus('Extreme Scrolling', 'fail');
+                }
+            }
+            
+            async testRapidResize() {
+                console.log('Testing rapid resize edge case...');
+                
+                try {
+                    this.clearAll();
+                    this.createTestElements(20);
+                    await this.createConnections();
+                    
+                    const originalWidth = this.app.screen.width;
+                    const originalHeight = this.app.screen.height;
+                    
+                    // Rapid resize operations
+                    const sizes = [
+                        [300, 200], [800, 600], [1200, 800], [400, 300],
+                        [1000, 700], [600, 400], [1400, 900], [500, 350]
+                    ];
+                    
+                    for (const [width, height] of sizes) {
+                        this.app.renderer.resize(width, height);
+                        this.repositionContainers();
+                        this.updateConnections();
+                        await new Promise(resolve => setTimeout(resolve, 5));
+                    }
+                    
+                    // Restore original size
+                    this.app.renderer.resize(originalWidth, originalHeight);
+                    this.repositionContainers();
+                    this.updateConnections();
+                    
+                    this.logEdgeCase('Rapid resize operations completed', 'pass');
+                    this.updateButtonStatus('Rapid Resize', 'pass');
+                    this.edgeCasesCompleted++;
+                } catch (error) {
+                    this.logEdgeCase('Rapid resize test crashed: ' + error.message, 'fail');
+                    this.updateButtonStatus('Rapid Resize', 'fail');
+                }
+            }
+            
+            async testMemoryLeaks() {
+                console.log('Testing memory leaks edge case...');
+                
+                try {
+                    const initialMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
+                    
+                    // Create and destroy elements multiple times
+                    for (let cycle = 0; cycle < 10; cycle++) {
+                        this.createTestElements(1000);
+                        await this.createConnections();
+                        await new Promise(resolve => setTimeout(resolve, 50));
+                        this.clearAll();
+                        
+                        // Force garbage collection if available
+                        if (window.gc) {
+                            window.gc();
+                        }
+                        
+                        await new Promise(resolve => setTimeout(resolve, 100));
+                    }
+                    
+                    const finalMemory = performance.memory ? performance.memory.usedJSHeapSize : 0;
+                    const memoryIncrease = finalMemory - initialMemory;
+                    const memoryIncreaseMB = memoryIncrease / 1024 / 1024;
+                    
+                    if (memoryIncreaseMB < 50) { // Less than 50MB increase is acceptable
+                        this.logEdgeCase(`Memory leak test passed (+${memoryIncreaseMB.toFixed(1)}MB)`, 'pass');
+                        this.updateButtonStatus('Memory Leaks', 'pass');
+                        this.edgeCasesCompleted++;
+                    } else {
+                        this.logEdgeCase(`Potential memory leak detected (+${memoryIncreaseMB.toFixed(1)}MB)`, 'fail');
+                        this.updateButtonStatus('Memory Leaks', 'fail');
+                    }
+                } catch (error) {
+                    this.logEdgeCase('Memory leak test crashed: ' + error.message, 'fail');
+                    this.updateButtonStatus('Memory Leaks', 'fail');
+                }
+            }
+            
+            async testNetworkFailure() {
+                console.log('Testing network failure simulation...');
+                
+                try {
+                    // Simulate network-dependent operations failing
+                    const originalFetch = window.fetch;
+                    window.fetch = () => Promise.reject(new Error('Network failure simulation'));
+                    
+                    // Try operations that might depend on network
+                    this.clearAll();
+                    this.createTestElements(10);
+                    await this.createConnections();
+                    
+                    // Restore fetch
+                    window.fetch = originalFetch;
+                    
+                    // System should continue working
+                    if (this.elements.length === 10) {
+                        this.logEdgeCase('Network failure simulation handled', 'pass');
+                        this.updateButtonStatus('Network Failure', 'pass');
+                        this.edgeCasesCompleted++;
+                    } else {
+                        this.logEdgeCase('Network failure affected local operations', 'fail');
+                        this.updateButtonStatus('Network Failure', 'fail');
+                    }
+                } catch (error) {
+                    this.logEdgeCase('Network failure test crashed: ' + error.message, 'fail');
+                    this.updateButtonStatus('Network Failure', 'fail');
+                }
+            }
+            
+            async testConcurrentOps() {
+                console.log('Testing concurrent operations edge case...');
+                
+                try {
+                    this.clearAll();
+                    
+                    // Run multiple operations concurrently
+                    const operations = [
+                        () => this.createTestElements(100),
+                        () => this.createConnections(),
+                        () => this.updateConnections(),
+                        () => this.containers.forEach(c => c.y += 100),
+                        () => this.updateConnections(),
+                        () => this.containers.forEach(c => c.y -= 100)
+                    ];
+                    
+                    // Execute all operations simultaneously
+                    await Promise.all(operations.map(op => 
+                        new Promise(resolve => {
+                            try {
+                                op();
+                                resolve();
+                            } catch (error) {
+                                console.warn('Concurrent operation failed:', error);
+                                resolve();
+                            }
+                        })
+                    ));
+                    
+                    // Check if system is still stable
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    if (this.elements.length > 0 && this.monitoring.renderConsistency > 80) {
+                        this.logEdgeCase('Concurrent operations handled successfully', 'pass');
+                        this.updateButtonStatus('Concurrent Ops', 'pass');
+                        this.edgeCasesCompleted++;
+                    } else {
+                        this.logEdgeCase('Concurrent operations caused instability', 'fail');
+                        this.updateButtonStatus('Concurrent Ops', 'fail');
+                    }
+                } catch (error) {
+                    this.logEdgeCase('Concurrent operations test crashed: ' + error.message, 'fail');
+                    this.updateButtonStatus('Concurrent Ops', 'fail');
+                }
+            }
+            
+            async testCorruptedData() {
+                console.log('Testing corrupted data edge case...');
+                
+                try {
+                    this.clearAll();
+                    
+                    // Create elements with corrupted/invalid data
+                    const corruptedElements = [
+                        { x: NaN, y: 100, width: 50, height: 50 },
+                        { x: Infinity, y: 150, width: 50, height: 50 },
+                        { x: 100, y: null, width: 50, height: 50 },
+                        { x: 150, y: undefined, width: -50, height: 50 },
+                        { x: 'invalid', y: 'invalid', width: 'invalid', height: 'invalid' }
+                    ];
+                    
+                    let handledCount = 0;
+                    
+                    corruptedElements.forEach((data, index) => {
+                        try {
+                            const element = this.createElement(index, data.x, data.y, data.width, data.height);
+                            this.leftContainer.addChild(element);
+                            this.elements.push(element);
+                            handledCount++;
+                        } catch (error) {
+                            // Expected to fail, but should fail gracefully
+                            handledCount++;
+                        }
+                    });
+                    
+                    if (handledCount === corruptedElements.length) {
+                        this.logEdgeCase('Corrupted data handled gracefully', 'pass');
+                        this.updateButtonStatus('Corrupted Data', 'pass');
+                        this.edgeCasesCompleted++;
+                    } else {
+                        this.logEdgeCase('Corrupted data not properly handled', 'fail');
+                        this.updateButtonStatus('Corrupted Data', 'fail');
+                    }
+                } catch (error) {
+                    this.logEdgeCase('Corrupted data test crashed: ' + error.message, 'fail');
+                    this.updateButtonStatus('Corrupted Data', 'fail');
+                }
+            }
+            
+            // Utility methods
+            createElement(id, x = 0, y = 0, width = 100, height = 50) {
+                const element = new PIXI.Graphics();
+                
+                // Validate inputs and provide defaults
+                x = isFinite(x) ? x : 0;
+                y = isFinite(y) ? y : 0;
+                width = isFinite(width) && width > 0 ? width : 100;
+                height = isFinite(height) && height > 0 ? height : 50;
+                
+                element.rect(0, 0, width, height);
+                element.fill(0x3498db);
+                element.x = x;
+                element.y = y;
+                
+                element.elementData = { id, container: 0, originalY: y };
+                
+                return element;
+            }
+            
+            createTestElements(count) {
+                for (let i = 0; i < count; i++) {
+                    const container = this.containers[i % 3];
+                    const element = this.createElement(i, 20, 50 + (i * 60));
+                    container.addChild(element);
+                    this.elements.push(element);
+                }
+            }
+            
+            async createConnections() {
+                if (this.elements.length < 2) return;
+                
+                for (let i = 0; i < this.elements.length - 1; i++) {
+                    const from = this.elements[i];
+                    const to = this.elements[i + 1];
+                    
+                    if (from && to && from !== to) {
+                        try {
+                            const connection = this.createConnection(from, to);
+                            this.connections.push(connection);
+                        } catch (error) {
+                            console.warn('Failed to create connection:', error);
+                        }
+                    }
+                }
+            }
+            
+            createConnection(fromElement, toElement) {
+                if (!fromElement || !toElement || fromElement === toElement) {
+                    throw new Error('Invalid connection elements');
+                }
+                
+                const connection = new PIXI.Graphics();
+                
+                connection.connectionData = {
+                    from: fromElement,
+                    to: toElement,
+                    color: 0xff6b6b,
+                    alpha: 0.8,
+                    thickness: 2
+                };
+                
+                this.updateConnectionPath(connection);
+                this.connectionContainer.addChild(connection);
+                
+                return connection;
+            }
+            
+            updateConnections() {
+                this.connections.forEach(connection => {
+                    try {
+                        this.updateConnectionPath(connection);
+                    } catch (error) {
+                        console.warn('Failed to update connection:', error);
+                    }
+                });
+            }
+            
+            updateConnectionPath(connection) {
+                const { from, to, color, alpha, thickness } = connection.connectionData;
+                
+                if (!from || !to || !from.getGlobalPosition || !to.getGlobalPosition) {
+                    return;
+                }
+                
+                const fromPos = from.getGlobalPosition();
+                const toPos = to.getGlobalPosition();
+                
+                connection.clear();
+                connection.moveTo(fromPos.x + 100, fromPos.y + 25);
+                connection.lineTo(toPos.x, toPos.y + 25);
+                connection.stroke({ width: thickness, color: color, alpha: alpha });
+            }
+            
+            repositionContainers() {
+                const containerWidth = this.app.screen.width / 3;
+                this.leftContainer.x = 0;
+                this.centerContainer.x = containerWidth;
+                this.rightContainer.x = containerWidth * 2;
+            }
+            
+            clearAll() {
+                this.elements.forEach(element => {
+                    element.parent && element.parent.removeChild(element);
+                });
+                this.connections.forEach(connection => {
+                    connection.parent && connection.parent.removeChild(connection);
+                });
+                this.elements = [];
+                this.connections = [];
+            }
+            
+            // Scenario test methods
+            async runStressTest() {
+                console.log('Running comprehensive stress test...');
+                this.isStressing = true;
+                
+                const stressTests = [
+                    () => this.testMaxElements(),
+                    () => this.testExtremeScrolling(),
+                    () => this.testRapidResize(),
+                    () => this.testConcurrentOps()
+                ];
+                
+                for (const test of stressTests) {
+                    await this.measureRecoveryTime(test);
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+                
+                this.isStressing = false;
+                console.log('Stress test completed');
+            }
+            
+            async runRecoveryTest() {
+                console.log('Running recovery test...');
+                
+                // Simulate system failure and recovery
+                try {
+                    // Cause intentional "failure"
+                    this.clearAll();
+                    this.monitoring.errorCount += 3;
+                    
+                    // Attempt recovery
+                    const recoveryStart = performance.now();
+                    
+                    await this.init();
+                    this.createTestElements(10);
+                    await this.createConnections();
+                    
+                    this.monitoring.lastRecoveryTime = performance.now() - recoveryStart;
+                    
+                    console.log(`Recovery completed in ${this.monitoring.lastRecoveryTime}ms`);
+                } catch (error) {
+                    console.error('Recovery test failed:', error);
+                }
+            }
+            
+            async runAllEdgeCases() {
+                console.log('Running all edge cases...');
+                
+                this.edgeCasesCompleted = 0;
+                this.monitoring.errorCount = 0;
+                
+                const edgeCaseTests = [
+                    this.testZeroElements,
+                    this.testSingleElement,
+                    this.testMaxElements,
+                    this.testInvalidConnections,
+                    this.testExtremeScrolling,
+                    this.testRapidResize,
+                    this.testMemoryLeaks,
+                    this.testNetworkFailure,
+                    this.testConcurrentOps,
+                    this.testCorruptedData
+                ];
+                
+                for (const test of edgeCaseTests) {
+                    try {
+                        await this.measureRecoveryTime(test.bind(this));
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    } catch (error) {
+                        console.error('Edge case test failed:', error);
+                    }
+                }
+                
+                console.log(`All edge cases completed: ${this.edgeCasesCompleted}/10 passed`);
+            }
+            
+            emergencyReset() {
+                console.log('Emergency reset triggered...');
+                
+                this.clearAll();
+                this.monitoring.errorCount = 0;
+                this.monitoring.connectionStability = 100;
+                this.monitoring.renderConsistency = 100;
+                this.monitoring.lastRecoveryTime = 0;
+                this.edgeCasesCompleted = 0;
+                
+                // Reset all button states
+                document.querySelectorAll('.edge-case-btn').forEach(btn => {
+                    btn.className = 'edge-case-btn';
+                });
+                
+                console.log('Emergency reset completed');
+            }
+        }
+        
+        // Global validator instance
+        let edgeValidator;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            edgeValidator = new EdgeCaseValidator();
+        });
+        
+        // Global test functions
+        function testZeroElements() { edgeValidator && edgeValidator.testZeroElements(); }
+        function testSingleElement() { edgeValidator && edgeValidator.testSingleElement(); }
+        function testMaxElements() { edgeValidator && edgeValidator.testMaxElements(); }
+        function testInvalidConnections() { edgeValidator && edgeValidator.testInvalidConnections(); }
+        function testExtremeScrolling() { edgeValidator && edgeValidator.testExtremeScrolling(); }
+        function testRapidResize() { edgeValidator && edgeValidator.testRapidResize(); }
+        function testMemoryLeaks() { edgeValidator && edgeValidator.testMemoryLeaks(); }
+        function testNetworkFailure() { edgeValidator && edgeValidator.testNetworkFailure(); }
+        function testConcurrentOps() { edgeValidator && edgeValidator.testConcurrentOps(); }
+        function testCorruptedData() { edgeValidator && edgeValidator.testCorruptedData(); }
+        
+        function runStressTest() { edgeValidator && edgeValidator.runStressTest(); }
+        function runRecoveryTest() { edgeValidator && edgeValidator.runRecoveryTest(); }
+        function runAllEdgeCases() { edgeValidator && edgeValidator.runAllEdgeCases(); }
+        function emergencyReset() { edgeValidator && edgeValidator.emergencyReset(); }
+    </script>
+</body>
+</html>

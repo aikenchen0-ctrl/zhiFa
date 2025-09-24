@@ -1,0 +1,1229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>一手趋势 - 智能金融决策平台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', sans-serif;
+            background: radial-gradient(ellipse at center, #0a0a0a 0%, #1a1a2e 40%, #16213e 100%);
+            color: white;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* 动态背景网格 */
+        .tech-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            opacity: 0.1;
+        }
+
+        .grid-line {
+            position: absolute;
+            background: linear-gradient(90deg, transparent, #64c8ff, transparent);
+            animation: gridPulse 4s ease-in-out infinite;
+        }
+
+        .grid-line.horizontal {
+            width: 100%;
+            height: 1px;
+        }
+
+        .grid-line.vertical {
+            width: 1px;
+            height: 100%;
+        }
+
+        @keyframes gridPulse {
+            0%, 100% { opacity: 0.1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* 第一屏 - Hero Section */
+        .hero-section {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            background: linear-gradient(135deg, rgba(10,10,10,0.9) 0%, rgba(26,26,46,0.8) 100%);
+        }
+
+        .hero-title {
+            font-size: clamp(4rem, 10vw, 10rem);
+            font-weight: 900;
+            background: linear-gradient(45deg, #64c8ff 0%, #a855f7 50%, #ec4899 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .hero-title::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(100, 200, 255, 0.2) 0%, transparent 70%);
+            transform: translate(-50%, -50%);
+            animation: heroGlow 3s ease-in-out infinite alternate;
+            z-index: -1;
+        }
+
+        @keyframes heroGlow {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.3; }
+            100% { transform: translate(-50%, -50%) scale(1.2); opacity: 0.7; }
+        }
+
+        .hero-subtitle {
+            font-size: clamp(1.5rem, 4vw, 2.5rem);
+            text-align: center;
+            margin-bottom: 50px;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+
+        .mode-switch {
+            display: flex;
+            gap: 30px;
+            margin-top: 40px;
+        }
+
+        .mode-btn {
+            padding: 20px 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(100, 200, 255, 0.3);
+            border-radius: 50px;
+            color: white;
+            font-size: 1.3rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.4s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mode-btn:hover {
+            transform: translateY(-8px) scale(1.05);
+            box-shadow: 0 20px 40px rgba(100, 200, 255, 0.4);
+            border-color: rgba(100, 200, 255, 0.8);
+        }
+
+        .mode-btn.active {
+            background: linear-gradient(135deg, #64c8ff, #a855f7);
+            border-color: transparent;
+            box-shadow: 0 10px 30px rgba(100, 200, 255, 0.5);
+        }
+
+        /* 紧凑内容区域 */
+        .content-section {
+            padding: 60px 20px 40px;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 800;
+            background: linear-gradient(45deg, #64c8ff, #ffffff);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 15px;
+        }
+
+        .section-subtitle {
+            font-size: 1.2rem;
+            opacity: 0.8;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        /* 创新的时间轴式布局 */
+        .timeline-container {
+            position: relative;
+            margin: 60px 0;
+        }
+
+        .timeline-spine {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: linear-gradient(180deg, #64c8ff 0%, #a855f7 50%, #ec4899 100%);
+            transform: translateX(-50%);
+            animation: spineGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes spineGlow {
+            0% { box-shadow: 0 0 20px rgba(100, 200, 255, 0.5); }
+            100% { box-shadow: 0 0 40px rgba(168, 85, 247, 0.8); }
+        }
+
+        .timeline-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        .timeline-item:nth-child(even) {
+            flex-direction: row-reverse;
+        }
+
+        .timeline-content {
+            flex: 1;
+            max-width: calc(50% - 60px);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(20px);
+            position: relative;
+            transition: all 0.4s ease;
+        }
+
+        .timeline-content:hover {
+            transform: scale(1.02);
+            border-color: rgba(100, 200, 255, 0.3);
+            box-shadow: 0 20px 40px rgba(100, 200, 255, 0.1);
+        }
+
+        .timeline-icon {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(45deg, var(--icon-primary), var(--icon-secondary));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            z-index: 2;
+            border: 4px solid rgba(0, 0, 0, 0.8);
+            animation: iconFloat 3s ease-in-out infinite;
+        }
+
+        @keyframes iconFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0px); }
+            50% { transform: translateX(-50%) translateY(-8px); }
+        }
+
+        .feature-title {
+            font-size: 1.6rem;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #64c8ff;
+        }
+
+        .feature-description {
+            font-size: 1rem;
+            line-height: 1.6;
+            opacity: 0.9;
+            margin-bottom: 20px;
+        }
+
+        .feature-details {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            line-height: 1.5;
+            padding-left: 20px;
+            border-left: 2px solid rgba(100, 200, 255, 0.3);
+            margin-top: 15px;
+        }
+
+        /* 数据可视化面板 */
+        .data-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .data-item {
+            text-align: center;
+            padding: 15px;
+            background: rgba(100, 200, 255, 0.1);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .data-item:hover {
+            background: rgba(100, 200, 255, 0.2);
+            transform: translateY(-3px);
+        }
+
+        .data-value {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: #64c8ff;
+            margin-bottom: 5px;
+            animation: countUp 2s ease-out;
+        }
+
+        .data-label {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
+        /* SVG流程图 */
+        .flow-diagram {
+            margin: 40px 0;
+            position: relative;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            overflow: hidden;
+        }
+
+        .flow-node {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(45deg, #64c8ff, #a855f7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            animation: nodeGlow 2s ease-in-out infinite alternate;
+            z-index: 2;
+        }
+
+        @keyframes nodeGlow {
+            0% { box-shadow: 0 0 20px rgba(100, 200, 255, 0.5); }
+            100% { box-shadow: 0 0 30px rgba(168, 85, 247, 0.8); }
+        }
+
+        .flow-line {
+            position: absolute;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #64c8ff, #a855f7, transparent);
+            animation: flowMove 3s linear infinite;
+        }
+
+        @keyframes flowMove {
+            0% { transform: translateX(-100%); opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { transform: translateX(100%); opacity: 0; }
+        }
+
+        /* 隐藏区域样式 */
+        .hidden-content {
+            display: none;
+        }
+
+        /* 网格布局 - 借势功能 */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 25px;
+            margin-top: 40px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 25px;
+            backdrop-filter: blur(15px);
+            position: relative;
+            transition: all 0.4s ease;
+            min-height: 200px;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(100, 200, 255, 0.3);
+            box-shadow: 0 15px 35px rgba(100, 200, 255, 0.1);
+        }
+
+        .card-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(45deg, var(--icon-primary), var(--icon-secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            float: left;
+            margin-right: 15px;
+        }
+
+        .card-title {
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: #64c8ff;
+            margin-bottom: 12px;
+        }
+
+        .card-description {
+            font-size: 0.95rem;
+            line-height: 1.5;
+            opacity: 0.85;
+            clear: both;
+        }
+
+        /* 邀请码弹窗 */
+        .invitation-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(15px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: rgba(20, 20, 40, 0.9);
+            border: 2px solid rgba(100, 200, 255, 0.3);
+            border-radius: 24px;
+            padding: 40px;
+            text-align: center;
+            backdrop-filter: blur(20px);
+            position: relative;
+            animation: modalSlideIn 0.4s ease-out;
+        }
+
+        @keyframes modalSlideIn {
+            from { opacity: 0; transform: scale(0.8) translateY(50px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .invitation-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(100, 200, 255, 0.3);
+            border-radius: 15px;
+            padding: 18px 25px;
+            color: white;
+            font-size: 1.4rem;
+            text-align: center;
+            margin: 25px 0;
+            width: 250px;
+            font-weight: 600;
+            letter-spacing: 3px;
+        }
+
+        .invitation-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .modal-btn {
+            background: linear-gradient(45deg, #64c8ff, #a855f7);
+            border: none;
+            border-radius: 12px;
+            padding: 15px 30px;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .modal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(100, 200, 255, 0.3);
+        }
+
+        .modal-btn.secondary {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* 色彩变量 */
+        .timeline-item:nth-child(1) {
+            --icon-primary: #ff6b6b;
+            --icon-secondary: #ee5a24;
+        }
+
+        .timeline-item:nth-child(2) {
+            --icon-primary: #64c8ff;
+            --icon-secondary: #5f27cd;
+        }
+
+        .timeline-item:nth-child(3) {
+            --icon-primary: #00d2d3;
+            --icon-secondary: #01a3a4;
+        }
+
+        .timeline-item:nth-child(4) {
+            --icon-primary: #a855f7;
+            --icon-secondary: #7c3aed;
+        }
+
+        /* 借势功能色彩 */
+        .feature-card:nth-child(1) { --icon-primary: #10b981; --icon-secondary: #059669; }
+        .feature-card:nth-child(2) { --icon-primary: #f59e0b; --icon-secondary: #d97706; }
+        .feature-card:nth-child(3) { --icon-primary: #8b5cf6; --icon-secondary: #7c3aed; }
+        .feature-card:nth-child(4) { --icon-primary: #ef4444; --icon-secondary: #dc2626; }
+        .feature-card:nth-child(5) { --icon-primary: #06b6d4; --icon-secondary: #0891b2; }
+        .feature-card:nth-child(6) { --icon-primary: #84cc16; --icon-secondary: #65a30d; }
+        .feature-card:nth-child(7) { --icon-primary: #6366f1; --icon-secondary: #4f46e5; }
+        .feature-card:nth-child(8) { --icon-primary: #f97316; --icon-secondary: #ea580c; }
+        .feature-card:nth-child(9) { --icon-primary: #ec4899; --icon-secondary: #db2777; }
+        .feature-card:nth-child(10) { --icon-primary: #14b8a6; --icon-secondary: #0d9488; }
+        .feature-card:nth-child(11) { --icon-primary: #6366f1; --icon-secondary: #4f46e5; }
+
+        /* KOL联盟特殊样式 */
+        .kol-section {
+            margin-top: 60px;
+            padding: 40px 0;
+            background: linear-gradient(135deg, rgba(100, 200, 255, 0.05), rgba(168, 85, 247, 0.05));
+            border-radius: 20px;
+            position: relative;
+        }
+
+        .kol-section::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: linear-gradient(45deg, #64c8ff, #a855f7, #ec4899);
+            border-radius: 22px;
+            z-index: -1;
+            animation: borderGlow 3s linear infinite;
+        }
+
+        @keyframes borderGlow {
+            0% { opacity: 0.3; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.3; }
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .timeline-spine {
+                left: 30px;
+            }
+            
+            .timeline-item {
+                flex-direction: column !important;
+            }
+            
+            .timeline-content {
+                max-width: calc(100% - 80px);
+                margin-left: 80px;
+            }
+            
+            .timeline-icon {
+                left: 30px;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .mode-switch {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+
+        /* 动画效果 */
+        .animate-in {
+            animation: slideInUp 1s ease-out;
+        }
+
+        @keyframes slideInUp {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes countUp {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* 特殊功能区域分隔 */
+        .function-divider {
+            display: flex;
+            align-items: center;
+            margin: 50px 0 30px;
+            position: relative;
+        }
+
+        .divider-line {
+            flex: 1;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #64c8ff, transparent);
+        }
+
+        .divider-icon {
+            margin: 0 20px;
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(45deg, #64c8ff, #a855f7);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- 技术网格背景 -->
+    <div class="tech-grid" id="techGrid"></div>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <h1 class="hero-title">一手趋势</h1>
+        <p class="hero-subtitle">智能金融决策平台 · AI驱动的实时市场洞察</p>
+        
+        <div class="mode-switch">
+            <button class="mode-btn active" id="trendsBtn">股民端</button>
+            <button class="mode-btn" id="leverageBtn">盘手端</button>
+        </div>
+    </section>
+
+    <!-- 一手趋势内容 -->
+    <section class="content-section" id="trendsContent">
+        <div class="section-header animate-in">
+            <h2 class="section-title">智能金融决策系统</h2>
+            <p class="section-subtitle">
+                通过78+平台数据汇总、AI实时分析、舆论监控和匿名社群互动，
+                为您提供7×24小时不间断的金融市场股票事件线索情报
+            </p>
+        </div>
+
+        <!-- 时间轴式展示 -->
+        <div class="timeline-container">
+            <div class="timeline-spine"></div>
+
+            <!-- 功能1: 78+金融资讯平台爬取汇总 -->
+            <div class="timeline-item animate-in">
+                <div class="timeline-content">
+                    <h3 class="feature-title">78+金融资讯平台爬取汇总</h3>
+                    <p class="feature-description">
+                        7×24小时金融市场股票市场事件线索情报全面监控系统
+                    </p>
+                    <div class="feature-details">
+                        覆盖全球78+主流金融资讯平台，包括：财经网站、新闻门户、社交媒体、官方公告、
+                        研报平台、交易所公告等。采用分布式爬虫技术，实现毫秒级数据获取，
+                        确保信息获取的完整性和时效性。智能去重和数据清洗，提供高质量的原始数据源。
+                    </div>
+                    <div class="data-panel">
+                        <div class="data-item">
+                            <div class="data-value">78+</div>
+                            <div class="data-label">数据源平台</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">7×24</div>
+                            <div class="data-label">小时监控</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">99.9%</div>
+                            <div class="data-label">数据准确率</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">毫秒级</div>
+                            <div class="data-label">响应速度</div>
+                        </div>
+                    </div>
+                    <div class="flow-diagram">
+                        <div class="flow-node" style="left: 10%; top: 50%; transform: translateY(-50%);">🌐</div>
+                        <div class="flow-node" style="left: 30%; top: 50%; transform: translateY(-50%);">🔍</div>
+                        <div class="flow-node" style="left: 50%; top: 50%; transform: translateY(-50%);">⚡</div>
+                        <div class="flow-node" style="left: 70%; top: 50%; transform: translateY(-50%);">📊</div>
+                        <div class="flow-node" style="left: 90%; top: 50%; transform: translateY(-50%);">📈</div>
+                        <div class="flow-line" style="left: 15%; top: 50%; width: 10%; animation-delay: 0s;"></div>
+                        <div class="flow-line" style="left: 35%; top: 50%; width: 10%; animation-delay: 0.5s;"></div>
+                        <div class="flow-line" style="left: 55%; top: 50%; width: 10%; animation-delay: 1s;"></div>
+                        <div class="flow-line" style="left: 75%; top: 50%; width: 10%; animation-delay: 1.5s;"></div>
+                    </div>
+                </div>
+                <div class="timeline-icon">🌐</div>
+            </div>
+
+            <!-- 功能2: AI实时分析事件利好利空 -->
+            <div class="timeline-item animate-in">
+                <div class="timeline-content">
+                    <h3 class="feature-title">AI实时分析事件利好利空</h3>
+                    <p class="feature-description">
+                        AI实时分析事件利好利空，精准分析关联个股影响
+                    </p>
+                    <div class="feature-details">
+                        运用先进的自然语言处理、深度学习和机器学习算法，对市场事件进行实时语义分析。
+                        通过情感分析、实体识别、因果关系推理等技术，精确判断事件对市场的利好或利空影响程度。
+                        建立个股关联图谱，快速识别受影响的相关股票，提供投资决策支持。
+                        支持多语言分析，覆盖中英文等主要金融语言。
+                    </div>
+                    <div class="data-panel">
+                        <div class="data-item">
+                            <div class="data-value">0.3s</div>
+                            <div class="data-label">分析响应时间</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">95%</div>
+                            <div class="data-label">预测准确率</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">1000+</div>
+                            <div class="data-label">关联个股库</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">27种</div>
+                            <div class="data-label">分析模型</div>
+                        </div>
+                    </div>
+                    <div class="flow-diagram">
+                        <div class="flow-node" style="left: 15%; top: 30%;">📊</div>
+                        <div class="flow-node" style="left: 50%; top: 50%;">🤖</div>
+                        <div class="flow-node" style="left: 85%; top: 70%;">📈</div>
+                        <div class="flow-line" style="left: 20%; top: 35%; width: 25%; transform: rotate(15deg); animation-delay: 0s;"></div>
+                        <div class="flow-line" style="left: 55%; top: 55%; width: 25%; transform: rotate(15deg); animation-delay: 1s;"></div>
+                    </div>
+                </div>
+                <div class="timeline-icon">🤖</div>
+            </div>
+
+            <!-- 功能3: 监控关联平台舆论 -->
+            <div class="timeline-item animate-in">
+                <div class="timeline-content">
+                    <h3 class="feature-title">监控关联平台舆论、分析舆论系数</h3>
+                    <p class="feature-description">
+                        监控关联平台舆论动态，量化分析舆论系数对市场影响
+                    </p>
+                    <div class="feature-details">
+                        实时监控微博、股吧、雪球、知乎、财经论坛等50+主流投资者聚集平台的舆论动态。
+                        通过情感分析技术计算舆论热度指数和情绪倾向，建立舆论系数量化模型。
+                        分析舆论传播路径和影响力扩散机制，预测舆论对股价走势的潜在影响。
+                        提供舆论预警系统，及时发现异常舆论波动和潜在风险。
+                    </div>
+                    <div class="data-panel">
+                        <div class="data-item">
+                            <div class="data-value">50+</div>
+                            <div class="data-label">监控平台</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">实时</div>
+                            <div class="data-label">舆论指数</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">88%</div>
+                            <div class="data-label">情绪预测精度</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">24h</div>
+                            <div class="data-label">监控覆盖</div>
+                        </div>
+                    </div>
+                    <div class="flow-diagram">
+                        <div class="flow-node" style="left: 10%; top: 40%;">💬</div>
+                        <div class="flow-node" style="left: 30%; top: 60%;">📱</div>
+                        <div class="flow-node" style="left: 50%; top: 40%;">📈</div>
+                        <div class="flow-node" style="left: 70%; top: 60%;">🔥</div>
+                        <div class="flow-node" style="left: 90%; top: 40%;">⚖️</div>
+                        <div class="flow-line" style="left: 15%; top: 45%; width: 10%; animation-delay: 0s;"></div>
+                        <div class="flow-line" style="left: 35%; top: 55%; width: 10%; animation-delay: 0.5s;"></div>
+                        <div class="flow-line" style="left: 55%; top: 45%; width: 10%; animation-delay: 1s;"></div>
+                        <div class="flow-line" style="left: 75%; top: 55%; width: 10%; animation-delay: 1.5s;"></div>
+                    </div>
+                </div>
+                <div class="timeline-icon">📱</div>
+            </div>
+
+            <!-- 功能4: 基于事件的匿名社群互动 -->
+            <div class="timeline-item animate-in">
+                <div class="timeline-content">
+                    <h3 class="feature-title">基于事件的匿名社群互动</h3>
+                    <p class="feature-description">
+                        围绕重大市场事件构建匿名讨论社群，集合群体智慧
+                    </p>
+                    <div class="feature-details">
+                        基于重大市场事件自动创建临时匿名讨论群组，保护用户隐私的同时促进深度交流。
+                        运用区块链技术确保匿名性和数据安全，建立信誉评分系统筛选高质量内容。
+                        提供实时事件跟踪、观点聚合、情绪统计等功能，帮助用户快速了解市场共识。
+                        支持文字、图表、数据等多种形式的内容分享，构建完整的投资决策信息生态。
+                    </div>
+                    <div class="data-panel">
+                        <div class="data-item">
+                            <div class="data-value">10万+</div>
+                            <div class="data-label">活跃用户</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">匿名</div>
+                            <div class="data-label">安全交流</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">24h</div>
+                            <div class="data-label">实时互动</div>
+                        </div>
+                        <div class="data-item">
+                            <div class="data-value">区块链</div>
+                            <div class="data-label">技术保障</div>
+                        </div>
+                    </div>
+                    <div class="flow-diagram">
+                        <div class="flow-node" style="left: 20%; top: 30%;">🗣️</div>
+                        <div class="flow-node" style="left: 50%; top: 50%;">🤝</div>
+                        <div class="flow-node" style="left: 80%; top: 30%;">🛡️</div>
+                        <div class="flow-node" style="left: 35%; top: 70%;">💭</div>
+                        <div class="flow-node" style="left: 65%; top: 70%;">📊</div>
+                        <div class="flow-line" style="left: 25%; top: 35%; width: 20%; transform: rotate(20deg); animation-delay: 0s;"></div>
+                        <div class="flow-line" style="left: 55%; top: 45%; width: 20%; transform: rotate(-20deg); animation-delay: 0.5s;"></div>
+                        <div class="flow-line" style="left: 40%; top: 65%; width: 20%; animation-delay: 1s;"></div>
+                    </div>
+                </div>
+                <div class="timeline-icon">👥</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 一手借势内容 -->
+    <section class="content-section hidden-content" id="leverageContent">
+        <div class="section-header animate-in">
+            <h2 class="section-title">一手借势 - KOL运营变现解决方案</h2>
+            <p class="section-subtitle">
+                低风险金融KOL运营变现一站式方案：股粉AI运营+牛散、游资、金融KOL附身推广联盟
+            </p>
+        </div>
+
+        <!-- 11个核心功能网格展示 -->
+        <div class="feature-grid">
+            <!-- 1. 公域转私域 -->
+            <div class="feature-card animate-in">
+                <div class="card-icon">🎯</div>
+                <h3 class="card-title">公域转私域智能导流</h3>
+                <p class="card-description">
+                    多种钩子工作流实现公众号导流私域、视频号导流私域。通过随机活码设置钩子引导股民主动添加。
+                    在文章嵌入小程序、以注册即免费阅读持续高覆盖率获取公众号粉丝的微信号、手机号。
+                    支持多渠道导流策略，包括免费资料下载、限时优惠、独家内容等钩子设计。
+                </p>
+            </div>
+
+            <!-- 2. AI自动加人 -->
+            <div class="feature-card animate-in">
+                <div class="card-icon">🤖</div>
+                <h3 class="card-title">AI自动加人系统</h3>
+                <p class="card-description">
+                    全自动接受、添加粉丝，智能风控监测实现分批次不漏加。
+                    采用智能识别技术避免封号风险，支持多账号轮换操作。
+                    实时监控加粉成功率和风险指标，动态调整操作策略。
+                    确保每一个潜在客户都不流失，最大化私域转化效率。
+                </p>
+            </div>
+
+            <!-- 3. 多号聚合运营 -->
+            <div class="feature-card animate-in">
+                <div class="card-icon">📊</div>
+                <h3 class="card-title">多号聚合运营矩阵</h3>
+                <p class="card-description">
+                    一个界面轻松运营100+账号100万+私域股民，使用避嫌矩阵聚合运营：
+                    可设定助手角色号、帮腔角色号、合作伙伴角色号，规避KOL公域信誉崩塌风险。
+                    支持全避嫌分布式运营：主体号只通过转发龙虎榜、盘后持仓来荐股，结合避嫌矩阵曝光。
+                    智能角色分配和内容同步，确保运营一致性。
+                </p>
+            </div>
+
+            <!-- 4. 朋友圈运营 -->
+            <div class="feature-card animate-in">
+                <div class="card-icon">📱</div>
+                <h3 class="card-title">朋友圈智能运营</h3>
+                <p class="card-description">
+                    朋友圈AI评论互动、自动发圈运营荐股、自动爬取市场快讯生成分析发圈。
+                    智能识别最佳发布时间，根据用户活跃度优化发布策略。
+                    自动生成个性化内容，避免重复和机械感。
+                    支持图文、视频多种形式的内容自动发布和互动。
+                </p>
+            </div>
+
+            <!-- 5. AI化身代聊 -->
+            <div class="feature-card animate-in">
+                <div class="card-icon">🎭</div>
+                <h3 class="card-title">AI化身代聊系统</h3>
+                <p class="card-description">
+                    基于人设策略、沟通策略、荐股标的。通过AI在消息聚合页面中展示沟通草稿，
+                    仅需审核微调，以一当十，大幅提高人效比。
+                    支持多种人设模板：专业分析师、资深股民、投资顾问等。
+                    根据用户画像动态调整沟通风格和内容重点。
+                </p>
+            </div>
+
+            <!-- 6. AI润色群发 -->
+            <div class="feature-card animate-in">
+                <div class="card-icon">✨</div>
+                <h3 class="card-title">AI润色群发系统</h3>
+                <p class="card-description">
+                    根据每个股民不同的个人画像、历史交流记忆，设置荐股目标、群发任务策略、群发意图，
+                    AI针对性为每人润色定制化内容。
+                    支持A/B测试优化群发效果，实时跟踪转化数据。
+                    智能避免敏感词汇和违规内容，确保合规性。
+                </p>
+            </div>
+
+            <!-- 7. AI智囊团量身剖析 -->
+            <div class="feature-card animate-in">
+                <div class="card-icon">🧠</div>
+                <h3 class="card-title">AI智囊团量身剖析</h3>
+                <p class="card-description">
+                    识别高净值股民，使用大规模AI智能体协同代聊。
+                    人工智囊团通过行为心理学、认知心理学、动机心理学、社会心理学、行为经济学、博弈论、
+                    决策科学、组织行为学、管理科学、市场营销学、广告学、传播学、公关谈判学，
+                    每个学科十余个大模型协同思考，共享记忆，汇总给每个智囊，十余个智囊再汇总给首席智囊整合量身定制方法论。
+                    在消息聚合页面中展示话外音分析、沟通对象心理模型画像，制订阶段目的方案。
+                </p>
+            </div>
+
+            <!-- 8. AI量化迭代 -->
+            <div class="feature-card animate-in">
+                <div class="card-icon">📈</div>
+                <h3 class="card-title">AI量化迭代优化</h3>
+                <p class="card-description">
+                    通过交易所逐笔成交数据，建立数据收集、涨跌贡献量化、量化症结、量化优化。
+                    通过AI总结经验、将逐笔订单建立高净值股民对应关系、复制经验。
+                    AI通过内控手段、量化舆论增长造势核心因果机制。
+                    数据埋点，用大一统智囊量化舆论造势核心因果机制、因子公式，以因子公式驱动建立荐股量化循环。
+                </p>
+            </div>
+
+            <!-- 9. AI群控运营 -->
+            <div class="feature-card animate-in">
+                <div class="card-icon">👥</div>
+                <h3 class="card-title">AI群控运营系统</h3>
+                <p class="card-description">
+                    社群运营：运营群聊，监控群聊关联到股民个体AI历史记忆，通过帮腔号为主运营群聊。
+                    群体帮腔：自有帮腔角色号帮腔或附身外部帮腔号输出帮腔言论。
+                    社群群聊帮腔、或评论互动帮腔。AI通过以第三方无利益形象加强荐股转化率。
+                    智能识别群内活跃用户，针对性进行互动和引导。
+                </p>
+            </div>
+
+            <!-- 10. AI沟通策略自定义 -->
+            <div class="feature-card animate-in">
+                <div class="card-icon">🎯</div>
+                <h3 class="card-title">AI沟通策略自定义</h3>
+                <p class="card-description">
+                    完整沟通流程：合理破冰→日常铺垫/借节借事件铺垫→荐股标的铺垫→偏好试探→第三方帮腔铺垫（群体帮腔或第三人帮腔）→荐股促成。
+                    跟进流程：跟进交易行为→股民拖延观望推诿→洞察原因，解决借口也解决原因→荐股促成→明确拒绝→切换荐股标的。
+                    维护流程：不明确拒绝→缓和铺垫→寻机激活→偏好试探→荐股促成→售后回访→引导反馈。
+                    智能时间管理：x时间客户不回→等待x时间若不回再次跟进。
+                </p>
+            </div>
+
+            <!-- 11. 严格保密防控 -->
+            <div class="feature-card animate-in">
+                <div class="card-icon">🛡️</div>
+                <h3 class="card-title">严格保密防控系统</h3>
+                <p class="card-description">
+                    操盘手可设置关键信息脱敏，防控下属、运营者泄密、借公攒私、藏私自重。
+                    通过监控工作手机，AI实时生成风险预警。
+                    运营者通讯涉及的人脉资源公司所有，最大程度规避资源流失。
+                    多层级权限管理，核心数据分级加密存储。
+                    实时行为分析，异常操作自动报警。
+                </p>
+            </div>
+        </div>
+
+        <!-- 金融KOL附身推广联盟 -->
+        <div class="kol-section">
+            <div class="function-divider">
+                <div class="divider-line"></div>
+                <div class="divider-icon">👑</div>
+                <div class="divider-line"></div>
+            </div>
+            
+            <div class="section-header">
+                <h2 class="section-title">金融KOL附身推广联盟</h2>
+                <p class="section-subtitle">
+                    打通金融KOL推广全链路，解决信任难题，直接全面赋能荐股
+                </p>
+            </div>
+
+            <div class="feature-grid">
+                <!-- KOL附身推广核心功能 -->
+                <div class="feature-card animate-in">
+                    <div class="card-icon">👤</div>
+                    <h3 class="card-title">KOL附身推广系统</h3>
+                    <p class="card-description">
+                        打通金融KOL推广全链路，可以监控金融KOL的推广曝光到私信的全链路。
+                        当金融KOL有粉丝询股，实时向KOL提供回复草稿避免不可控/不熟悉而不恰当的沟通。
+                        金融KOL审核后即刻发出，可控无缝沟通，借助金融KOL的公信力、无需转介、解决信任难题、附身KOL回复客户，直接全面赋能荐股。
+                        附身激活操作包括：客户主动询股识别、广告激活询股（朋友圈推广、视频号推广、群聊广告、直发荐股软广等）。
+                    </p>
+                </div>
+
+                <!-- 智能定价系统 -->
+                <div class="feature-card animate-in">
+                    <div class="card-icon">💰</div>
+                    <h3 class="card-title">智能定价系统</h3>
+                    <p class="card-description">
+                        允许免费曝光，询股计费，将推广成本与造势抬轿高度绑定。
+                        KOL可自定义荐股推广定价：小作文、荐股信息发圈每粉定价、发视频每粉定价、链接每粉定价设置、主动询股每会话定价、会话时间每小时定价等。
+                        AI评估内容风险分级：基础价×风险系数×KOL价值分等级=实际价格。
+                        风险系数=该类内容历史平均成交价格÷基础价格，契合系数=KOL与广告的契合系数。
+                    </p>
+                </div>
+
+                <!-- 操盘手功能 -->
+                <div class="feature-card animate-in">
+                    <div class="card-icon">🔍</div>
+                    <h3 class="card-title">操盘手筛选功能</h3>
+                    <p class="card-description">
+                        1.筛选金融KOL功能：价值分、人脉数量、地域筛选、筛选定价。
+                        2.筛选KOL中股民功能：排除/包含、自动去重/重复曝光选项、男女筛选、最近互动天数、年龄筛选、地域筛选、朋友圈净值分筛选、历史消费筛选、朋友圈历史对话含有内容、交易偏好倾向品类（基于用户画像）。
+                        3.提交出价功能：多选金融KOL发送多种不同的价格预算。
+                        4.单为某个人脉填写AI策略。
+                    </p>
+                </div>
+
+                <!-- KOL端功能 -->
+                <div class="feature-card animate-in">
+                    <div class="card-icon">⭐</div>
+                    <h3 class="card-title">KOL管理功能</h3>
+                    <p class="card-description">
+                        1.筛选股民功能：支持多维度筛选和管理私域用户。
+                        2.给单个股民设置价值系数：精准定价和个性化服务。
+                        3.设置定价策略：灵活的收费模式和价格体系。
+                        4.设置回复人设和风险策略：品类权重设置，背书策略（背书程度：顺带推荐-自用推荐-强烈推荐-兜底推荐）。
+                        5.设置知识库第二大脑：专业内容库和自动回复。
+                        6.显示当前账号对接的操盘手，显示当前会话对接的操盘手。
+                    </p>
+                </div>
+
+                <!-- 风险控制 -->
+                <div class="feature-card animate-in">
+                    <div class="card-icon">⚠️</div>
+                    <h3 class="card-title">风险控制系统</h3>
+                    <p class="card-description">
+                        个人风险偏好设置：KOL可预设接受的内容类型和风险等级。
+                        可设置"绝对不接受"的黑名单类别，可设置不同类别的个人风险溢价。
+                        实时风险评估和预警，智能内容审核和合规检查。
+                        多层级风险控制机制，确保平台和用户双重安全。
+                        动态风险系数调整，根据市场情况和政策变化实时更新风险参数。
+                    </p>
+                </div>
+
+                <!-- 价值分析 -->
+                <div class="feature-card animate-in">
+                    <div class="card-icon">📊</div>
+                    <h3 class="card-title">价值评估系统</h3>
+                    <p class="card-description">
+                        股民粉丝净值×KOL粘度=KOL价值分，建立科学的价值评估体系。
+                        金融KOL推广优于媒体、平台推广的优势：天然第三方信任的价值认知干预，趋势培育能力强。
+                        可单独设置高净值股民粉丝屏蔽，精准定位目标客户群体。
+                        实时跟踪KOL表现数据，动态调整价值评分和定价策略。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 邀请码弹窗 -->
+    <div class="invitation-modal" id="invitationModal">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 20px; color: #64c8ff; font-size: 1.8rem;">盘手端访问验证</h3>
+            <p style="opacity: 0.8; margin-bottom: 30px; font-size: 1.1rem;">请输入6位数字邀请码以访问一手借势功能</p>
+            <input type="text" class="invitation-input" id="invitationInput" placeholder="请输入邀请码" maxlength="6">
+            <br>
+            <button class="modal-btn" id="submitInvitation">确认进入</button>
+            <button class="modal-btn secondary" id="closeModal">取消</button>
+        </div>
+    </div>
+
+    <script>
+        // 创建技术网格背景
+        function createTechGrid() {
+            const grid = document.getElementById('techGrid');
+            const lines = 20;
+            
+            // 创建水平线
+            for (let i = 0; i < lines; i++) {
+                const line = document.createElement('div');
+                line.className = 'grid-line horizontal';
+                line.style.top = `${(i / lines) * 100}%`;
+                line.style.animationDelay = `${i * 0.1}s`;
+                grid.appendChild(line);
+            }
+            
+            // 创建垂直线
+            for (let i = 0; i < lines; i++) {
+                const line = document.createElement('div');
+                line.className = 'grid-line vertical';
+                line.style.left = `${(i / lines) * 100}%`;
+                line.style.animationDelay = `${i * 0.1}s`;
+                grid.appendChild(line);
+            }
+        }
+
+        // 模式切换功能
+        function setupModeSwitch() {
+            const trendsBtn = document.getElementById('trendsBtn');
+            const leverageBtn = document.getElementById('leverageBtn');
+            const trendsContent = document.getElementById('trendsContent');
+            const leverageContent = document.getElementById('leverageContent');
+            const invitationModal = document.getElementById('invitationModal');
+            
+            trendsBtn.addEventListener('click', () => {
+                trendsBtn.classList.add('active');
+                leverageBtn.classList.remove('active');
+                trendsContent.classList.remove('hidden-content');
+                leverageContent.classList.add('hidden-content');
+            });
+            
+            leverageBtn.addEventListener('click', () => {
+                invitationModal.style.display = 'flex';
+            });
+            
+            // 邀请码验证
+            const invitationInput = document.getElementById('invitationInput');
+            const submitBtn = document.getElementById('submitInvitation');
+            const closeBtn = document.getElementById('closeModal');
+            
+            submitBtn.addEventListener('click', () => {
+                const code = invitationInput.value.trim();
+                if (code === '109832') {
+                    // 验证成功 - 跳转到详细版盘手端页面
+                    window.location.href = './yishou-leverage-detailed-showcase.html';
+                } else {
+                    // 验证失败动画
+                    invitationInput.style.borderColor = '#ef4444';
+                    invitationInput.style.background = 'rgba(239, 68, 68, 0.1)';
+                    invitationInput.style.animation = 'shake 0.5s ease-in-out';
+                    
+                    setTimeout(() => {
+                        invitationInput.style.borderColor = 'rgba(100, 200, 255, 0.3)';
+                        invitationInput.style.background = 'rgba(255, 255, 255, 0.1)';
+                        invitationInput.style.animation = '';
+                    }, 2000);
+                }
+            });
+            
+            closeBtn.addEventListener('click', () => {
+                invitationModal.style.display = 'none';
+                invitationInput.value = '';
+            });
+
+            // 点击外部关闭
+            invitationModal.addEventListener('click', (e) => {
+                if (e.target === invitationModal) {
+                    invitationModal.style.display = 'none';
+                    invitationInput.value = '';
+                }
+            });
+
+            // 回车提交
+            invitationInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    submitBtn.click();
+                }
+            });
+        }
+
+        // 滚动动画
+        function setupScrollAnimations() {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        entry.target.classList.add('animate-in');
+                    }
+                });
+            }, {
+                threshold: 0.1,
+                rootMargin: '0px 0px -50px 0px'
+            });
+
+            document.querySelectorAll('.timeline-item, .feature-card, .section-header').forEach(el => {
+                observer.observe(el);
+            });
+        }
+
+        // 数字计数动画
+        function animateNumbers() {
+            const dataValues = document.querySelectorAll('.data-value');
+            
+            dataValues.forEach(element => {
+                const text = element.textContent;
+                const number = parseFloat(text);
+                
+                if (!isNaN(number)) {
+                    let current = 0;
+                    const increment = number / 50;
+                    const timer = setInterval(() => {
+                        current += increment;
+                        if (current >= number) {
+                            current = number;
+                            clearInterval(timer);
+                        }
+                        element.textContent = Math.floor(current) + text.replace(number.toString(), '');
+                    }, 30);
+                }
+            });
+        }
+
+        // 添加震动动画
+        const shakeStyle = document.createElement('style');
+        shakeStyle.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+                20%, 40%, 60%, 80% { transform: translateX(5px); }
+            }
+        `;
+        document.head.appendChild(shakeStyle);
+
+        // 初始化所有功能
+        document.addEventListener('DOMContentLoaded', () => {
+            createTechGrid();
+            setupModeSwitch();
+            setupScrollAnimations();
+            
+            // 延迟启动数字动画
+            setTimeout(animateNumbers, 1500);
+        });
+
+        // 响应式重新生成网格
+        window.addEventListener('resize', () => {
+            const grid = document.getElementById('techGrid');
+            grid.innerHTML = '';
+            createTechGrid();
+        });
+    </script>
+</body>
+</html>

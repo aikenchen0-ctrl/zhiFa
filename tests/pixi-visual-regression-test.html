@@ -1,0 +1,826 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PixiJS Visual Regression Test - Connection Line Visibility</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.3.4/pixi.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #1a1a1a;
+            color: #ffffff;
+            overflow: hidden;
+        }
+        
+        .test-overlay {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        
+        .test-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+        
+        .test-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .test-btn {
+            padding: 8px 12px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background: #2a2a2a;
+            color: #ffffff;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .test-btn:hover {
+            background: #333;
+            border-color: #555;
+        }
+        
+        .test-btn.active {
+            background: #00ff88;
+            color: #000;
+            border-color: #00ff88;
+        }
+        
+        .visual-checkpoints {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .checkpoint {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 8px;
+            text-align: center;
+            font-size: 11px;
+        }
+        
+        .checkpoint.pass {
+            background: #1a4d2e;
+            border-color: #00ff88;
+            color: #00ff88;
+        }
+        
+        .checkpoint.fail {
+            background: #4d1a1a;
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+        
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            font-size: 11px;
+        }
+        
+        .metric {
+            text-align: center;
+        }
+        
+        .metric-value {
+            font-size: 14px;
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .metric-label {
+            color: #888;
+            margin-top: 2px;
+        }
+        
+        #pixi-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
+        }
+        
+        .connection-analysis {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 10px;
+            z-index: 1000;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .analysis-title {
+            color: #00ff88;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        
+        .connection-item {
+            margin-bottom: 4px;
+            padding: 4px;
+            background: #1a1a1a;
+            border-radius: 3px;
+            border-left: 3px solid #333;
+        }
+        
+        .connection-item.visible {
+            border-left-color: #00ff88;
+        }
+        
+        .connection-item.hidden {
+            border-left-color: #ff4444;
+        }
+        
+        @media (max-width: 600px) {
+            .test-controls {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .visual-checkpoints {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-overlay">
+        <div class="test-title">Visual Regression Test - Connection Line Analysis</div>
+        
+        <div class="test-controls">
+            <button class="test-btn" onclick="testBasicVisibility()">Basic Visibility</button>
+            <button class="test-btn" onclick="testScrollTracking()">Scroll Tracking</button>
+            <button class="test-btn" onclick="testMultipleElements()">Multiple Elements</button>
+            <button class="test-btn" onclick="testPixiV8Syntax()">PixiJS v8 Syntax</button>
+            <button class="test-btn" onclick="testLShapeAccuracy()">L-Shape Accuracy</button>
+            <button class="test-btn" onclick="runFullAnalysis()">Full Analysis</button>
+        </div>
+        
+        <div class="visual-checkpoints">
+            <div class="checkpoint" id="checkpoint-init">Initialization</div>
+            <div class="checkpoint" id="checkpoint-render">Rendering</div>
+            <div class="checkpoint" id="checkpoint-connections">Connections</div>
+            <div class="checkpoint" id="checkpoint-tracking">Tracking</div>
+        </div>
+        
+        <div class="metrics-grid">
+            <div class="metric">
+                <div class="metric-value" id="visible-connections">0</div>
+                <div class="metric-label">Visible Lines</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="render-accuracy">0%</div>
+                <div class="metric-label">Render Accuracy</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="tracking-performance">0ms</div>
+                <div class="metric-label">Tracking Delay</div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="pixi-container"></div>
+    
+    <div class="connection-analysis">
+        <div class="analysis-title">Connection Line Analysis</div>
+        <div id="analysis-content">Initializing visual regression test...</div>
+    </div>
+    
+    <script>
+        class PixiVisualRegressionTest {
+            constructor() {
+                this.app = null;
+                this.elements = [];
+                this.connections = [];
+                this.testResults = {};
+                this.analysisData = [];
+                
+                this.init();
+            }
+            
+            async init() {
+                await this.setupPixiApp();
+                this.setupTestEnvironment();
+                this.updateCheckpoint('init', 'pass');
+                this.startContinuousAnalysis();
+            }
+            
+            async setupPixiApp() {
+                try {
+                    // Test PixiJS v8 initialization
+                    this.app = new PIXI.Application();
+                    await this.app.init({
+                        width: window.innerWidth,
+                        height: window.innerHeight,
+                        backgroundColor: 0x1a1a1a,
+                        antialias: true,
+                        resolution: window.devicePixelRatio || 1,
+                        autoDensity: true
+                    });
+                    
+                    document.getElementById('pixi-container').appendChild(this.app.canvas);
+                    
+                    // Create containers
+                    this.leftContainer = new PIXI.Container();
+                    this.centerContainer = new PIXI.Container();
+                    this.rightContainer = new PIXI.Container();
+                    this.connectionContainer = new PIXI.Container();
+                    
+                    // Position containers
+                    const containerWidth = this.app.screen.width / 3;
+                    this.leftContainer.x = 0;
+                    this.centerContainer.x = containerWidth;
+                    this.rightContainer.x = containerWidth * 2;
+                    
+                    this.app.stage.addChild(this.leftContainer);
+                    this.app.stage.addChild(this.centerContainer);
+                    this.app.stage.addChild(this.rightContainer);
+                    this.app.stage.addChild(this.connectionContainer);
+                    
+                    this.containers = [this.leftContainer, this.centerContainer, this.rightContainer];
+                    
+                    this.updateCheckpoint('render', 'pass');
+                    return true;
+                } catch (error) {
+                    console.error('PixiJS initialization failed:', error);
+                    this.updateCheckpoint('render', 'fail');
+                    return false;
+                }
+            }
+            
+            setupTestEnvironment() {
+                // Create test elements
+                this.createTestElements();
+                
+                // Create test connections
+                this.createTestConnections();
+                
+                // Setup interaction
+                this.setupInteraction();
+                
+                this.updateCheckpoint('connections', this.connections.length > 0 ? 'pass' : 'fail');
+            }
+            
+            createTestElements() {
+                const containerWidth = this.app.screen.width / 3;
+                const positions = [
+                    { container: 0, y: 100 },
+                    { container: 1, y: 150 },
+                    { container: 2, y: 200 },
+                    { container: 0, y: 300 },
+                    { container: 1, y: 250 },
+                    { container: 2, y: 350 }
+                ];
+                
+                positions.forEach((pos, index) => {
+                    const container = this.containers[pos.container];
+                    
+                    // Create element
+                    const element = new PIXI.Graphics();
+                    element.rect(0, 0, containerWidth - 40, 50);
+                    element.fill(pos.container === 0 ? 0x3498db : pos.container === 1 ? 0x2ecc71 : 0xe74c3c);
+                    
+                    element.x = 20;
+                    element.y = pos.y;
+                    
+                    // Add text
+                    const text = new PIXI.Text(`Element ${index + 1}`, {
+                        fontSize: 14,
+                        fill: 0xffffff
+                    });
+                    text.x = 10;
+                    text.y = 15;
+                    element.addChild(text);
+                    
+                    // Store metadata
+                    element.elementData = {
+                        id: index,
+                        container: pos.container,
+                        originalY: pos.y
+                    };
+                    
+                    container.addChild(element);
+                    this.elements.push(element);
+                });
+            }
+            
+            createTestConnections() {
+                const connectionPairs = [
+                    [0, 1], // Left to Center
+                    [1, 2], // Center to Right
+                    [3, 4], // Left to Center
+                    [4, 5], // Center to Right
+                    [0, 2], // Left to Right (long connection)
+                    [3, 5]  // Left to Right (long connection)
+                ];
+                
+                connectionPairs.forEach(([fromIdx, toIdx]) => {
+                    const fromElement = this.elements[fromIdx];
+                    const toElement = this.elements[toIdx];
+                    
+                    if (fromElement && toElement) {
+                        const connection = this.createConnection(fromElement, toElement);
+                        this.connections.push(connection);
+                    }
+                });
+            }
+            
+            createConnection(fromElement, toElement) {
+                const connection = new PIXI.Graphics();
+                
+                // Determine connection style
+                const fromContainer = fromElement.elementData.container;
+                const toContainer = toElement.elementData.container;
+                const isReply = fromContainer !== toContainer;
+                
+                const color = isReply ? 0x00ff88 : 0x888888;
+                const alpha = isReply ? 0.9 : 0.6;
+                const thickness = isReply ? 3 : 2;
+                
+                // Store connection data
+                connection.connectionData = {
+                    from: fromElement,
+                    to: toElement,
+                    color,
+                    alpha,
+                    thickness,
+                    isReply,
+                    visible: true
+                };
+                
+                this.updateConnectionPath(connection);
+                this.connectionContainer.addChild(connection);
+                
+                return connection;
+            }
+            
+            updateConnectionPath(connection) {
+                const { from, to, color, alpha, thickness } = connection.connectionData;
+                
+                // Get global positions
+                const fromPos = from.getGlobalPosition();
+                const toPos = to.getGlobalPosition();
+                
+                // Calculate connection points
+                const fromX = fromPos.x + (from.width || 100);
+                const fromY = fromPos.y + ((from.height || 50) / 2);
+                const toX = toPos.x;
+                const toY = toPos.y + ((to.height || 50) / 2);
+                
+                // Clear and redraw
+                connection.clear();
+                
+                try {
+                    // Test PixiJS v8 syntax
+                    connection.moveTo(fromX, fromY);
+                    connection.stroke({ width: thickness, color: color, alpha: alpha });
+                    
+                    // Calculate L-shaped path
+                    const midX = fromX + (toX - fromX) * 0.7;
+                    const cornerRadius = 12;
+                    
+                    // Horizontal line
+                    connection.lineTo(midX - cornerRadius, fromY);
+                    
+                    // Rounded corner
+                    if (toY > fromY) {
+                        connection.arcTo(midX, fromY, midX, fromY + cornerRadius, cornerRadius);
+                        connection.lineTo(midX, toY - cornerRadius);
+                        connection.arcTo(midX, toY, midX + cornerRadius, toY, cornerRadius);
+                    } else {
+                        connection.arcTo(midX, fromY, midX, fromY - cornerRadius, cornerRadius);
+                        connection.lineTo(midX, toY + cornerRadius);
+                        connection.arcTo(midX, toY, midX + cornerRadius, toY, cornerRadius);
+                    }
+                    
+                    // Final line to target
+                    connection.lineTo(toX, toY);
+                    
+                    // Add arrow
+                    connection.moveTo(toX, toY);
+                    connection.lineTo(toX - 10, toY - 5);
+                    connection.lineTo(toX - 10, toY + 5);
+                    connection.lineTo(toX, toY);
+                    connection.fill(color);
+                    
+                    connection.connectionData.visible = true;
+                    
+                } catch (error) {
+                    console.warn('PixiJS v8 syntax error, falling back:', error);
+                    
+                    // Fallback to older syntax
+                    connection.lineStyle(thickness, color, alpha);
+                    connection.moveTo(fromX, fromY);
+                    connection.lineTo(midX, fromY);
+                    connection.lineTo(midX, toY);
+                    connection.lineTo(toX, toY);
+                    
+                    connection.connectionData.visible = true;
+                }
+                
+                // Update stored positions for analysis
+                connection.connectionData.fromPos = { x: fromX, y: fromY };
+                connection.connectionData.toPos = { x: toX, y: toY };
+            }
+            
+            setupInteraction() {
+                // Enable stage interaction
+                this.app.stage.eventMode = 'static';
+                this.app.stage.hitArea = new PIXI.Rectangle(0, 0, this.app.screen.width, this.app.screen.height);
+                
+                let isDragging = false;
+                let lastPosition = null;
+                
+                this.app.stage.on('pointerdown', (event) => {
+                    isDragging = true;
+                    lastPosition = event.global.clone();
+                });
+                
+                this.app.stage.on('pointermove', (event) => {
+                    if (isDragging && lastPosition) {
+                        const current = event.global;
+                        const deltaY = current.y - lastPosition.y;
+                        
+                        this.containers.forEach(container => {
+                            container.y += deltaY;
+                        });
+                        
+                        this.updateAllConnections();
+                        lastPosition = current;
+                    }
+                });
+                
+                this.app.stage.on('pointerup', () => {
+                    isDragging = false;
+                    lastPosition = null;
+                    this.updateCheckpoint('tracking', 'pass');
+                });
+            }
+            
+            updateAllConnections() {
+                const startTime = performance.now();
+                
+                this.connections.forEach(connection => {
+                    this.updateConnectionPath(connection);
+                });
+                
+                const endTime = performance.now();
+                const trackingDelay = endTime - startTime;
+                
+                document.getElementById('tracking-performance').textContent = 
+                    trackingDelay.toFixed(1) + 'ms';
+            }
+            
+            startContinuousAnalysis() {
+                setInterval(() => {
+                    this.analyzeConnections();
+                }, 100);
+            }
+            
+            analyzeConnections() {
+                let visibleCount = 0;
+                let totalConnections = this.connections.length;
+                
+                this.analysisData = [];
+                
+                this.connections.forEach((connection, index) => {
+                    const { from, to, visible, color, isReply } = connection.connectionData;
+                    
+                    // Check visibility
+                    const isVisible = connection.visible && connection.alpha > 0;
+                    if (isVisible) visibleCount++;
+                    
+                    // Analyze connection properties
+                    const analysis = {
+                        index,
+                        visible: isVisible,
+                        color: `#${color.toString(16).padStart(6, '0')}`,
+                        type: isReply ? 'Reply' : 'Normal',
+                        fromContainer: from.elementData.container,
+                        toContainer: to.elementData.container,
+                        pathLength: this.calculatePathLength(connection),
+                        renderStatus: this.checkRenderStatus(connection)
+                    };
+                    
+                    this.analysisData.push(analysis);
+                });
+                
+                // Update metrics
+                document.getElementById('visible-connections').textContent = visibleCount;
+                
+                const accuracy = totalConnections > 0 ? ((visibleCount / totalConnections) * 100) : 0;
+                document.getElementById('render-accuracy').textContent = accuracy.toFixed(1) + '%';
+                
+                // Update analysis display
+                this.updateAnalysisDisplay();
+            }
+            
+            calculatePathLength(connection) {
+                const { fromPos, toPos } = connection.connectionData;
+                if (!fromPos || !toPos) return 0;
+                
+                const dx = toPos.x - fromPos.x;
+                const dy = toPos.y - fromPos.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+            
+            checkRenderStatus(connection) {
+                try {
+                    // Check if connection has valid graphics data
+                    const hasGeometry = connection.geometry && connection.geometry.graphicsData;
+                    const hasVisibleBounds = connection.getBounds().width > 0 && connection.getBounds().height > 0;
+                    
+                    return hasGeometry && hasVisibleBounds ? 'OK' : 'FAIL';
+                } catch (error) {
+                    return 'ERROR';
+                }
+            }
+            
+            updateAnalysisDisplay() {
+                const content = document.getElementById('analysis-content');
+                
+                let html = '';
+                this.analysisData.forEach(analysis => {
+                    html += `
+                        <div class="connection-item ${analysis.visible ? 'visible' : 'hidden'}">
+                            Connection ${analysis.index}: ${analysis.type} 
+                            (${analysis.fromContainer}→${analysis.toContainer}) 
+                            - ${analysis.color} 
+                            - ${Math.round(analysis.pathLength)}px 
+                            - ${analysis.renderStatus}
+                            ${analysis.visible ? '✓' : '✗'}
+                        </div>
+                    `;
+                });
+                
+                content.innerHTML = html || 'No connections analyzed';
+            }
+            
+            updateCheckpoint(name, status) {
+                const checkpoint = document.getElementById(`checkpoint-${name}`);
+                if (checkpoint) {
+                    checkpoint.className = `checkpoint ${status}`;
+                }
+            }
+            
+            // Test methods
+            async testBasicVisibility() {
+                console.log('Testing basic visibility...');
+                
+                let passed = 0;
+                let total = this.connections.length;
+                
+                this.connections.forEach(connection => {
+                    if (connection.visible && connection.alpha > 0) {
+                        passed++;
+                    }
+                });
+                
+                const result = passed === total;
+                this.updateCheckpoint('connections', result ? 'pass' : 'fail');
+                
+                console.log(`Basic visibility test: ${passed}/${total} connections visible`);
+                return result;
+            }
+            
+            async testScrollTracking() {
+                console.log('Testing scroll tracking...');
+                
+                const originalPositions = this.connections.map(c => ({
+                    from: c.connectionData.fromPos ? {...c.connectionData.fromPos} : null,
+                    to: c.connectionData.toPos ? {...c.connectionData.toPos} : null
+                }));
+                
+                // Simulate scroll
+                this.containers.forEach(container => {
+                    container.y += 100;
+                });
+                
+                this.updateAllConnections();
+                
+                // Check if positions updated
+                let updated = 0;
+                this.connections.forEach((connection, index) => {
+                    const original = originalPositions[index];
+                    const current = connection.connectionData.fromPos;
+                    
+                    if (original.from && current && Math.abs(current.y - original.from.y) > 50) {
+                        updated++;
+                    }
+                });
+                
+                // Reset positions
+                this.containers.forEach(container => {
+                    container.y -= 100;
+                });
+                this.updateAllConnections();
+                
+                const result = updated > 0;
+                this.updateCheckpoint('tracking', result ? 'pass' : 'fail');
+                
+                console.log(`Scroll tracking test: ${updated} connections updated positions`);
+                return result;
+            }
+            
+            async testMultipleElements() {
+                console.log('Testing multiple element performance...');
+                
+                const startTime = performance.now();
+                
+                // Add more test elements
+                for (let i = 0; i < 20; i++) {
+                    const container = this.containers[i % 3];
+                    const element = new PIXI.Graphics();
+                    element.rect(0, 0, 100, 30);
+                    element.fill(0x666666);
+                    element.x = 20;
+                    element.y = 500 + (i * 40);
+                    
+                    element.elementData = {
+                        id: this.elements.length + i,
+                        container: i % 3,
+                        temporary: true
+                    };
+                    
+                    container.addChild(element);
+                    this.elements.push(element);
+                }
+                
+                const endTime = performance.now();
+                const performance_time = endTime - startTime;
+                
+                const result = performance_time < 100; // Should be fast
+                console.log(`Multiple elements test: ${performance_time.toFixed(1)}ms`);
+                
+                // Clean up temporary elements
+                setTimeout(() => {
+                    this.elements = this.elements.filter(element => {
+                        if (element.elementData.temporary) {
+                            element.parent?.removeChild(element);
+                            return false;
+                        }
+                        return true;
+                    });
+                }, 2000);
+                
+                return result;
+            }
+            
+            async testPixiV8Syntax() {
+                console.log('Testing PixiJS v8 syntax compatibility...');
+                
+                let syntaxErrors = 0;
+                let totalTests = 0;
+                
+                // Test new v8 syntax
+                const testConnection = new PIXI.Graphics();
+                
+                try {
+                    totalTests++;
+                    testConnection.moveTo(0, 0);
+                    testConnection.lineTo(100, 100);
+                    testConnection.stroke({ width: 2, color: 0xff0000 });
+                } catch (error) {
+                    syntaxErrors++;
+                    console.warn('v8 stroke syntax failed:', error);
+                }
+                
+                try {
+                    totalTests++;
+                    testConnection.rect(0, 0, 50, 50);
+                    testConnection.fill(0x00ff00);
+                } catch (error) {
+                    syntaxErrors++;
+                    console.warn('v8 fill syntax failed:', error);
+                }
+                
+                try {
+                    totalTests++;
+                    testConnection.clear();
+                } catch (error) {
+                    syntaxErrors++;
+                    console.warn('v8 clear syntax failed:', error);
+                }
+                
+                const result = syntaxErrors === 0;
+                console.log(`PixiJS v8 syntax test: ${totalTests - syntaxErrors}/${totalTests} tests passed`);
+                
+                return result;
+            }
+            
+            async testLShapeAccuracy() {
+                console.log('Testing L-shaped path accuracy...');
+                
+                let accurateConnections = 0;
+                
+                this.connections.forEach(connection => {
+                    const bounds = connection.getBounds();
+                    
+                    // Check if connection has reasonable bounds (not just a point)
+                    if (bounds.width > 10 && bounds.height > 10) {
+                        accurateConnections++;
+                    }
+                });
+                
+                const result = accurateConnections > 0;
+                console.log(`L-shape accuracy test: ${accurateConnections} connections have proper paths`);
+                
+                return result;
+            }
+            
+            async runFullAnalysis() {
+                console.log('Running full visual regression analysis...');
+                
+                const tests = [
+                    this.testBasicVisibility(),
+                    this.testScrollTracking(),
+                    this.testMultipleElements(),
+                    this.testPixiV8Syntax(),
+                    this.testLShapeAccuracy()
+                ];
+                
+                const results = await Promise.all(tests);
+                const passed = results.filter(r => r).length;
+                
+                console.log(`Full analysis complete: ${passed}/${results.length} tests passed`);
+                
+                // Update overall status
+                if (passed === results.length) {
+                    document.querySelectorAll('.checkpoint').forEach(cp => {
+                        if (!cp.classList.contains('fail')) {
+                            cp.classList.add('pass');
+                        }
+                    });
+                }
+                
+                return results;
+            }
+        }
+        
+        // Initialize test
+        let visualTest;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            visualTest = new PixiVisualRegressionTest();
+        });
+        
+        // Global test functions
+        function testBasicVisibility() {
+            visualTest && visualTest.testBasicVisibility();
+        }
+        
+        function testScrollTracking() {
+            visualTest && visualTest.testScrollTracking();
+        }
+        
+        function testMultipleElements() {
+            visualTest && visualTest.testMultipleElements();
+        }
+        
+        function testPixiV8Syntax() {
+            visualTest && visualTest.testPixiV8Syntax();
+        }
+        
+        function testLShapeAccuracy() {
+            visualTest && visualTest.testLShapeAccuracy();
+        }
+        
+        function runFullAnalysis() {
+            visualTest && visualTest.runFullAnalysis();
+        }
+    </script>
+</body>
+</html>

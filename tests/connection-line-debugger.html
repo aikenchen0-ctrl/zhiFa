@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connection Line System Debugger</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            overflow: hidden;
+        }
+
+        .debugger-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 999999;
+            background: rgba(0, 0, 0, 0.95);
+            display: flex;
+        }
+
+        .sidebar {
+            width: 350px;
+            background: #0d1117;
+            border-right: 1px solid #30363d;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .main-panel {
+            flex: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .panel {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            background: #21262d;
+            padding: 8px 12px;
+            font-weight: bold;
+            border-bottom: 1px solid #30363d;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .panel-content {
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .status-good { color: #28a745; }
+        .status-warning { color: #ffc107; }
+        .status-error { color: #dc3545; }
+        .status-info { color: #17a2b8; }
+
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 4px 0;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .metric-label {
+            color: #8b949e;
+        }
+
+        .metric-value {
+            font-weight: bold;
+        }
+
+        .close-btn {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 1000000;
+        }
+
+        .refresh-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .toggle-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .code-block {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+
+        .highlight {
+            background: rgba(255, 255, 0, 0.2);
+            padding: 2px 4px;
+            border-radius: 2px;
+        }
+
+        .overlay-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            pointer-events: none;
+            z-index: 999998;
+        }
+
+        .floating-metrics {
+            position: fixed;
+            top: 50px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 1000000;
+        }
+
+        .collapsed .panel-content {
+            display: none;
+        }
+
+        .element-inspector {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            pointer-events: none;
+            z-index: 1000001;
+            max-width: 300px;
+        }
+
+        .performance-chart {
+            width: 100%;
+            height: 100px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            margin: 5px 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-line {
+            stroke: #28a745;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .auto-detect-badge {
+            background: #28a745;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 10px;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="debugger-container">
+        <button class="close-btn" onclick="closeDebugger()">Close Debugger</button>
+        
+        <div class="sidebar">
+            <!-- System Detection Panel -->
+            <div class="panel">
+                <div class="panel-header">
+                    <span>🔍 System Detection</span>
+                    <button class="refresh-btn" onclick="detectSystems()">Refresh</button>
+                </div>
+                <div class="panel-content" id="system-detection"></div>
+            </div>
+
+            <!-- DOM Inspector Panel -->
+            <div class="panel">
+                <div class="panel-header" onclick="togglePanel(this)">
+                    <span>📋 DOM Inspector</span>
+                    <button class="toggle-btn">Toggle</button>
+                </div>
+                <div class="panel-content" id="dom-inspector"></div>
+            </div>
+
+            <!-- CSS Inspector Panel -->
+            <div class="panel">
+                <div class="panel-header" onclick="togglePanel(this)">
+                    <span>🎨 CSS Inspector</span>
+                    <button class="toggle-btn">Toggle</button>
+                </div>
+                <div class="panel-content" id="css-inspector"></div>
+            </div>
+
+            <!-- Event Listeners Panel -->
+            <div class="panel">
+                <div class="panel-header" onclick="togglePanel(this)">
+                    <span>⚡ Event Listeners</span>
+                    <button class="toggle-btn">Toggle</button>
+                </div>
+                <div class="panel-content" id="event-listeners"></div>
+            </div>
+        </div>
+
+        <div class="main-panel">
+            <!-- Coordinate Validator Panel -->
+            <div class="panel">
+                <div class="panel-header" onclick="togglePanel(this)">
+                    <span>📐 Coordinate Validator</span>
+                    <button class="toggle-btn">Toggle</button>
+                </div>
+                <div class="panel-content" id="coordinate-validator"></div>
+            </div>
+
+            <!-- Rendering Status Panel -->
+            <div class="panel">
+                <div class="panel-header" onclick="togglePanel(this)">
+                    <span>🖼️ Rendering Status</span>
+                    <button class="toggle-btn">Toggle</button>
+                </div>
+                <div class="panel-content" id="rendering-status"></div>
+            </div>
+
+            <!-- Performance Monitor Panel -->
+            <div class="panel">
+                <div class="panel-header" onclick="togglePanel(this)">
+                    <span>⚡ Performance Monitor</span>
+                    <button class="toggle-btn">Toggle</button>
+                </div>
+                <div class="panel-content" id="performance-monitor"></div>
+            </div>
+
+            <!-- Live Debugging Panel -->
+            <div class="panel">
+                <div class="panel-header" onclick="togglePanel(this)">
+                    <span>🔴 Live Debug Console</span>
+                    <button class="toggle-btn">Toggle</button>
+                </div>
+                <div class="panel-content" id="live-console"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Metrics -->
+    <div class="floating-metrics" id="floating-metrics"></div>
+
+    <!-- Overlay Canvas for Visual Debug -->
+    <canvas class="overlay-canvas" id="debug-overlay"></canvas>
+
+    <!-- Element Inspector Tooltip -->
+    <div class="element-inspector" id="element-inspector" style="display: none;"></div>
+
+    <script>
+        class ConnectionLineDebugger {
+            constructor() {
+                this.systems = [];
+                this.performance = {
+                    fps: [],
+                    renderTime: [],
+                    memoryUsage: []
+                };
+                this.isRunning = true;
+                this.hoveredElement = null;
+                
+                this.init();
+            }
+
+            init() {
+                this.setupOverlay();
+                this.detectSystems();
+                this.startPerformanceMonitoring();
+                this.setupEventListeners();
+                this.startLiveDebugging();
+            }
+
+            setupOverlay() {
+                const canvas = document.getElementById('debug-overlay');
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                this.overlayCtx = canvas.getContext('2d');
+            }
+
+            detectSystems() {
+                this.systems = [];
+                const detection = document.getElementById('system-detection');
+                
+                // Check for different connection line systems
+                const checks = [
+                    {
+                        name: 'CSS Anchor Positioning',
+                        check: () => CSS.supports('anchor-name', 'test'),
+                        elements: () => document.querySelectorAll('[style*="anchor-name"]').length
+                    },
+                    {
+                        name: 'PixiJS Graphics',
+                        check: () => window.PIXI !== undefined,
+                        elements: () => document.querySelectorAll('canvas').length
+                    },
+                    {
+                        name: 'SVG Connection Lines',
+                        check: () => document.querySelectorAll('svg line, svg path').length > 0,
+                        elements: () => document.querySelectorAll('svg line, svg path').length
+                    },
+                    {
+                        name: 'CSS Border Connections',
+                        check: () => document.querySelectorAll('[class*="connection"], [class*="line"]').length > 0,
+                        elements: () => document.querySelectorAll('[class*="connection"], [class*="line"]').length
+                    },
+                    {
+                        name: 'Canvas 2D Connections',
+                        check: () => {
+                            const canvases = document.querySelectorAll('canvas');
+                            return Array.from(canvases).some(c => c.getContext('2d'));
+                        },
+                        elements: () => document.querySelectorAll('canvas').length
+                    },
+                    {
+                        name: 'WebGL Rendering',
+                        check: () => {
+                            try {
+                                const canvas = document.createElement('canvas');
+                                return !!(canvas.getContext('webgl') || canvas.getContext('experimental-webgl'));
+                            } catch (e) {
+                                return false;
+                            }
+                        },
+                        elements: () => 0
+                    }
+                ];
+
+                let html = '';
+                checks.forEach(check => {
+                    const supported = check.check();
+                    const elementCount = check.elements();
+                    const status = supported ? 'status-good' : 'status-error';
+                    
+                    if (supported) {
+                        this.systems.push(check.name);
+                    }
+                    
+                    html += `
+                        <div class="metric-item">
+                            <span class="metric-label">${check.name}</span>
+                            <span class="metric-value ${status}">
+                                ${supported ? '✓' : '✗'} ${elementCount > 0 ? `(${elementCount})` : ''}
+                            </span>
+                        </div>
+                    `;
+                });
+
+                // Auto-detect primary system
+                const primarySystem = this.detectPrimarySystem();
+                if (primarySystem) {
+                    html += `
+                        <div class="metric-item">
+                            <span class="metric-label">Primary System</span>
+                            <span class="metric-value status-info">
+                                ${primarySystem} <span class="auto-detect-badge">AUTO</span>
+                            </span>
+                        </div>
+                    `;
+                }
+
+                detection.innerHTML = html;
+                this.updateDOMInspector();
+                this.updateCSSInspector();
+                this.updateEventListeners();
+                this.updateCoordinateValidator();
+                this.updateRenderingStatus();
+            }
+
+            detectPrimarySystem() {
+                // Detect the most likely primary connection system
+                const pixiCanvas = document.querySelectorAll('canvas').length;
+                const svgElements = document.querySelectorAll('svg line, svg path').length;
+                const anchorElements = document.querySelectorAll('[style*="anchor-name"]').length;
+                const connectionClasses = document.querySelectorAll('[class*="connection"], [class*="line"]').length;
+
+                if (window.PIXI && pixiCanvas > 0) return 'PixiJS Graphics';
+                if (svgElements > 0) return 'SVG Connection Lines';
+                if (anchorElements > 0) return 'CSS Anchor Positioning';
+                if (connectionClasses > 0) return 'CSS Border Connections';
+                if (pixiCanvas > 0) return 'Canvas 2D Connections';
+                
+                return null;
+            }
+
+            updateDOMInspector() {
+                const inspector = document.getElementById('dom-inspector');
+                
+                // Find all potential connection elements
+                const elements = [
+                    ...document.querySelectorAll('.message-bubble, .chat-bubble, .bubble'),
+                    ...document.querySelectorAll('.avatar, .conversation-avatar'),
+                    ...document.querySelectorAll('.connection-line, .line, [class*="connection"]'),
+                    ...document.querySelectorAll('canvas'),
+                    ...document.querySelectorAll('svg')
+                ];
+
+                let html = '';
+                elements.forEach((el, index) => {
+                    const rect = el.getBoundingClientRect();
+                    const computed = getComputedStyle(el);
+                    
+                    html += `
+                        <div class="metric-item" style="flex-direction: column; align-items: flex-start;">
+                            <div style="width: 100%; display: flex; justify-content: space-between;">
+                                <span class="metric-label">${el.tagName}.${el.className || 'no-class'}</span>
+                                <span class="metric-value ${rect.width > 0 && rect.height > 0 ? 'status-good' : 'status-warning'}">
+                                    ${Math.round(rect.width)}×${Math.round(rect.height)}
+                                </span>
+                            </div>
+                            <div class="code-block" style="font-size: 10px; margin-top: 4px;">
+                                Position: ${Math.round(rect.left)}, ${Math.round(rect.top)}
+                                Z-Index: ${computed.zIndex}
+                                Display: ${computed.display}
+                                Visibility: ${computed.visibility}
+                            </div>
+                        </div>
+                    `;
+                });
+
+                inspector.innerHTML = html || '<div class="metric-item"><span class="status-warning">No connection elements found</span></div>';
+            }
+
+            updateCSSInspector() {
+                const inspector = document.getElementById('css-inspector');
+                
+                // Check for connection-related CSS
+                const styles = Array.from(document.styleSheets).map(sheet => {
+                    try {
+                        return Array.from(sheet.cssRules);
+                    } catch (e) {
+                        return [];
+                    }
+                }).flat();
+
+                const connectionRules = styles.filter(rule => {
+                    if (!rule.selectorText) return false;
+                    return rule.selectorText.includes('connection') || 
+                           rule.selectorText.includes('line') ||
+                           rule.selectorText.includes('anchor') ||
+                           rule.cssText.includes('anchor-name');
+                });
+
+                let html = '';
+                if (connectionRules.length > 0) {
+                    connectionRules.forEach(rule => {
+                        html += `
+                            <div class="metric-item" style="flex-direction: column; align-items: flex-start;">
+                                <span class="metric-label">${rule.selectorText}</span>
+                                <div class="code-block" style="font-size: 10px;">
+                                    ${rule.cssText.replace(/[{}]/g, '').trim()}
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html = '<div class="metric-item"><span class="status-warning">No connection CSS rules found</span></div>';
+                }
+
+                // Check for CSS custom properties
+                const customProps = this.getCustomProperties();
+                if (customProps.length > 0) {
+                    html += '<div class="metric-item"><span class="metric-label">Custom Properties</span></div>';
+                    customProps.forEach(prop => {
+                        html += `
+                            <div class="metric-item">
+                                <span class="metric-label">${prop.name}</span>
+                                <span class="metric-value">${prop.value}</span>
+                            </div>
+                        `;
+                    });
+                }
+
+                inspector.innerHTML = html;
+            }
+
+            getCustomProperties() {
+                const props = [];
+                const styles = getComputedStyle(document.documentElement);
+                
+                for (let i = 0; i < styles.length; i++) {
+                    const name = styles[i];
+                    if (name.startsWith('--') && (name.includes('connection') || name.includes('line') || name.includes('anchor'))) {
+                        props.push({
+                            name: name,
+                            value: styles.getPropertyValue(name).trim()
+                        });
+                    }
+                }
+                
+                return props;
+            }
+
+            updateEventListeners() {
+                const inspector = document.getElementById('event-listeners');
+                
+                // Check for common event listeners
+                const events = ['scroll', 'resize', 'mousemove', 'click', 'touchstart', 'touchmove'];
+                let html = '';
+                
+                events.forEach(eventType => {
+                    const hasListener = this.checkEventListener(eventType);
+                    const status = hasListener ? 'status-good' : 'status-warning';
+                    
+                    html += `
+                        <div class="metric-item">
+                            <span class="metric-label">${eventType}</span>
+                            <span class="metric-value ${status}">${hasListener ? '✓ Active' : '✗ Missing'}</span>
+                        </div>
+                    `;
+                });
+
+                inspector.innerHTML = html;
+            }
+
+            checkEventListener(eventType) {
+                // This is a simplified check - in reality, event listeners are harder to detect
+                const hasWindowListener = window[`on${eventType}`] !== null;
+                const hasDocumentListener = document[`on${eventType}`] !== null;
+                
+                // Check for common patterns in connection line systems
+                const scripts = Array.from(document.scripts).map(s => s.textContent).join('');
+                const hasCodePattern = scripts.includes(`addEventListener('${eventType}'`) || 
+                                     scripts.includes(`on('${eventType}'`) ||
+                                     scripts.includes(`${eventType}:`);
+                
+                return hasWindowListener || hasDocumentListener || hasCodePattern;
+            }
+
+            updateCoordinateValidator() {
+                const validator = document.getElementById('coordinate-validator');
+                
+                // Get all bubbles and avatars
+                const bubbles = document.querySelectorAll('.message-bubble, .chat-bubble, .bubble');
+                const avatars = document.querySelectorAll('.avatar, .conversation-avatar');
+                
+                let html = '<div class="metric-item"><span class="metric-label">Element Coordinates</span></div>';
+                
+                // Show bubble coordinates
+                bubbles.forEach((bubble, index) => {
+                    const rect = bubble.getBoundingClientRect();
+                    const center = {
+                        x: rect.left + rect.width / 2,
+                        y: rect.top + rect.height / 2
+                    };
+                    
+                    html += `
+                        <div class="metric-item">
+                            <span class="metric-label">Bubble ${index + 1}</span>
+                            <span class="metric-value status-info">
+                                (${Math.round(center.x)}, ${Math.round(center.y)})
+                            </span>
+                        </div>
+                    `;
+                });
+
+                // Show avatar coordinates
+                avatars.forEach((avatar, index) => {
+                    const rect = avatar.getBoundingClientRect();
+                    const center = {
+                        x: rect.left + rect.width / 2,
+                        y: rect.top + rect.height / 2
+                    };
+                    
+                    html += `
+                        <div class="metric-item">
+                            <span class="metric-label">Avatar ${index + 1}</span>
+                            <span class="metric-value status-info">
+                                (${Math.round(center.x)}, ${Math.round(center.y)})
+                            </span>
+                        </div>
+                    `;
+                });
+
+                // Calculate potential connection lines
+                if (bubbles.length > 0 && avatars.length > 0) {
+                    html += '<div class="metric-item"><span class="metric-label">Connection Calculations</span></div>';
+                    
+                    for (let i = 0; i < Math.min(bubbles.length, avatars.length); i++) {
+                        const bubbleRect = bubbles[i].getBoundingClientRect();
+                        const avatarRect = avatars[i].getBoundingClientRect();
+                        
+                        const distance = Math.sqrt(
+                            Math.pow(bubbleRect.left - avatarRect.left, 2) + 
+                            Math.pow(bubbleRect.top - avatarRect.top, 2)
+                        );
+                        
+                        const angle = Math.atan2(
+                            bubbleRect.top - avatarRect.top,
+                            bubbleRect.left - avatarRect.left
+                        ) * 180 / Math.PI;
+                        
+                        html += `
+                            <div class="code-block" style="font-size: 10px;">
+                                Connection ${i + 1}:
+                                Distance: ${Math.round(distance)}px
+                                Angle: ${Math.round(angle)}°
+                            </div>
+                        `;
+                    }
+                }
+
+                validator.innerHTML = html;
+            }
+
+            updateRenderingStatus() {
+                const status = document.getElementById('rendering-status');
+                let html = '';
+
+                // Check Canvas status
+                const canvases = document.querySelectorAll('canvas');
+                html += `
+                    <div class="metric-item">
+                        <span class="metric-label">Canvas Elements</span>
+                        <span class="metric-value ${canvases.length > 0 ? 'status-good' : 'status-warning'}">
+                            ${canvases.length}
+                        </span>
+                    </div>
+                `;
+
+                // Check PixiJS status
+                if (window.PIXI) {
+                    html += `
+                        <div class="metric-item">
+                            <span class="metric-label">PixiJS Version</span>
+                            <span class="metric-value status-good">${window.PIXI.VERSION}</span>
+                        </div>
+                    `;
+
+                    // Check for PIXI applications
+                    const pixiApps = window.pixiApplications || [];
+                    html += `
+                        <div class="metric-item">
+                            <span class="metric-label">PIXI Applications</span>
+                            <span class="metric-value ${pixiApps.length > 0 ? 'status-good' : 'status-warning'}">
+                                ${pixiApps.length}
+                            </span>
+                        </div>
+                    `;
+                }
+
+                // Check WebGL support
+                const webglSupport = this.checkWebGLSupport();
+                html += `
+                    <div class="metric-item">
+                        <span class="metric-label">WebGL Support</span>
+                        <span class="metric-value ${webglSupport ? 'status-good' : 'status-error'}">
+                            ${webglSupport ? 'Available' : 'Not Available'}
+                        </span>
+                    </div>
+                `;
+
+                // Check SVG status
+                const svgElements = document.querySelectorAll('svg');
+                html += `
+                    <div class="metric-item">
+                        <span class="metric-label">SVG Elements</span>
+                        <span class="metric-value ${svgElements.length > 0 ? 'status-good' : 'status-warning'}">
+                            ${svgElements.length}
+                        </span>
+                    </div>
+                `;
+
+                status.innerHTML = html;
+            }
+
+            checkWebGLSupport() {
+                try {
+                    const canvas = document.createElement('canvas');
+                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                    return !!gl;
+                } catch (e) {
+                    return false;
+                }
+            }
+
+            startPerformanceMonitoring() {
+                let lastTime = performance.now();
+                let frameCount = 0;
+                
+                const measurePerformance = () => {
+                    if (!this.isRunning) return;
+                    
+                    const currentTime = performance.now();
+                    const deltaTime = currentTime - lastTime;
+                    frameCount++;
+                    
+                    // Calculate FPS every second
+                    if (deltaTime >= 1000) {
+                        const fps = Math.round((frameCount * 1000) / deltaTime);
+                        this.performance.fps.push(fps);
+                        
+                        // Keep only last 60 measurements
+                        if (this.performance.fps.length > 60) {
+                            this.performance.fps.shift();
+                        }
+                        
+                        frameCount = 0;
+                        lastTime = currentTime;
+                        
+                        this.updatePerformanceDisplay();
+                    }
+                    
+                    // Memory usage
+                    if (performance.memory) {
+                        this.performance.memoryUsage.push(performance.memory.usedJSHeapSize);
+                        if (this.performance.memoryUsage.length > 60) {
+                            this.performance.memoryUsage.shift();
+                        }
+                    }
+                    
+                    requestAnimationFrame(measurePerformance);
+                };
+                
+                measurePerformance();
+            }
+
+            updatePerformanceDisplay() {
+                const monitor = document.getElementById('performance-monitor');
+                const floating = document.getElementById('floating-metrics');
+                
+                const currentFPS = this.performance.fps[this.performance.fps.length - 1] || 0;
+                const avgFPS = this.performance.fps.reduce((a, b) => a + b, 0) / this.performance.fps.length || 0;
+                const memory = performance.memory ? Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) : 0;
+                
+                // Update main panel
+                let html = `
+                    <div class="metric-item">
+                        <span class="metric-label">Current FPS</span>
+                        <span class="metric-value ${currentFPS >= 30 ? 'status-good' : currentFPS >= 15 ? 'status-warning' : 'status-error'}">
+                            ${currentFPS}
+                        </span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Average FPS</span>
+                        <span class="metric-value">${Math.round(avgFPS)}</span>
+                    </div>
+                    <div class="metric-item">
+                        <span class="metric-label">Memory Usage</span>
+                        <span class="metric-value">${memory} MB</span>
+                    </div>
+                `;
+                
+                // Add performance chart
+                html += '<div class="performance-chart" id="fps-chart"></div>';
+                
+                monitor.innerHTML = html;
+                
+                // Update floating metrics
+                floating.innerHTML = `
+                    <div>FPS: ${currentFPS}</div>
+                    <div>Memory: ${memory}MB</div>
+                    <div>Systems: ${this.systems.length}</div>
+                `;
+                
+                // Draw FPS chart
+                this.drawPerformanceChart();
+            }
+
+            drawPerformanceChart() {
+                const chart = document.getElementById('fps-chart');
+                if (!chart) return;
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = chart.offsetWidth;
+                canvas.height = chart.offsetHeight;
+                chart.innerHTML = '';
+                chart.appendChild(canvas);
+                
+                const ctx = canvas.getContext('2d');
+                const data = this.performance.fps;
+                
+                if (data.length < 2) return;
+                
+                ctx.strokeStyle = '#28a745';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                
+                const maxFPS = Math.max(...data, 60);
+                const minFPS = Math.min(...data, 0);
+                const range = maxFPS - minFPS || 1;
+                
+                data.forEach((fps, index) => {
+                    const x = (index / (data.length - 1)) * canvas.width;
+                    const y = canvas.height - ((fps - minFPS) / range) * canvas.height;
+                    
+                    if (index === 0) {
+                        ctx.moveTo(x, y);
+                    } else {
+                        ctx.lineTo(x, y);
+                    }
+                });
+                
+                ctx.stroke();
+            }
+
+            startLiveDebugging() {
+                const console = document.getElementById('live-console');
+                const originalLog = window.console.log;
+                const originalError = window.console.error;
+                const originalWarn = window.console.warn;
+                
+                let logs = [];
+                
+                const addLog = (type, message) => {
+                    logs.push({ type, message, time: new Date().toLocaleTimeString() });
+                    if (logs.length > 100) logs.shift();
+                    
+                    let html = '';
+                    logs.slice(-20).forEach(log => {
+                        const className = log.type === 'error' ? 'status-error' : 
+                                        log.type === 'warn' ? 'status-warning' : 'status-info';
+                        html += `
+                            <div class="metric-item">
+                                <span class="metric-label">[${log.time}] ${log.type.toUpperCase()}</span>
+                                <div class="code-block" style="font-size: 10px; margin-top: 2px;">
+                                    ${log.message}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    console.innerHTML = html;
+                    console.scrollTop = console.scrollHeight;
+                };
+                
+                window.console.log = function(...args) {
+                    originalLog.apply(console, args);
+                    addLog('log', args.join(' '));
+                };
+                
+                window.console.error = function(...args) {
+                    originalError.apply(console, args);
+                    addLog('error', args.join(' '));
+                };
+                
+                window.console.warn = function(...args) {
+                    originalWarn.apply(console, args);
+                    addLog('warn', args.join(' '));
+                };
+                
+                // Catch errors
+                window.addEventListener('error', (e) => {
+                    addLog('error', `${e.filename}:${e.lineno} - ${e.message}`);
+                });
+                
+                addLog('info', 'Connection Line Debugger initialized');
+            }
+
+            setupEventListeners() {
+                // Mouse hover for element inspection
+                document.addEventListener('mousemove', (e) => {
+                    if (e.target.closest('.debugger-container')) return;
+                    
+                    this.hoveredElement = e.target;
+                    this.showElementInspector(e.target, e.clientX, e.clientY);
+                });
+                
+                // Window resize
+                window.addEventListener('resize', () => {
+                    const canvas = document.getElementById('debug-overlay');
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                });
+                
+                // Update on scroll
+                window.addEventListener('scroll', () => {
+                    this.updateCoordinateValidator();
+                });
+            }
+
+            showElementInspector(element, x, y) {
+                const inspector = document.getElementById('element-inspector');
+                const rect = element.getBoundingClientRect();
+                const computed = getComputedStyle(element);
+                
+                inspector.style.display = 'block';
+                inspector.style.left = x + 10 + 'px';
+                inspector.style.top = y + 10 + 'px';
+                
+                inspector.innerHTML = `
+                    <div><strong>${element.tagName}${element.className ? '.' + element.className : ''}</strong></div>
+                    <div>Size: ${Math.round(rect.width)}×${Math.round(rect.height)}</div>
+                    <div>Position: ${Math.round(rect.left)}, ${Math.round(rect.top)}</div>
+                    <div>Z-Index: ${computed.zIndex}</div>
+                    <div>Display: ${computed.display}</div>
+                `;
+                
+                setTimeout(() => {
+                    inspector.style.display = 'none';
+                }, 2000);
+            }
+
+            drawDebugOverlay() {
+                if (!this.overlayCtx) return;
+                
+                this.overlayCtx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+                
+                // Draw connection lines between bubbles and avatars
+                const bubbles = document.querySelectorAll('.message-bubble, .chat-bubble, .bubble');
+                const avatars = document.querySelectorAll('.avatar, .conversation-avatar');
+                
+                this.overlayCtx.strokeStyle = '#00ff00';
+                this.overlayCtx.lineWidth = 2;
+                this.overlayCtx.setLineDash([5, 5]);
+                
+                for (let i = 0; i < Math.min(bubbles.length, avatars.length); i++) {
+                    const bubbleRect = bubbles[i].getBoundingClientRect();
+                    const avatarRect = avatars[i].getBoundingClientRect();
+                    
+                    const bubbleCenter = {
+                        x: bubbleRect.left + bubbleRect.width / 2,
+                        y: bubbleRect.top + bubbleRect.height / 2
+                    };
+                    
+                    const avatarCenter = {
+                        x: avatarRect.left + avatarRect.width / 2,
+                        y: avatarRect.top + avatarRect.height / 2
+                    };
+                    
+                    this.overlayCtx.beginPath();
+                    this.overlayCtx.moveTo(bubbleCenter.x, bubbleCenter.y);
+                    this.overlayCtx.lineTo(avatarCenter.x, avatarCenter.y);
+                    this.overlayCtx.stroke();
+                }
+            }
+        }
+
+        // Global functions
+        function togglePanel(header) {
+            header.parentElement.classList.toggle('collapsed');
+        }
+
+        function closeDebugger() {
+            if (window.debugger) {
+                window.debugger.isRunning = false;
+            }
+            document.querySelector('.debugger-container').remove();
+            document.getElementById('debug-overlay').remove();
+            document.getElementById('floating-metrics').remove();
+            document.getElementById('element-inspector').remove();
+        }
+
+        function detectSystems() {
+            if (window.debugger) {
+                window.debugger.detectSystems();
+            }
+        }
+
+        // Initialize debugger
+        window.debugger = new ConnectionLineDebugger();
+        
+        // Auto-refresh every 5 seconds
+        setInterval(() => {
+            if (window.debugger && window.debugger.isRunning) {
+                window.debugger.detectSystems();
+                window.debugger.drawDebugOverlay();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

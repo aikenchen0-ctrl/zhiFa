@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixiJS arcTo 问题调试</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #222;
+            color: #fff;
+            padding: 20px;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .controls {
+            width: 320px;
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px;
+            background: #555;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .controls button:hover {
+            background: #666;
+        }
+        
+        .controls button.working {
+            background: #4CAF50;
+        }
+        
+        .controls button.broken {
+            background: #f44336;
+        }
+        
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            background: #111;
+            border-radius: 4px;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .canvas-area {
+            flex: 1;
+        }
+        
+        #pixiCanvas {
+            border: 2px solid #00ff00;
+            background: #000;
+        }
+        
+        .result {
+            color: #00ff00;
+        }
+        
+        .error {
+            color: #ff4444;
+        }
+        
+        .warning {
+            color: #ffaa00;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <h3>🔬 arcTo 问题调试</h3>
+            <button onclick="initPixi()">初始化PixiJS</button>
+            
+            <h4 style="margin-top: 15px;">基础测试</h4>
+            <button onclick="testSimpleLines()" class="working">简单直线 (已知有效)</button>
+            
+            <h4 style="margin-top: 15px;">L型线条测试</h4>
+            <button onclick="testBasicL()">基础L型 (无圆角)</button>
+            <button onclick="testArcToL()" class="broken">arcTo L型 (可能有问题)</button>
+            
+            <h4 style="margin-top: 15px;">圆角替代方案</h4>
+            <button onclick="testQuadraticCurve()">quadraticCurveTo圆角</button>
+            <button onclick="testBezierCurve()">bezierCurveTo圆角</button>
+            <button onclick="testArcMethod()">arc方法圆角</button>
+            
+            <h4 style="margin-top: 15px;">连接线模拟</h4>
+            <button onclick="testConnectionLines()">完整连接线测试</button>
+            
+            <button onclick="clearAll()" style="margin-top: 15px; background: #666;">清除所有</button>
+            
+            <div class="status" id="statusLog">
+                等待开始测试...<br>
+                <span class="warning">重点：找出arcTo不工作的原因</span>
+            </div>
+        </div>
+        
+        <div class="canvas-area">
+            <h3>Canvas区域</h3>
+            <div id="canvasContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let app = null;
+        let container = null;
+        
+        function log(message, type = 'normal') {
+            const timestamp = new Date().toLocaleTimeString();
+            const statusLog = document.getElementById('statusLog');
+            const className = type === 'error' ? 'error' : type === 'warning' ? 'warning' : type === 'result' ? 'result' : '';
+            statusLog.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span><br>`;
+            statusLog.scrollTop = statusLog.scrollHeight;
+            console.log(message);
+        }
+        
+        async function initPixi() {
+            log('🚀 初始化PixiJS...');
+            
+            try {
+                if (app) app.destroy();
+                
+                app = new PIXI.Application();
+                await app.init({
+                    width: 700,
+                    height: 500,
+                    backgroundColor: 0x000000,
+                    antialias: true
+                });
+                
+                const canvasContainer = document.getElementById('canvasContainer');
+                canvasContainer.innerHTML = '';
+                canvasContainer.appendChild(app.canvas);
+                app.canvas.id = 'pixiCanvas';
+                
+                container = new PIXI.Container();
+                app.stage.addChild(container);
+                
+                log(`✅ PixiJS v${PIXI.VERSION} 初始化成功`, 'result');
+                
+            } catch (error) {
+                log(`❌ 初始化失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testSimpleLines() {
+            if (!checkInit()) return;
+            
+            log('📏 测试简单直线...');
+            
+            // 红线
+            const line1 = new PIXI.Graphics();
+            line1.lineStyle(4, 0xFF0000, 1);
+            line1.moveTo(50, 50);
+            line1.lineTo(200, 50);
+            container.addChild(line1);
+            
+            // 绿线  
+            const line2 = new PIXI.Graphics();
+            line2.lineStyle(4, 0x00FF00, 1);
+            line2.moveTo(50, 80);
+            line2.lineTo(200, 80);
+            container.addChild(line2);
+            
+            log('✅ 简单直线绘制完成 - 应该可见', 'result');
+        }
+        
+        function testBasicL() {
+            if (!checkInit()) return;
+            
+            log('📐 测试基础L型线条 (无圆角)...');
+            
+            const lLine = new PIXI.Graphics();
+            lLine.lineStyle(4, 0xFF9500, 1);
+            
+            // L型路径
+            lLine.moveTo(300, 50);   // 起点
+            lLine.lineTo(350, 50);   // 水平段
+            lLine.lineTo(350, 120);  // 垂直段
+            lLine.lineTo(400, 120);  // 水平段
+            
+            container.addChild(lLine);
+            log('✅ 基础L型线条完成 - 应该可见', 'result');
+        }
+        
+        function testArcToL() {
+            if (!checkInit()) return;
+            
+            log('🔄 测试arcTo L型线条...');
+            
+            try {
+                const arcLine = new PIXI.Graphics();
+                arcLine.lineStyle(4, 0xFF1493, 1);
+                
+                // 使用arcTo的L型路径
+                arcLine.moveTo(300, 150);
+                arcLine.lineTo(340, 150);
+                arcLine.arcTo(350, 150, 350, 160, 10); // 这里可能有问题
+                arcLine.lineTo(350, 210);
+                arcLine.arcTo(350, 220, 360, 220, 10); // 这里可能有问题
+                arcLine.lineTo(400, 220);
+                
+                container.addChild(arcLine);
+                log('✅ arcTo L型线条代码执行完成', 'warning');
+                log('⚠️ 如果看不到粉色线条，则arcTo有问题', 'warning');
+                
+            } catch (error) {
+                log(`❌ arcTo测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testQuadraticCurve() {
+            if (!checkInit()) return;
+            
+            log('🎯 测试quadraticCurveTo圆角...');
+            
+            try {
+                const qLine = new PIXI.Graphics();
+                qLine.lineStyle(4, 0x00FFFF, 1);
+                
+                // 使用二次贝塞尔曲线模拟圆角
+                qLine.moveTo(300, 270);
+                qLine.lineTo(340, 270);
+                qLine.quadraticCurveTo(350, 270, 350, 280); // 圆角转折
+                qLine.lineTo(350, 320);
+                qLine.quadraticCurveTo(350, 330, 360, 330); // 圆角转折
+                qLine.lineTo(400, 330);
+                
+                container.addChild(qLine);
+                log('✅ quadraticCurveTo测试完成', 'result');
+                
+            } catch (error) {
+                log(`❌ quadraticCurveTo失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testBezierCurve() {
+            if (!checkInit()) return;
+            
+            log('🎨 测试bezierCurveTo圆角...');
+            
+            try {
+                const bLine = new PIXI.Graphics();
+                bLine.lineStyle(4, 0xFFFF00, 1);
+                
+                // 使用三次贝塞尔曲线模拟圆角
+                bLine.moveTo(450, 50);
+                bLine.lineTo(490, 50);
+                bLine.bezierCurveTo(500, 50, 500, 60, 500, 60); // 圆角
+                bLine.lineTo(500, 100);
+                bLine.bezierCurveTo(500, 110, 510, 110, 510, 110); // 圆角
+                bLine.lineTo(550, 110);
+                
+                container.addChild(bLine);
+                log('✅ bezierCurveTo测试完成', 'result');
+                
+            } catch (error) {
+                log(`❌ bezierCurveTo失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testArcMethod() {
+            if (!checkInit()) return;
+            
+            log('⭕ 测试arc方法圆角...');
+            
+            try {
+                const arcLine = new PIXI.Graphics();
+                arcLine.lineStyle(4, 0x9966FF, 1);
+                
+                // 分段绘制，每个转角用小圆弧
+                arcLine.moveTo(450, 150);
+                arcLine.lineTo(485, 150);
+                
+                // 第一个圆角 - 用小圆弧
+                arcLine.arc(490, 155, 5, Math.PI * 1.5, 0);
+                arcLine.lineTo(495, 190);
+                
+                // 第二个圆角
+                arcLine.arc(500, 195, 5, Math.PI, Math.PI * 0.5);
+                arcLine.lineTo(550, 200);
+                
+                container.addChild(arcLine);
+                log('✅ arc方法测试完成', 'result');
+                
+            } catch (error) {
+                log(`❌ arc方法失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testConnectionLines() {
+            if (!checkInit()) return;
+            
+            log('🔗 测试完整连接线系统...');
+            
+            // 模拟元素位置
+            const elements = [
+                {conv: {x: 50, y: 400}, msg: {x: 120, y: 400}, acc: {x: 600, y: 400}, isSelf: false},
+                {conv: {x: 50, y: 440}, msg: {x: 500, y: 440}, acc: {x: 600, y: 440}, isSelf: true}
+            ];
+            
+            elements.forEach((elem, i) => {
+                try {
+                    const line = new PIXI.Graphics();
+                    line.lineStyle(3, elem.isSelf ? 0xFF6B35 : 0x007AFF, 1);
+                    
+                    if (elem.isSelf) {
+                        // 自己的消息：从消息右侧到账号左侧
+                        line.moveTo(elem.msg.x + 80, elem.msg.y);  // 消息右边缘
+                        line.lineTo(elem.msg.x + 90, elem.msg.y);  // 水平延伸
+                        line.lineTo(elem.msg.x + 90, elem.acc.y);  // 垂直延伸
+                        line.lineTo(elem.acc.x - 25, elem.acc.y);  // 到账号头像
+                    } else {
+                        // 他人消息：从会话右侧到消息左侧
+                        line.moveTo(elem.conv.x + 25, elem.conv.y); // 会话右边缘
+                        line.lineTo(elem.conv.x + 35, elem.conv.y); // 水平延伸
+                        line.lineTo(elem.conv.x + 35, elem.msg.y);  // 垂直延伸
+                        line.lineTo(elem.msg.x, elem.msg.y);       // 到消息左边缘
+                    }
+                    
+                    container.addChild(line);
+                    log(`✅ 连接线${i+1} ${elem.isSelf ? '(自己)' : '(他人)'} 绘制完成`, 'result');
+                    
+                } catch (error) {
+                    log(`❌ 连接线${i+1}失败: ${error.message}`, 'error');
+                }
+            });
+            
+            log('🎉 连接线系统测试完成！', 'result');
+        }
+        
+        function clearAll() {
+            if (container) {
+                container.removeChildren();
+                log('🧹 清除所有内容');
+            }
+        }
+        
+        function checkInit() {
+            if (!app || !container) {
+                log('❌ 请先初始化PixiJS', 'error');
+                return false;
+            }
+            return true;
+        }
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🎯 arcTo调试系统已加载');
+            log('📋 测试计划：确定arcTo是否为连接线问题根源');
+        });
+    </script>
+</body>
+</html>

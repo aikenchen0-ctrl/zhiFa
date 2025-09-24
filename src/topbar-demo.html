@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TopBar Component Demo - Vision UI Style</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            min-height: 100vh;
+            color: white;
+        }
+        
+        #demo-container {
+            padding: 20px;
+        }
+        
+        .demo-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 30px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        #canvas-container {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+            backdrop-filter: blur(10px);
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 20px;
+            justify-content: center;
+        }
+        
+        .control-group {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 6px;
+            opacity: 0.8;
+        }
+        
+        .control-group input, .control-group button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .control-group input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .control-group button {
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+        
+        .control-group button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+        
+        .log-container {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+        
+        .log-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            opacity: 0.9;
+        }
+        
+        .log-entry {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            margin-bottom: 4px;
+            opacity: 0.8;
+        }
+        
+        .responsive-info {
+            text-align: center;
+            font-size: 14px;
+            opacity: 0.8;
+            margin-top: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+            }
+            
+            .control-group {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="demo-container">
+        <div class="demo-title">TopBar Component Demo</div>
+        
+        <div id="canvas-container">
+            <!-- PIXI Canvas will be inserted here -->
+        </div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label>Session Name</label>
+                <input type="text" id="sessionInput" placeholder="Enter session name" value="Current Session">
+                <button onclick="updateSessionName()">Update</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Account Name</label>
+                <input type="text" id="accountInput" placeholder="Enter account name" value="User Account">
+                <button onclick="updateAccountName()">Update</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Unread Count</label>
+                <input type="number" id="unreadInput" placeholder="0" value="3" min="0" max="99">
+                <button onclick="updateUnreadCount()">Update</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Theme</label>
+                <button onclick="toggleTheme()">Toggle Dark/Light</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Test Resize</label>
+                <button onclick="testResize()">Simulate Mobile</button>
+            </div>
+        </div>
+        
+        <div class="log-container">
+            <div class="log-title">Component Logs</div>
+            <div id="log-content"></div>
+        </div>
+        
+        <div class="responsive-info">
+            Resize window to test responsive layout • All interactions are logged below
+        </div>
+    </div>
+
+    <!-- PIXI.js v8 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.0.0/pixi.min.js"></script>
+    
+    <script type="module">
+        // TopBar Component (inline for demo)
+        class TopBar extends PIXI.Container {
+            constructor(options = {}) {
+                super();
+                
+                // Configuration
+                this.config = {
+                    height: 60,
+                    padding: 16,
+                    iconSize: 24,
+                    fontSize: 14,
+                    accountFontSize: 13,
+                    backgroundColor: 0x000000,
+                    backgroundAlpha: 0.15,
+                    borderColor: 0xffffff,
+                    borderAlpha: 0.1,
+                    textColor: 0xffffff,
+                    iconColor: 0xffffff,
+                    redDotColor: 0xff3b30,
+                    hoverAlpha: 0.8,
+                    sessionName: options.sessionName || 'Current Session',
+                    accountName: options.accountName || 'User Account',
+                    unreadCount: options.unreadCount || 3,
+                    ...options
+                };
+
+                // Event handlers
+                this.onSessionNameClick = options.onSessionNameClick || (() => {});
+                this.onEditClick = options.onEditClick || (() => {});
+                this.onSearchClick = options.onSearchClick || (() => {});
+                this.onAddPersonClick = options.onAddPersonClick || (() => {});
+
+                // Container dimensions
+                this.containerWidth = 0;
+                this.containerHeight = this.config.height;
+
+                // UI elements
+                this.background = null;
+                this.unreadIcon = null;
+                this.redDot = null;
+                this.sessionNameButton = null;
+                this.sessionNameText = null;
+                this.editIcon = null;
+                this.searchIcon = null;
+                this.accountNameText = null;
+                this.addPersonIcon = null;
+
+                // Touch/mouse tracking
+                this.touchStartTime = 0;
+                this.touchThreshold = 200;
+
+                this.init();
+                this.log('TopBar component initialized', this.config);
+            }
+
+            init() {
+                this.createBackground();
+                this.createUnreadIndicator();
+                this.createSessionNameButton();
+                this.createEditIcon();
+                this.createSearchIcon();
+                this.createAccountName();
+                this.createAddPersonIcon();
+                
+                this.setupInteractivity();
+                this.log('TopBar UI elements created');
+            }
+
+            createBackground() {
+                this.background = new PIXI.Graphics();
+                this.background.label = 'topbar-background';
+                this.addChild(this.background);
+                this.log('Background created');
+            }
+
+            createUnreadIndicator() {
+                this.unreadIcon = new PIXI.Container();
+                this.unreadIcon.label = 'unread-indicator';
+                
+                const messageIcon = new PIXI.Graphics();
+                messageIcon.stroke({ width: 1.5, color: this.config.iconColor });
+                messageIcon.roundRect(0, 0, 20, 14, 2);
+                messageIcon.moveTo(0, 2);
+                messageIcon.lineTo(10, 8);
+                messageIcon.lineTo(20, 2);
+                
+                messageIcon.x = (this.config.iconSize - 20) / 2;
+                messageIcon.y = (this.config.iconSize - 14) / 2;
+                
+                this.unreadIcon.addChild(messageIcon);
+
+                if (this.config.unreadCount > 0) {
+                    this.redDot = new PIXI.Graphics();
+                    this.redDot.circle(0, 0, 6);
+                    this.redDot.fill(this.config.redDotColor);
+                    
+                    this.redDot.x = this.config.iconSize - 2;
+                    this.redDot.y = 2;
+                    
+                    if (this.config.unreadCount > 1) {
+                        const countText = new PIXI.Text({
+                            text: this.config.unreadCount > 99 ? '99+' : this.config.unreadCount.toString(),
+                            style: {
+                                fontFamily: 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
+                                fontSize: 10,
+                                fill: 0xffffff,
+                                fontWeight: '600'
+                            }
+                        });
+                        countText.anchor.set(0.5);
+                        this.redDot.addChild(countText);
+                    }
+                    
+                    this.unreadIcon.addChild(this.redDot);
+                }
+
+                this.addChild(this.unreadIcon);
+                this.log('Unread indicator created', { unreadCount: this.config.unreadCount });
+            }
+
+            createSessionNameButton() {
+                this.sessionNameButton = new PIXI.Container();
+                this.sessionNameButton.label = 'session-name-button';
+                this.sessionNameButton.eventMode = 'static';
+                this.sessionNameButton.cursor = 'pointer';
+
+                this.sessionNameText = new PIXI.Text({
+                    text: this.config.sessionName,
+                    style: {
+                        fontFamily: 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
+                        fontSize: this.config.fontSize,
+                        fill: this.config.textColor,
+                        fontWeight: '500'
+                    }
+                });
+                this.sessionNameText.anchor.set(0, 0.5);
+
+                const hoverBg = new PIXI.Graphics();
+                hoverBg.roundRect(-8, -16, 0, 32, 8);
+                hoverBg.fill({ color: 0xffffff, alpha: 0.1 });
+                hoverBg.visible = false;
+                hoverBg.label = 'hover-background';
+
+                this.sessionNameButton.addChild(hoverBg);
+                this.sessionNameButton.addChild(this.sessionNameText);
+                this.addChild(this.sessionNameButton);
+                this.log('Session name button created', { sessionName: this.config.sessionName });
+            }
+
+            createEditIcon() {
+                this.editIcon = new PIXI.Container();
+                this.editIcon.label = 'edit-icon';
+                this.editIcon.eventMode = 'static';
+                this.editIcon.cursor = 'pointer';
+
+                const pencilIcon = new PIXI.Graphics();
+                pencilIcon.stroke({ width: 1.5, color: this.config.iconColor });
+                pencilIcon.moveTo(4, 16);
+                pencilIcon.lineTo(16, 4);
+                pencilIcon.moveTo(2, 18);
+                pencilIcon.lineTo(4, 16);
+                pencilIcon.moveTo(16, 4);
+                pencilIcon.lineTo(18, 2);
+                pencilIcon.moveTo(6, 14);
+                pencilIcon.lineTo(14, 6);
+                pencilIcon.moveTo(8, 16);
+                pencilIcon.lineTo(16, 8);
+
+                pencilIcon.x = (this.config.iconSize - 20) / 2;
+                pencilIcon.y = (this.config.iconSize - 20) / 2;
+
+                this.editIcon.addChild(pencilIcon);
+                this.addChild(this.editIcon);
+                this.log('Edit icon created');
+            }
+
+            createSearchIcon() {
+                this.searchIcon = new PIXI.Container();
+                this.searchIcon.label = 'search-icon';
+                this.searchIcon.eventMode = 'static';
+                this.searchIcon.cursor = 'pointer';
+
+                const searchGraphics = new PIXI.Graphics();
+                searchGraphics.stroke({ width: 1.5, color: this.config.iconColor });
+                searchGraphics.circle(8, 8, 6);
+                searchGraphics.moveTo(12.5, 12.5);
+                searchGraphics.lineTo(18, 18);
+
+                searchGraphics.x = (this.config.iconSize - 20) / 2;
+                searchGraphics.y = (this.config.iconSize - 20) / 2;
+
+                this.searchIcon.addChild(searchGraphics);
+                this.addChild(this.searchIcon);
+                this.log('Search icon created');
+            }
+
+            createAccountName() {
+                this.accountNameText = new PIXI.Text({
+                    text: this.config.accountName,
+                    style: {
+                        fontFamily: 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
+                        fontSize: this.config.accountFontSize,
+                        fill: this.config.textColor,
+                        fontWeight: '400'
+                    }
+                });
+                this.accountNameText.anchor.set(1, 0.5);
+                this.accountNameText.label = 'account-name';
+
+                this.addChild(this.accountNameText);
+                this.log('Account name created', { accountName: this.config.accountName });
+            }
+
+            createAddPersonIcon() {
+                this.addPersonIcon = new PIXI.Container();
+                this.addPersonIcon.label = 'add-person-icon';
+                this.addPersonIcon.eventMode = 'static';
+                this.addPersonIcon.cursor = 'pointer';
+
+                const personIcon = new PIXI.Graphics();
+                personIcon.stroke({ width: 1.5, color: this.config.iconColor });
+                personIcon.circle(10, 6, 3);
+                personIcon.moveTo(5, 18);
+                personIcon.quadraticCurveTo(10, 12, 15, 18);
+                personIcon.moveTo(16, 10);
+                personIcon.lineTo(20, 10);
+                personIcon.moveTo(18, 8);
+                personIcon.lineTo(18, 12);
+
+                personIcon.x = (this.config.iconSize - 22) / 2;
+                personIcon.y = (this.config.iconSize - 20) / 2;
+
+                this.addPersonIcon.addChild(personIcon);
+                this.addChild(this.addPersonIcon);
+                this.log('Add person icon created');
+            }
+
+            setupInteractivity() {
+                // Session name button
+                this.sessionNameButton.on('pointerover', () => {
+                    const hoverBg = this.sessionNameButton.children.find(child => child.label === 'hover-background');
+                    if (hoverBg) {
+                        hoverBg.visible = true;
+                        const textWidth = this.sessionNameText.width;
+                        hoverBg.clear();
+                        hoverBg.roundRect(-8, -16, textWidth + 16, 32, 8);
+                        hoverBg.fill({ color: 0xffffff, alpha: 0.1 });
+                    }
+                    this.sessionNameText.alpha = this.config.hoverAlpha;
+                    this.log('Session name button hover');
+                });
+
+                this.sessionNameButton.on('pointerout', () => {
+                    const hoverBg = this.sessionNameButton.children.find(child => child.label === 'hover-background');
+                    if (hoverBg) hoverBg.visible = false;
+                    this.sessionNameText.alpha = 1;
+                });
+
+                this.sessionNameButton.on('pointerdown', () => {
+                    this.touchStartTime = Date.now();
+                    this.sessionNameText.alpha = 0.6;
+                    this.log('Session name button pressed');
+                });
+
+                this.sessionNameButton.on('pointerup', (event) => {
+                    this.sessionNameText.alpha = 1;
+                    const touchDuration = Date.now() - this.touchStartTime;
+                    if (touchDuration < this.touchThreshold) {
+                        this.onSessionNameClick(event);
+                        this.log('Session name button clicked', { touchDuration });
+                    }
+                });
+
+                // Icon interactions
+                [this.editIcon, this.searchIcon, this.addPersonIcon].forEach((icon, index) => {
+                    const actions = ['Edit', 'Search', 'Add Person'];
+                    const callbacks = [this.onEditClick, this.onSearchClick, this.onAddPersonClick];
+                    
+                    icon.on('pointerover', () => {
+                        icon.alpha = this.config.hoverAlpha;
+                    });
+
+                    icon.on('pointerout', () => {
+                        icon.alpha = 1;
+                    });
+
+                    icon.on('pointerdown', () => {
+                        icon.alpha = 0.6;
+                    });
+
+                    icon.on('pointerup', (event) => {
+                        icon.alpha = 1;
+                        callbacks[index].call(this, event);
+                        this.log(`${actions[index]} icon clicked`);
+                    });
+                });
+
+                this.log('Interactivity setup completed');
+            }
+
+            resize(width) {
+                this.containerWidth = width;
+                this.layout();
+                this.log('TopBar resized', { width, height: this.containerHeight });
+            }
+
+            layout() {
+                if (!this.containerWidth) return;
+
+                this.background.clear();
+                this.background.rect(0, 0, this.containerWidth, this.containerHeight);
+                this.background.fill({ color: this.config.backgroundColor, alpha: this.config.backgroundAlpha });
+                this.background.stroke({ width: 1, color: this.config.borderColor, alpha: this.config.borderAlpha });
+
+                const centerY = this.containerHeight / 2;
+                let currentX = this.config.padding;
+
+                this.unreadIcon.x = currentX;
+                this.unreadIcon.y = centerY - this.config.iconSize / 2;
+                currentX += this.config.iconSize + 16;
+
+                this.sessionNameButton.x = currentX;
+                this.sessionNameButton.y = centerY;
+                currentX += this.sessionNameText.width + 12;
+
+                this.editIcon.x = currentX;
+                this.editIcon.y = centerY - this.config.iconSize / 2;
+
+                let rightX = this.containerWidth - this.config.padding;
+
+                this.searchIcon.x = rightX - this.config.iconSize;
+                this.searchIcon.y = centerY - this.config.iconSize / 2;
+                rightX -= this.config.iconSize + 16;
+
+                this.accountNameText.x = rightX;
+                this.accountNameText.y = centerY;
+                rightX -= 16;
+
+                this.addPersonIcon.x = rightX - this.config.iconSize;
+                this.addPersonIcon.y = centerY - this.config.iconSize / 2;
+
+                this.log('Layout completed');
+            }
+
+            updateSessionName(name) {
+                this.config.sessionName = name;
+                this.sessionNameText.text = name;
+                this.layout();
+                this.log('Session name updated', { sessionName: name });
+            }
+
+            updateAccountName(name) {
+                this.config.accountName = name;
+                this.accountNameText.text = name;
+                this.layout();
+                this.log('Account name updated', { accountName: name });
+            }
+
+            updateUnreadCount(count) {
+                this.config.unreadCount = count;
+                
+                if (this.redDot) {
+                    this.unreadIcon.removeChild(this.redDot);
+                    this.redDot = null;
+                }
+
+                if (count > 0) {
+                    this.redDot = new PIXI.Graphics();
+                    this.redDot.circle(0, 0, 6);
+                    this.redDot.fill(this.config.redDotColor);
+                    
+                    this.redDot.x = this.config.iconSize - 2;
+                    this.redDot.y = 2;
+                    
+                    if (count > 1) {
+                        const countText = new PIXI.Text({
+                            text: count > 99 ? '99+' : count.toString(),
+                            style: {
+                                fontFamily: 'SF Pro Display, -apple-system, BlinkMacSystemFont, sans-serif',
+                                fontSize: 10,
+                                fill: 0xffffff,
+                                fontWeight: '600'
+                            }
+                        });
+                        countText.anchor.set(0.5);
+                        this.redDot.addChild(countText);
+                    }
+                    
+                    this.unreadIcon.addChild(this.redDot);
+                }
+
+                this.log('Unread count updated', { unreadCount: count });
+            }
+
+            setTheme(theme) {
+                Object.assign(this.config, theme);
+                
+                this.sessionNameText.style.fill = this.config.textColor;
+                this.accountNameText.style.fill = this.config.textColor;
+                
+                this.removeChild(this.unreadIcon, this.editIcon, this.searchIcon, this.addPersonIcon);
+                this.createUnreadIndicator();
+                this.createEditIcon();
+                this.createSearchIcon();
+                this.createAddPersonIcon();
+                this.setupInteractivity();
+                this.layout();
+                
+                this.log('Theme updated', theme);
+            }
+
+            log(message, data = null) {
+                const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+                const logEntry = `[${timestamp}] TopBar: ${message}`;
+                console.log(logEntry, data || '');
+                
+                // Add to page log
+                const logContent = document.getElementById('log-content');
+                if (logContent) {
+                    const entry = document.createElement('div');
+                    entry.className = 'log-entry';
+                    entry.textContent = logEntry + (data ? ` ${JSON.stringify(data)}` : '');
+                    logContent.appendChild(entry);
+                    logContent.scrollTop = logContent.scrollHeight;
+                    
+                    // Keep only last 20 entries
+                    while (logContent.children.length > 20) {
+                        logContent.removeChild(logContent.firstChild);
+                    }
+                }
+            }
+
+            destroy() {
+                if (this.sessionNameButton) this.sessionNameButton.removeAllListeners();
+                if (this.editIcon) this.editIcon.removeAllListeners();
+                if (this.searchIcon) this.searchIcon.removeAllListeners();
+                if (this.addPersonIcon) this.addPersonIcon.removeAllListeners();
+                this.log('TopBar component destroyed');
+                super.destroy();
+            }
+        }
+
+        // Demo application
+        let app, topBar;
+        let isDarkTheme = true;
+
+        function initDemo() {
+            const container = document.getElementById('canvas-container');
+            
+            app = new PIXI.Application();
+            app.init({
+                width: container.clientWidth,
+                height: 60,
+                backgroundColor: 0x1a1a1a,
+                antialias: true
+            }).then(() => {
+                container.appendChild(app.canvas);
+                
+                topBar = new TopBar({
+                    sessionName: 'Current Session',
+                    accountName: 'User Account',
+                    unreadCount: 3,
+                    onSessionNameClick: () => alert('Session name clicked!'),
+                    onEditClick: () => alert('Edit icon clicked!'),
+                    onSearchClick: () => alert('Search icon clicked!'),
+                    onAddPersonClick: () => alert('Add person icon clicked!')
+                });
+                
+                app.stage.addChild(topBar);
+                topBar.resize(app.screen.width);
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    const newWidth = container.clientWidth;
+                    app.renderer.resize(newWidth, 60);
+                    topBar.resize(newWidth);
+                });
+            });
+        }
+
+        // Control functions
+        window.updateSessionName = function() {
+            const input = document.getElementById('sessionInput');
+            topBar.updateSessionName(input.value);
+        };
+
+        window.updateAccountName = function() {
+            const input = document.getElementById('accountInput');
+            topBar.updateAccountName(input.value);
+        };
+
+        window.updateUnreadCount = function() {
+            const input = document.getElementById('unreadInput');
+            topBar.updateUnreadCount(parseInt(input.value) || 0);
+        };
+
+        window.toggleTheme = function() {
+            isDarkTheme = !isDarkTheme;
+            const theme = isDarkTheme ? {
+                backgroundColor: 0x000000,
+                backgroundAlpha: 0.15,
+                textColor: 0xffffff,
+                iconColor: 0xffffff,
+                borderColor: 0xffffff
+            } : {
+                backgroundColor: 0xffffff,
+                backgroundAlpha: 0.9,
+                textColor: 0x333333,
+                iconColor: 0x666666,
+                borderColor: 0xcccccc
+            };
+            topBar.setTheme(theme);
+        };
+
+        window.testResize = function() {
+            const container = document.getElementById('canvas-container');
+            const isMobile = container.style.maxWidth === '375px';
+            
+            if (isMobile) {
+                container.style.maxWidth = '';
+                container.style.margin = '0 auto';
+            } else {
+                container.style.maxWidth = '375px';
+                container.style.margin = '0 auto';
+            }
+            
+            setTimeout(() => {
+                const newWidth = container.clientWidth;
+                app.renderer.resize(newWidth, 60);
+                topBar.resize(newWidth);
+            }, 100);
+        };
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initDemo);
+    </script>
+</body>
+</html>

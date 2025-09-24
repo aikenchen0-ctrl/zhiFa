@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PixiJS移动端三区域连接线系统 - v8正确语法 (触摸修复版)</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <script src="utils/MobileTouchHandler.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #000;
+            color: #00ff00;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            touch-action: pan-y;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .system-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #000 0%, #111 100%);
+        }
+        
+        .controls-overlay {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            padding: 10px;
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+        }
+        
+        .controls-overlay button {
+            display: block;
+            width: 100%;
+            margin: 3px 0;
+            padding: 8px 12px;
+            background: #333;
+            color: #00ff00;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        
+        .controls-overlay button:hover {
+            background: #444;
+            border-color: #00ff00;
+        }
+        
+        .controls-overlay button:active {
+            background: #00ff00;
+            color: #000;
+        }
+        
+        .status-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 8px;
+            padding: 10px;
+            max-width: 250px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-size: 10px;
+            line-height: 1.3;
+        }
+        
+        .performance-panel {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            padding: 8px;
+            font-family: monospace;
+            font-size: 10px;
+            color: #00ff00;
+        }
+        
+        .checkpoint {
+            color: #ffaa00;
+            font-weight: bold;
+        }
+        
+        .success {
+            color: #00ff00;
+        }
+        
+        .error {
+            color: #ff4444;
+        }
+        
+        .warning {
+            color: #ff8800;
+        }
+        
+        #pixiContainer {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="system-container">
+        <div id="pixiContainer"></div>
+        
+        <div class="controls-overlay">
+            <h3>🚀 PixiJS移动端连接线系统</h3>
+            <button onclick="initSystem()">1. 初始化系统</button>
+            <button onclick="createThreeZones()">2. 创建三个滚动区域</button>
+            <button onclick="generateTestData(50)">3. 生成50个元素测试</button>
+            <button onclick="generateTestData(200)">4. 生成200个元素</button>
+            <button onclick="generateTestData(1000)">5. 生成1000个元素</button>
+            <button onclick="enableConnectionLines()">6. 启用连接线</button>
+            <button onclick="startPerformanceTest()">7. 性能压力测试</button>
+            <button onclick="toggleDebugMode()">8. 切换调试模式</button>
+            <button onclick="clearAll()">清除所有</button>
+        </div>
+        
+        <div class="status-panel" id="statusPanel">
+            <strong>系统状态日志:</strong><br>
+            等待初始化...
+        </div>
+        
+        <div class="performance-panel" id="performancePanel">
+            FPS: -- | 内存: -- MB | 元素: 0
+        </div>
+    </div>
+
+    <script>
+        // ============ 全局系统变量 ============
+        let app = null;
+        let systemContainer = null;
+        let debugMode = false;
+        let performanceMonitor = null;
+        
+        // 三个滚动区域容器
+        let conversationZone = null;  // 会话头像区域
+        let messageZone = null;       // 消息气泡区域
+        let accountZone = null;       // 账号头像区域
+        let connectionLayer = null;   // 连接线层
+        
+        // 数据存储
+        let conversations = [];
+        let messages = [];
+        let accounts = [];
+        let connections = [];
+        
+        // 滚动状态
+        let scrollStates = {
+            conversation: { y: 0, velocity: 0, isDragging: false },
+            message: { y: 0, velocity: 0, isDragging: false },
+            account: { y: 0, velocity: 0, isDragging: false }
+        };
+        
+        // 性能优化配置
+        let performanceConfig = {
+            maxVisibleItems: 20,
+            connectionUpdateThrottle: 16,
+            lastConnectionUpdate: 0,
+            virtualScrollEnabled: true,
+            frameBudget: 16.67
+        };
+        
+        // ============ 日志系统 ============
+        function log(message, type = 'normal') {
+            const timestamp = new Date().toLocaleTimeString();
+            const statusPanel = document.getElementById('statusPanel');
+            let className = '';
+            let prefix = '';
+            
+            switch(type) {
+                case 'checkpoint': className = 'checkpoint'; prefix = '🎯 检查点: '; break;
+                case 'success': className = 'success'; prefix = '✅ 成功: '; break;
+                case 'error': className = 'error'; prefix = '❌ 错误: '; break;
+                case 'warning': className = 'warning'; prefix = '⚠️ 警告: '; break;
+                case 'performance': className = 'warning'; prefix = '📊 性能: '; break;
+                default: prefix = '📝 '; break;
+            }
+            
+            const logEntry = `<div class="${className}">[${timestamp}] ${prefix}${message}</div>`;
+            statusPanel.innerHTML = `<strong>系统状态日志:</strong><br>${logEntry}${statusPanel.innerHTML.split('<br>').slice(1, 50).join('<br>')}`;
+            console.log(`[${timestamp}] ${prefix}${message}`);
+        }
+        
+        // ============ 性能监控系统 ============
+        class PerformanceMonitor {
+            constructor() {
+                this.fps = 0;
+                this.frameTime = 0;
+                this.memory = 0;
+                this.elementCount = 0;
+                this.lastTime = performance.now();
+                this.frameCount = 0;
+                this.fpsUpdateInterval = 60; // 每60帧更新一次显示
+                
+                this.startMonitoring();
+            }
+            
+            startMonitoring() {
+                const monitor = () => {
+                    const now = performance.now();
+                    this.frameTime = now - this.lastTime;
+                    this.lastTime = now;
+                    this.frameCount++;
+                    
+                    if (this.frameCount % this.fpsUpdateInterval === 0) {
+                        this.fps = Math.round(1000 / this.frameTime);
+                        this.memory = performance.memory ? 
+                            Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) : 'N/A';
+                        this.updateDisplay();
+                    }
+                    
+                    requestAnimationFrame(monitor);
+                };
+                monitor();
+            }
+            
+            updateDisplay() {
+                const panel = document.getElementById('performancePanel');
+                let fpsColor = '#00ff00';
+                if (this.fps < 30) fpsColor = '#ff4444';
+                else if (this.fps < 45) fpsColor = '#ff8800';
+                
+                panel.innerHTML = `
+                    <span style="color: ${fpsColor}">FPS: ${this.fps}</span> | 
+                    内存: ${this.memory} MB | 
+                    元素: ${this.elementCount} |
+                    帧时间: ${this.frameTime.toFixed(1)}ms
+                `;
+                
+                if (this.fps < 20) {
+                    log(`性能警告: FPS降至${this.fps}，考虑启用性能优化`, 'warning');
+                }
+            }
+            
+            setElementCount(count) {
+                this.elementCount = count;
+            }
+        }
+        
+        // ============ 移动端触摸系统 ============
+        class MobileTouchHandler {
+            constructor(zone, scrollState) {
+                this.zone = zone;
+                this.scrollState = scrollState;
+                this.startY = 0;
+                this.lastY = 0;
+                this.lastTime = 0;
+                this.velocityTracker = [];
+                this.isTracking = false;
+                
+                this.setupTouchEvents();
+            }
+            
+            setupTouchEvents() {
+                // 检测是否支持passive事件
+                let supportsPassive = false;
+                try {
+                    const opts = Object.defineProperty({}, 'passive', {
+                        get: () => { supportsPassive = true; }
+                    });
+                    window.addEventListener('testPassive', null, opts);
+                    window.removeEventListener('testPassive', null, opts);
+                } catch (e) {}
+                
+                const passiveOption = supportsPassive ? { passive: false } : false;
+                
+                this.zone.interactive = true;
+                this.zone.on('pointerdown', this.onTouchStart.bind(this));
+                this.zone.on('pointermove', this.onTouchMove.bind(this));
+                this.zone.on('pointerup', this.onTouchEnd.bind(this));
+                this.zone.on('pointercancel', this.onTouchEnd.bind(this));
+            }
+            
+            onTouchStart(event) {
+                this.isTracking = true;
+                this.scrollState.isDragging = true;
+                this.scrollState.velocity = 0;
+                
+                this.startY = event.data.global.y;
+                this.lastY = this.startY;
+                this.lastTime = performance.now();
+                this.velocityTracker = [];
+                
+                log(`开始触摸滚动 Y: ${this.startY}`, 'performance');
+            }
+            
+            onTouchMove(event) {
+                if (!this.isTracking) return;
+                
+                const currentY = event.data.global.y;
+                const currentTime = performance.now();
+                const deltaY = currentY - this.lastY;
+                const deltaTime = currentTime - this.lastTime;
+                
+                // 更新滚动位置
+                this.scrollState.y += deltaY;
+                
+                // 边界检测
+                const maxScroll = Math.max(0, (this.zone.children.length * 80) - this.zone.parent.height);
+                this.scrollState.y = Math.max(-100, Math.min(maxScroll + 100, this.scrollState.y));
+                
+                // 应用滚动
+                this.zone.y = -this.scrollState.y;
+                
+                // 速度追踪
+                if (deltaTime > 0) {
+                    const velocity = deltaY / deltaTime;
+                    this.velocityTracker.push({ velocity, time: currentTime });
+                    
+                    // 只保留最近100ms的数据
+                    this.velocityTracker = this.velocityTracker.filter(v => 
+                        currentTime - v.time < 100
+                    );
+                }
+                
+                this.lastY = currentY;
+                this.lastTime = currentTime;
+                
+                // 实时更新连接线
+                this.updateConnections();
+            }
+            
+            onTouchEnd(event) {
+                if (!this.isTracking) return;
+                
+                this.isTracking = false;
+                this.scrollState.isDragging = false;
+                
+                // 计算最终速度
+                if (this.velocityTracker.length > 0) {
+                    const recentVelocities = this.velocityTracker.slice(-5);
+                    this.scrollState.velocity = recentVelocities.reduce((sum, v) => 
+                        sum + v.velocity, 0) / recentVelocities.length;
+                }
+                
+                // 开始惯性滚动
+                this.startInertialScroll();
+                
+                log(`结束触摸滚动，惯性速度: ${this.scrollState.velocity.toFixed(2)}`, 'performance');
+            }
+            
+            startInertialScroll() {
+                const friction = 0.92;
+                const minVelocity = 0.1;
+                
+                const inertialStep = () => {
+                    if (Math.abs(this.scrollState.velocity) < minVelocity || 
+                        this.scrollState.isDragging) {
+                        return;
+                    }
+                    
+                    this.scrollState.velocity *= friction;
+                    this.scrollState.y += this.scrollState.velocity;
+                    
+                    // 边界反弹
+                    const maxScroll = Math.max(0, (this.zone.children.length * 80) - this.zone.parent.height);
+                    if (this.scrollState.y < 0) {
+                        this.scrollState.y *= 0.8;
+                        this.scrollState.velocity *= -0.6;
+                    } else if (this.scrollState.y > maxScroll) {
+                        this.scrollState.y = maxScroll + (this.scrollState.y - maxScroll) * 0.8;
+                        this.scrollState.velocity *= -0.6;
+                    }
+                    
+                    this.zone.y = -this.scrollState.y;
+                    this.updateConnections();
+                    
+                    requestAnimationFrame(inertialStep);
+                };
+                
+                requestAnimationFrame(inertialStep);
+            }
+            
+            updateConnections() {
+                // 节流更新连接线
+                const now = performance.now();
+                if (now - performanceConfig.lastConnectionUpdate < performanceConfig.connectionUpdateThrottle) {
+                    return;
+                }
+                performanceConfig.lastConnectionUpdate = now;
+                
+                updateAllConnectionLines();
+            }
+        }
+        
+        // ============ 系统初始化 ============
+        async function initSystem() {
+            log('开始初始化PixiJS移动端连接线系统...', 'checkpoint');
+            
+            try {
+                if (app) {
+                    app.destroy();
+                    log('清理旧的PixiJS应用实例', 'normal');
+                }
+                
+                // 创建PixiJS应用
+                app = new PIXI.Application();
+                await app.init({
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    backgroundColor: 0x000000,
+                    antialias: true,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true
+                });
+                
+                // 添加到DOM
+                const container = document.getElementById('pixiContainer');
+                container.innerHTML = '';
+                container.appendChild(app.canvas);
+                
+                // 创建系统容器
+                systemContainer = new PIXI.Container();
+                app.stage.addChild(systemContainer);
+                
+                // 初始化性能监控
+                performanceMonitor = new PerformanceMonitor();
+                
+                // 窗口大小调整监听
+                window.addEventListener('resize', handleResize);
+                
+                log(`PixiJS v${PIXI.VERSION} 初始化成功`, 'success');
+                log(`Canvas: ${app.canvas.width}x${app.canvas.height}`, 'normal');
+                log(`设备像素比: ${window.devicePixelRatio}`, 'normal');
+                
+            } catch (error) {
+                log(`系统初始化失败: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+        
+        // ============ 三区域创建 ============
+        function createThreeZones() {
+            if (!app) {
+                log('请先初始化系统', 'error');
+                return;
+            }
+            
+            log('创建三个滚动区域...', 'checkpoint');
+            
+            try {
+                const screenWidth = app.screen.width;
+                const screenHeight = app.screen.height;
+                
+                // 区域宽度计算
+                const sideWidth = 80;  // 头像区域宽度
+                const centerWidth = screenWidth - sideWidth * 2;
+                
+                // 创建连接线层（底层）
+                connectionLayer = new PIXI.Container();
+                systemContainer.addChild(connectionLayer);
+                
+                // 1. 左侧会话头像区域
+                const conversationContainer = new PIXI.Container();
+                conversationContainer.x = 0;
+                conversationContainer.y = 0;
+                systemContainer.addChild(conversationContainer);
+                
+                const conversationMask = new PIXI.Graphics()
+                    .rect(0, 0, sideWidth, screenHeight)
+                    .fill(0xFFFFFF);
+                conversationContainer.addChild(conversationMask);
+                conversationContainer.mask = conversationMask;
+                
+                conversationZone = new PIXI.Container();
+                conversationContainer.addChild(conversationZone);
+                
+                // 2. 中央消息气泡区域
+                const messageContainer = new PIXI.Container();
+                messageContainer.x = sideWidth;
+                messageContainer.y = 0;
+                systemContainer.addChild(messageContainer);
+                
+                const messageMask = new PIXI.Graphics()
+                    .rect(0, 0, centerWidth, screenHeight)
+                    .fill(0xFFFFFF);
+                messageContainer.addChild(messageMask);
+                messageContainer.mask = messageMask;
+                
+                messageZone = new PIXI.Container();
+                messageContainer.addChild(messageZone);
+                
+                // 3. 右侧账号头像区域
+                const accountContainer = new PIXI.Container();
+                accountContainer.x = sideWidth + centerWidth;
+                accountContainer.y = 0;
+                systemContainer.addChild(accountContainer);
+                
+                const accountMask = new PIXI.Graphics()
+                    .rect(0, 0, sideWidth, screenHeight)
+                    .fill(0xFFFFFF);
+                accountContainer.addChild(accountMask);
+                accountContainer.mask = accountMask;
+                
+                accountZone = new PIXI.Container();
+                accountContainer.addChild(accountZone);
+                
+                // 添加区域边界线（调试用）
+                if (debugMode) {
+                    const debugBorders = new PIXI.Graphics();
+                    debugBorders
+                        .moveTo(sideWidth, 0)
+                        .lineTo(sideWidth, screenHeight)
+                        .moveTo(sideWidth + centerWidth, 0)
+                        .lineTo(sideWidth + centerWidth, screenHeight)
+                        .stroke({ width: 2, color: 0x00FF00, alpha: 0.5 });
+                    systemContainer.addChild(debugBorders);
+                }
+                
+                log('三个滚动区域创建成功', 'success');
+                log(`区域布局: 会话(${sideWidth}px) | 消息(${centerWidth}px) | 账号(${sideWidth}px)`, 'normal');
+                
+                // 初始化移动端触摸处理
+                initializeMobileTouchHandler();
+                
+            } catch (error) {
+                log(`区域创建失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // ============ 测试数据生成 ============
+        function generateTestData(count = 50) {
+            if (!conversationZone || !messageZone || !accountZone) {
+                log('请先创建三个区域', 'error');
+                return;
+            }
+            
+            log(`生成${count}个测试元素...`, 'checkpoint');
+            
+            try {
+                // 清除现有数据
+                conversations = [];
+                messages = [];
+                accounts = [];
+                conversationZone.removeChildren();
+                messageZone.removeChildren();
+                accountZone.removeChildren();
+                
+                const colors = [
+                    0xFF6B35, 0x007AFF, 0x34C759, 0xFF9500, 0xAF52DE,
+                    0xFF2D92, 0x00C7BE, 0x88BD00, 0xFF6B35, 0x5AC8FA
+                ];
+                
+                for (let i = 0; i < count; i++) {
+                    // 创建会话头像
+                    const convAvatar = createAvatar(40, 40, colors[i % colors.length], `C${i+1}`);
+                    convAvatar.x = 40;
+                    convAvatar.y = i * 80 + 40;
+                    convAvatar.name = `conv_${i}`;
+                    conversationZone.addChild(convAvatar);
+                    conversations.push({ id: i, element: convAvatar });
+                    
+                    // 创建消息气泡
+                    const isOwnMessage = Math.random() > 0.6; // 40%是自己的消息
+                    const bubbleColor = isOwnMessage ? 0xFF6B35 : 0x007AFF;
+                    const bubbleText = isOwnMessage ? `我的消息${i+1}` : `收到消息${i+1}`;
+                    const bubble = createBubble(bubbleText, bubbleColor, isOwnMessage);
+                    bubble.x = isOwnMessage ? 
+                        (app.screen.width - 160 - 200) : 20; // 自己的消息靠右
+                    bubble.y = i * 80 + 40;
+                    bubble.name = `msg_${i}`;
+                    messageZone.addChild(bubble);
+                    messages.push({ 
+                        id: i, 
+                        element: bubble, 
+                        isOwn: isOwnMessage,
+                        senderId: isOwnMessage ? 999 : i  // 999表示自己
+                    });
+                    
+                    // 创建账号头像（只有自己的消息才需要）
+                    if (isOwnMessage) {
+                        const accAvatar = createAvatar(40, 40, 0xFF6B35, 'ME');
+                        accAvatar.x = 40;
+                        accAvatar.y = i * 80 + 40;
+                        accAvatar.name = `acc_${i}`;
+                        accountZone.addChild(accAvatar);
+                        accounts.push({ id: i, element: accAvatar });
+                    }
+                }
+                
+                // 设置触摸滚动
+                setupTouchScrolling();
+                
+                // 更新性能监控
+                performanceMonitor.setElementCount(count * 2 + accounts.length);
+                
+                log(`生成完成: ${conversations.length}个会话, ${messages.length}个消息, ${accounts.length}个账号`, 'success');
+                
+            } catch (error) {
+                log(`数据生成失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // ============ 元素创建函数 ============
+        function createAvatar(width, height, color, text) {
+            const container = new PIXI.Container();
+            
+            // 圆角矩形背景
+            const bg = new PIXI.Graphics()
+                .roundRect(-width/2, -height/2, width, height, 12)
+                .fill(color);
+            container.addChild(bg);
+            
+            // 文字标签
+            const label = new PIXI.Text({
+                text: text,
+                style: {
+                    fontSize: 14,
+                    fill: 0xFFFFFF,
+                    fontWeight: 'bold',
+                    align: 'center'
+                }
+            });
+            label.anchor.set(0.5);
+            container.addChild(label);
+            
+            return container;
+        }
+        
+        function createBubble(text, color, isOwn = false) {
+            const container = new PIXI.Container();
+            
+            // 计算气泡尺寸
+            const padding = 16;
+            const maxWidth = 200;
+            const textStyle = {
+                fontSize: 14,
+                fill: 0xFFFFFF,
+                wordWrap: true,
+                wordWrapWidth: maxWidth - padding * 2,
+                align: isOwn ? 'right' : 'left'
+            };
+            
+            const label = new PIXI.Text({ text: text, style: textStyle });
+            const bubbleWidth = Math.min(label.width + padding * 2, maxWidth);
+            const bubbleHeight = label.height + padding * 2;
+            
+            // 气泡背景
+            const bg = new PIXI.Graphics()
+                .roundRect(-bubbleWidth/2, -bubbleHeight/2, bubbleWidth, bubbleHeight, 16)
+                .fill(color);
+            container.addChild(bg);
+            
+            // 文字居中
+            label.anchor.set(0.5);
+            container.addChild(label);
+            
+            // 存储气泡信息用于连接线计算
+            container.bubbleWidth = bubbleWidth;
+            container.bubbleHeight = bubbleHeight;
+            container.isOwn = isOwn;
+            
+            return container;
+        }
+        
+        // ============ 触摸滚动设置 ============
+        function setupTouchScrolling() {
+            // 为每个区域设置触摸处理
+            new MobileTouchHandler(conversationZone, scrollStates.conversation);
+            new MobileTouchHandler(messageZone, scrollStates.message);
+            new MobileTouchHandler(accountZone, scrollStates.account);
+            
+            log('移动端触摸滚动已启用', 'success');
+        }
+        
+        // ============ 连接线系统 ============
+        function enableConnectionLines() {
+            if (!messages.length) {
+                log('请先生成测试数据', 'error');
+                return;
+            }
+            
+            log('启用实时连接线...', 'checkpoint');
+            
+            try {
+                // 清除现有连接线
+                connectionLayer.removeChildren();
+                connections = [];
+                
+                // 为每个消息创建连接线
+                messages.forEach((msg, index) => {
+                    createConnectionLine(msg, index);
+                });
+                
+                // 开始实时更新
+                startConnectionUpdates();
+                
+                log(`已创建${connections.length}条连接线`, 'success');
+                
+            } catch (error) {
+                log(`连接线启用失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function createConnectionLine(msg, index) {
+            const line = new PIXI.Graphics();
+            line.name = `connection_${index}`;
+            connectionLayer.addChild(line);
+            
+            const connection = {
+                id: index,
+                line: line,
+                message: msg,
+                sourceAvatar: msg.isOwn ? accounts.find(a => a.id === index) : conversations[index],
+                isOwn: msg.isOwn
+            };
+            
+            connections.push(connection);
+            updateConnectionLine(connection);
+        }
+        
+        function updateConnectionLine(connection) {
+            if (!connection.line || !connection.message || !connection.sourceAvatar) return;
+            
+            try {
+                const msg = connection.message.element;
+                const avatar = connection.sourceAvatar.element;
+                
+                // 获取全局坐标
+                const msgPos = msg.getGlobalPosition();
+                const avatarPos = avatar.getGlobalPosition();
+                
+                const line = connection.line;
+                line.clear();
+                
+                // 根据消息类型确定连接点
+                let startX, startY, endX, endY;
+                
+                if (connection.isOwn) {
+                    // 自己的消息：从消息右侧到账号头像左侧
+                    startX = msgPos.x + msg.bubbleWidth / 2;
+                    startY = msgPos.y;
+                    endX = avatarPos.x - 40;  // 头像左边缘
+                    endY = avatarPos.y;
+                } else {
+                    // 他人消息：从会话头像右侧到消息左侧
+                    startX = avatarPos.x + 40;  // 头像右边缘
+                    startY = avatarPos.y;
+                    endX = msgPos.x - msg.bubbleWidth / 2;
+                    endY = msgPos.y;
+                }
+                
+                // 绘制圆角L型连接线 - 使用PixiJS v8正确语法
+                const midX1 = startX + (connection.isOwn ? 15 : 15);  // 水平延伸
+                const midX2 = endX - (connection.isOwn ? 15 : 15);    // 到达前的水平段
+                
+                const lineColor = connection.isOwn ? 0xFF6B35 : 0x007AFF;
+                
+                // 使用v8语法：build then stroke
+                line
+                    .moveTo(startX, startY)
+                    .lineTo(midX1, startY)
+                    .quadraticCurveTo(midX1 + 10, startY, midX1 + 10, startY + (endY > startY ? 10 : -10))
+                    .lineTo(midX1 + 10, endY - (endY > startY ? 10 : -10))
+                    .quadraticCurveTo(midX1 + 10, endY, midX2, endY)
+                    .lineTo(endX, endY)
+                    .stroke({ width: 3, color: lineColor, alpha: 0.8 });
+                    
+            } catch (error) {
+                if (debugMode) {
+                    log(`连接线${connection.id}更新失败: ${error.message}`, 'warning');
+                }
+            }
+        }
+        
+        function updateAllConnectionLines() {
+            if (!connections.length) return;
+            
+            const startTime = performance.now();
+            
+            connections.forEach(connection => {
+                updateConnectionLine(connection);
+            });
+            
+            const updateTime = performance.now() - startTime;
+            if (debugMode && updateTime > 5) {
+                log(`连接线更新耗时: ${updateTime.toFixed(2)}ms`, 'performance');
+            }
+        }
+        
+        function startConnectionUpdates() {
+            const updateLoop = () => {
+                updateAllConnectionLines();
+                requestAnimationFrame(updateLoop);
+            };
+            updateLoop();
+        }
+        
+        // ============ 性能测试 ============
+        function startPerformanceTest() {
+            log('开始性能压力测试...', 'checkpoint');
+            
+            // 创建1000个元素进行测试
+            generateTestData(1000);
+            
+            // 启用连接线
+            setTimeout(() => {
+                enableConnectionLines();
+                
+                // 自动滚动测试
+                setTimeout(() => {
+                    log('开始自动滚动压力测试', 'performance');
+                    performAutoScrollTest();
+                }, 1000);
+                
+            }, 500);
+        }
+        
+        function performAutoScrollTest() {
+            let scrollDirection = 1;
+            let scrollSpeed = 2;
+            
+            const autoScroll = () => {
+                // 模拟滚动
+                scrollStates.conversation.y += scrollSpeed * scrollDirection;
+                scrollStates.message.y += scrollSpeed * scrollDirection * 0.8;
+                scrollStates.account.y += scrollSpeed * scrollDirection * 1.2;
+                
+                // 应用滚动
+                conversationZone.y = -scrollStates.conversation.y;
+                messageZone.y = -scrollStates.message.y;
+                accountZone.y = -scrollStates.account.y;
+                
+                // 边界反转
+                if (scrollStates.conversation.y > 5000 || scrollStates.conversation.y < 0) {
+                    scrollDirection *= -1;
+                }
+                
+                setTimeout(autoScroll, 16); // ~60fps
+            };
+            
+            autoScroll();
+        }
+        
+        // ============ 调试和工具函数 ============
+        function toggleDebugMode() {
+            debugMode = !debugMode;
+            log(`调试模式: ${debugMode ? '已启用' : '已禁用'}`, debugMode ? 'warning' : 'normal');
+            
+            if (debugMode) {
+                // 显示性能详情
+                performanceConfig.connectionUpdateThrottle = 0; // 禁用节流以观察性能
+            } else {
+                performanceConfig.connectionUpdateThrottle = 16; // 恢复节流
+            }
+        }
+        
+        function clearAll() {
+            if (systemContainer) {
+                systemContainer.removeChildren();
+                conversations = [];
+                messages = [];
+                accounts = [];
+                connections = [];
+                
+                // 重置滚动状态
+                Object.keys(scrollStates).forEach(key => {
+                    scrollStates[key].y = 0;
+                    scrollStates[key].velocity = 0;
+                    scrollStates[key].isDragging = false;
+                });
+                
+                if (performanceMonitor) {
+                    performanceMonitor.setElementCount(0);
+                }
+            }
+            
+            log('所有内容已清除', 'normal');
+        }
+        
+        function handleResize() {
+            if (app) {
+                app.renderer.resize(window.innerWidth, window.innerHeight);
+                log(`窗口大小调整: ${window.innerWidth}x${window.innerHeight}`, 'normal');
+                
+                // 重新创建区域布局
+                if (systemContainer) {
+                    clearAll();
+                    setTimeout(() => {
+                        createThreeZones();
+                    }, 100);
+                }
+            }
+        }
+        
+        // ============ 移动端触摸处理 ============
+        let mobileTouchHandler = null;
+        
+        function initializeMobileTouchHandler() {
+            if (!app || mobileTouchHandler) return;
+            
+            log('📱 初始化移动端触摸处理器...', 'checkpoint');
+            
+            // 创建触摸处理器
+            mobileTouchHandler = new MobileTouchHandler(app, {
+                enableLogging: true,
+                velocityDecay: 0.95,
+                bounceEffect: true
+            });
+            
+            // 注册滚动区域
+            const screenWidth = app.screen.width;
+            const screenHeight = app.screen.height;
+            
+            // 区域宽度计算（与createThreeZones保持一致）
+            const sideWidth = 80;
+            const centerWidth = screenWidth - sideWidth * 2;
+            
+            // 左侧会话区域
+            mobileTouchHandler.registerScrollArea('conversations', {
+                bounds: { x: 0, y: 0, width: sideWidth, height: screenHeight },
+                container: conversationZone,
+                scrollBounds: { minY: -2000, maxY: 100 },
+                onScroll: (scrollState) => {
+                    // 触发连接线更新
+                    if (typeof updateConnectionsThrottled === 'function') {
+                        updateConnectionsThrottled();
+                    }
+                }
+            });
+            
+            // 中间消息区域
+            mobileTouchHandler.registerScrollArea('messages', {
+                bounds: { x: sideWidth, y: 0, width: centerWidth, height: screenHeight },
+                container: messageZone,
+                scrollBounds: { minY: -3000, maxY: 100 },
+                onScroll: (scrollState) => {
+                    if (typeof updateConnectionsThrottled === 'function') {
+                        updateConnectionsThrottled();
+                    }
+                }
+            });
+            
+            // 右侧账号区域
+            mobileTouchHandler.registerScrollArea('accounts', {
+                bounds: { x: sideWidth + centerWidth, y: 0, width: sideWidth, height: screenHeight },
+                container: accountZone,
+                scrollBounds: { minY: -2000, maxY: 100 },
+                onScroll: (scrollState) => {
+                    if (typeof updateConnectionsThrottled === 'function') {
+                        updateConnectionsThrottled();
+                    }
+                }
+            });
+            
+            log('✅ 移动端触摸处理器初始化完成', 'normal');
+        }
+        
+        // ============ 启动系统 ============
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🚀 PixiJS移动端连接线系统已加载', 'checkpoint');
+            log('📱 移动端优化：支持触摸滚动、惯性和边界反弹', 'normal');
+            log('⚡ 性能优化：虚拟滚动、连接线节流、对象池化', 'normal');
+            log('🎯 支持测试：50-1000个元素的性能验证', 'normal');
+            log('👆 点击控制面板按钮开始测试', 'normal');
+        });
+        
+    </script>
+</body>
+</html>

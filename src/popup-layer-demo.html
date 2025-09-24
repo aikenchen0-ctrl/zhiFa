@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连线异形弹出层系统演示 - PixiJS v8</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <script src="components/PopupLayerSystem.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: #ffffff;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        .system-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        .controls-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            max-width: 350px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .controls-panel h3 {
+            margin-bottom: 15px;
+            color: #00ff88;
+            font-size: 18px;
+        }
+        
+        .controls-panel button {
+            display: block;
+            width: 100%;
+            margin: 8px 0;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .controls-panel button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+        
+        .controls-panel button:active {
+            transform: translateY(0);
+        }
+        
+        .status-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            max-width: 300px;
+            max-height: 500px;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.4;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .performance-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 11px;
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+            border-left: 3px solid transparent;
+            padding-left: 8px;
+        }
+        
+        .log-checkpoint { border-left-color: #ff9500; color: #ff9500; }
+        .log-success { border-left-color: #4CAF50; color: #4CAF50; }
+        .log-error { border-left-color: #f44336; color: #f44336; }
+        .log-warning { border-left-color: #ff9800; color: #ff9800; }
+        .log-normal { border-left-color: #888; color: #ccc; }
+        
+        #pixiContainer {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .demo-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 11px;
+            color: #888;
+            max-width: 250px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .trigger-icon {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.6; }
+            50% { opacity: 1; }
+            100% { opacity: 0.6; }
+        }
+    </style>
+</head>
+<body>
+    <div class="system-container">
+        <div id="pixiContainer"></div>
+        
+        <div class="controls-panel">
+            <h3>🎨 弹出层系统演示</h3>
+            <button onclick="initSystem()">1. 初始化系统</button>
+            <button onclick="createTriggerElements()">2. 创建触发元素</button>
+            <button onclick="createAdvancedDemo()">3. 高级演示场景</button>
+            <button onclick="createMobileDemo()">4. 移动端适配演示</button>
+            <button onclick="testPerformance()">5. 性能压力测试</button>
+            <button onclick="toggleDebugMode()">6. 切换调试模式</button>
+            <button onclick="clearAllElements()">清除所有元素</button>
+        </div>
+        
+        <div class="status-panel" id="statusPanel">
+            <strong>🔧 系统状态日志</strong><br><br>
+            <div id="statusContent">等待初始化...</div>
+        </div>
+        
+        <div class="performance-panel" id="performancePanel">
+            FPS: -- | 内存: -- MB | 元素: 0 | 弹出层: 0
+        </div>
+        
+        <div class="demo-info">
+            💡 使用说明：<br>
+            • 点击任意图标触发弹出层<br>
+            • 点击空白区域或触发元素关闭<br>
+            • 左侧元素向右扩展，右侧向左扩展<br>
+            • 支持多层级气泡和连接线
+        </div>
+    </div>
+
+    <script>
+        // ============ 全局变量 ============
+        let app = null;
+        let popupSystem = null;
+        let performanceMonitor = null;
+        let debugMode = false;
+        
+        // 演示元素存储
+        let triggerElements = [];
+        let demoScenes = [];
+        
+        // ============ 日志系统 ============
+        function log(message, type = 'normal') {
+            const timestamp = new Date().toLocaleTimeString();
+            const statusContent = document.getElementById('statusContent');
+            
+            const logEntry = `<div class="log-entry log-${type}">[${timestamp}] ${message}</div>`;
+            statusContent.innerHTML = logEntry + statusContent.innerHTML.split('\n').slice(0, 20).join('\n');
+            
+            console.log(`[PopupDemo] [${timestamp}] ${message}`);
+        }
+        
+        // ============ 性能监控 ============
+        class PerformanceMonitor {
+            constructor() {
+                this.fps = 0;
+                this.memory = 0;
+                this.elementCount = 0;
+                this.popupCount = 0;
+                this.lastTime = performance.now();
+                this.frameCount = 0;
+                
+                this.startMonitoring();
+            }
+            
+            startMonitoring() {
+                const monitor = () => {
+                    const now = performance.now();
+                    const deltaTime = now - this.lastTime;
+                    this.lastTime = now;
+                    this.frameCount++;
+                    
+                    if (this.frameCount % 60 === 0) {
+                        this.fps = Math.round(1000 / deltaTime);
+                        this.memory = performance.memory ? 
+                            Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) : 'N/A';
+                        this.updateDisplay();
+                    }
+                    
+                    requestAnimationFrame(monitor);
+                };
+                monitor();
+            }
+            
+            updateDisplay() {
+                const panel = document.getElementById('performancePanel');
+                const systemStatus = popupSystem ? popupSystem.getSystemStatus() : {};
+                
+                let fpsColor = '#00ff88';
+                if (this.fps < 30) fpsColor = '#f44336';
+                else if (this.fps < 45) fpsColor = '#ff9800';
+                
+                panel.innerHTML = `
+                    <span style="color: ${fpsColor}">FPS: ${this.fps}</span> | 
+                    内存: ${this.memory} MB | 
+                    元素: ${this.elementCount} | 
+                    弹出层: ${systemStatus.activePopups || 0}
+                `;
+            }
+            
+            setElementCount(count) {
+                this.elementCount = count;
+            }
+        }
+        
+        // ============ 系统初始化 ============
+        async function initSystem() {
+            log('开始初始化PixiJS弹出层系统...', 'checkpoint');
+            
+            try {
+                if (app) {
+                    app.destroy();
+                    log('清理旧的应用实例', 'normal');
+                }
+                
+                // 创建PixiJS应用
+                app = new PIXI.Application();
+                await app.init({
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    backgroundColor: 0x1a237e,
+                    antialias: true,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true
+                });
+                
+                // 添加到DOM
+                const container = document.getElementById('pixiContainer');
+                container.innerHTML = '';
+                container.appendChild(app.canvas);
+                
+                // 初始化弹出层系统
+                popupSystem = new PopupLayerSystem(app, {
+                    enableDebugLogs: debugMode,
+                    bubbleAnimationDuration: 300,
+                    connectionLineColor: 0x00AAFF,
+                    maxSubBubbles: 6,
+                    bubbleSpacing: 100
+                });
+                
+                // 初始化性能监控
+                performanceMonitor = new PerformanceMonitor();
+                
+                // 窗口大小调整监听
+                window.addEventListener('resize', handleResize);
+                
+                log(`PixiJS v${PIXI.VERSION} 初始化成功`, 'success');
+                log(`弹出层系统就绪，画布尺寸: ${app.canvas.width}x${app.canvas.height}`, 'success');
+                
+            } catch (error) {
+                log(`系统初始化失败: ${error.message}`, 'error');
+                console.error(error);
+            }
+        }
+        
+        // ============ 创建触发元素 ============
+        function createTriggerElements() {
+            if (!popupSystem) {
+                log('请先初始化系统', 'error');
+                return;
+            }
+            
+            log('创建基础触发元素...', 'checkpoint');
+            
+            // 清理现有元素
+            clearAllElements();
+            
+            try {
+                // 创建左侧触发元素
+                const leftTrigger = createIconTrigger('📱', 0x4CAF50, '手机功能');
+                leftTrigger.x = 100;
+                leftTrigger.y = 200;
+                app.stage.addChild(leftTrigger);
+                
+                const leftConfig = {
+                    main: {
+                        text: '手机功能中心',
+                        color: 0x4CAF50,
+                        size: 'large',
+                        showSender: true,
+                        senderName: '系统'
+                    },
+                    subBubbles: [
+                        {
+                            text: '通话',
+                            color: 0x2196F3,
+                            size: 'medium',
+                            sideBubbles: [
+                                { text: '拨打', color: 0x03DAC6, size: 'small' },
+                                { text: '接听', color: 0xFF6B35, size: 'small' }
+                            ]
+                        },
+                        {
+                            text: '短信',
+                            color: 0xFF9800,
+                            size: 'medium',
+                            sideBubbles: [
+                                { text: '发送', color: 0x9C27B0, size: 'small' },
+                                { text: '接收', color: 0x607D8B, size: 'small' }
+                            ]
+                        },
+                        {
+                            text: '设置',
+                            color: 0x795548,
+                            size: 'medium'
+                        }
+                    ],
+                    sideBubbles: [
+                        { text: '电量', color: 0xFFC107, size: 'small' },
+                        { text: '信号', color: 0x8BC34A, size: 'small' }
+                    ]
+                };
+                
+                popupSystem.registerTrigger(leftTrigger, leftConfig);
+                triggerElements.push(leftTrigger);
+                
+                // 创建右侧触发元素
+                const rightTrigger = createIconTrigger('💻', 0x2196F3, '电脑功能');
+                rightTrigger.x = app.screen.width - 100;
+                rightTrigger.y = 250;
+                app.stage.addChild(rightTrigger);
+                
+                const rightConfig = {
+                    main: {
+                        text: '电脑工具箱',
+                        color: 0x2196F3,
+                        size: 'large',
+                        hasAvatar: true,
+                        showSender: true,
+                        senderName: '工具'
+                    },
+                    subBubbles: [
+                        {
+                            text: '文件',
+                            color: 0x9C27B0,
+                            size: 'medium',
+                            sideBubbles: [
+                                { text: '新建', color: 0x4CAF50, size: 'small' },
+                                { text: '打开', color: 0xFF5722, size: 'small' },
+                                { text: '保存', color: 0x607D8B, size: 'small' }
+                            ]
+                        },
+                        {
+                            text: '网络',
+                            color: 0xFF5722,
+                            size: 'medium',
+                            sideBubbles: [
+                                { text: '连接', color: 0x8BC34A, size: 'small' },
+                                { text: '断开', color: 0xF44336, size: 'small' }
+                            ]
+                        }
+                    ],
+                    sideBubbles: [
+                        { text: '性能', color: 0xE91E63, size: 'small' },
+                        { text: '监控', color: 0x3F51B5, size: 'small' }
+                    ]
+                };
+                
+                popupSystem.registerTrigger(rightTrigger, rightConfig);
+                triggerElements.push(rightTrigger);
+                
+                // 创建中央触发元素
+                const centerTrigger = createIconTrigger('🎮', 0xFF6B35, '游戏中心');
+                centerTrigger.x = app.screen.width / 2;
+                centerTrigger.y = app.screen.height / 2;
+                app.stage.addChild(centerTrigger);
+                
+                const centerConfig = {
+                    main: {
+                        text: '游戏控制台',
+                        color: 0xFF6B35,
+                        size: 'large',
+                        hasAvatar: true,
+                        showSender: true,
+                        senderName: '游戏'
+                    },
+                    subBubbles: [
+                        {
+                            text: '动作',
+                            color: 0xF44336,
+                            size: 'medium',
+                            sideBubbles: [
+                                { text: '射击', color: 0xFF9800, size: 'small' },
+                                { text: '格斗', color: 0x795548, size: 'small' }
+                            ]
+                        },
+                        {
+                            text: '策略',
+                            color: 0x3F51B5,
+                            size: 'medium',
+                            sideBubbles: [
+                                { text: 'RTS', color: 0x009688, size: 'small' },
+                                { text: 'SLG', color: 0x607D8B, size: 'small' }
+                            ]
+                        },
+                        {
+                            text: '休闲',
+                            color: 0x4CAF50,
+                            size: 'medium'
+                        }
+                    ]
+                };
+                
+                popupSystem.registerTrigger(centerTrigger, centerConfig);
+                triggerElements.push(centerTrigger);
+                
+                performanceMonitor.setElementCount(triggerElements.length);
+                log(`创建完成：${triggerElements.length}个触发元素`, 'success');
+                
+            } catch (error) {
+                log(`元素创建失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // ============ 创建图标触发器 ============
+        function createIconTrigger(emoji, color, tooltip) {
+            const container = new PIXI.Container();
+            container.interactive = true;
+            container.cursor = 'pointer';
+            
+            // 背景圆圈
+            const bg = new PIXI.Graphics()
+                .circle(0, 0, 30)
+                .fill({ color: color, alpha: 0.8 })
+                .stroke({ width: 2, color: 0xFFFFFF, alpha: 0.6 });
+            container.addChild(bg);
+            
+            // 图标文字
+            const icon = new PIXI.Text({
+                text: emoji,
+                style: {
+                    fontSize: 24,
+                    align: 'center'
+                }
+            });
+            icon.anchor.set(0.5);
+            container.addChild(icon);
+            
+            // 悬停效果
+            container.on('pointerover', () => {
+                container.scale.set(1.1);
+                bg.tint = 0xFFFFFF;
+            });
+            
+            container.on('pointerout', () => {
+                container.scale.set(1.0);
+                bg.tint = 0xFFFFFF;
+            });
+            
+            // 添加脉冲动画
+            let pulseDirection = 1;
+            const pulseAnimation = () => {
+                if (container.parent) {
+                    const currentScale = container.scale.x;
+                    const newScale = currentScale + (0.005 * pulseDirection);
+                    
+                    if (newScale > 1.05) pulseDirection = -1;
+                    if (newScale < 0.95) pulseDirection = 1;
+                    
+                    container.scale.set(newScale);
+                    requestAnimationFrame(pulseAnimation);
+                }
+            };
+            pulseAnimation();
+            
+            container.tooltip = tooltip;
+            return container;
+        }
+        
+        // ============ 高级演示场景 ============
+        function createAdvancedDemo() {
+            if (!popupSystem) {
+                log('请先初始化系统', 'error');
+                return;
+            }
+            
+            log('创建高级演示场景...', 'checkpoint');
+            
+            clearAllElements();
+            
+            try {
+                // 创建多个触发元素模拟真实应用场景
+                const icons = ['🏠', '⚙️', '📊', '🔔', '👤', '💬', '📁', '🔍'];
+                const colors = [0x4CAF50, 0xFF9800, 0x2196F3, 0xF44336, 0x9C27B0, 0x00BCD4, 0x795548, 0x607D8B];
+                
+                for (let i = 0; i < icons.length; i++) {
+                    const trigger = createIconTrigger(icons[i], colors[i], `功能${i+1}`);
+                    
+                    // 随机位置但保持边界
+                    const margin = 80;
+                    trigger.x = margin + Math.random() * (app.screen.width - margin * 2);
+                    trigger.y = margin + Math.random() * (app.screen.height - margin * 2);
+                    
+                    app.stage.addChild(trigger);
+                    
+                    // 复杂的配置
+                    const config = {
+                        main: {
+                            text: `${icons[i]} 主功能 ${i+1}`,
+                            color: colors[i],
+                            size: Math.random() > 0.5 ? 'large' : 'medium',
+                            hasAvatar: Math.random() > 0.7,
+                            showSender: Math.random() > 0.6,
+                            senderName: `用户${i+1}`
+                        },
+                        subBubbles: [],
+                        sideBubbles: []
+                    };
+                    
+                    // 随机生成子气泡
+                    const subCount = Math.floor(Math.random() * 4) + 1;
+                    for (let j = 0; j < subCount; j++) {
+                        const subBubble = {
+                            text: `子功能${j+1}`,
+                            color: colors[(i + j) % colors.length],
+                            size: 'medium',
+                            sideBubbles: []
+                        };
+                        
+                        // 随机生成副气泡
+                        if (Math.random() > 0.6) {
+                            const sideCount = Math.floor(Math.random() * 3) + 1;
+                            for (let k = 0; k < sideCount; k++) {
+                                subBubble.sideBubbles.push({
+                                    text: `副功能${k+1}`,
+                                    color: colors[(i + j + k) % colors.length],
+                                    size: 'small'
+                                });
+                            }
+                        }
+                        
+                        config.subBubbles.push(subBubble);
+                    }
+                    
+                    // 主气泡的副气泡
+                    if (Math.random() > 0.5) {
+                        const mainSideCount = Math.floor(Math.random() * 3) + 1;
+                        for (let j = 0; j < mainSideCount; j++) {
+                            config.sideBubbles.push({
+                                text: `主副功能${j+1}`,
+                                color: colors[(i + j) % colors.length],
+                                size: 'small'
+                            });
+                        }
+                    }
+                    
+                    popupSystem.registerTrigger(trigger, config);
+                    triggerElements.push(trigger);
+                }
+                
+                performanceMonitor.setElementCount(triggerElements.length);
+                log(`高级演示创建完成：${triggerElements.length}个复杂触发元素`, 'success');
+                
+            } catch (error) {
+                log(`高级演示创建失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // ============ 移动端演示 ============
+        function createMobileDemo() {
+            if (!popupSystem) {
+                log('请先初始化系统', 'error');
+                return;
+            }
+            
+            log('创建移动端适配演示...', 'checkpoint');
+            
+            clearAllElements();
+            
+            try {
+                // 模拟移动端界面布局
+                const screenWidth = app.screen.width;
+                const screenHeight = app.screen.height;
+                
+                // 底部导航栏
+                const bottomNavIcons = ['🏠', '🔍', '➕', '💬', '👤'];
+                const navY = screenHeight - 60;
+                const navSpacing = screenWidth / (bottomNavIcons.length + 1);
+                
+                bottomNavIcons.forEach((icon, index) => {
+                    const trigger = createIconTrigger(icon, 0x2196F3, `导航${index+1}`);
+                    trigger.x = navSpacing * (index + 1);
+                    trigger.y = navY;
+                    app.stage.addChild(trigger);
+                    
+                    const config = {
+                        main: {
+                            text: `${icon} 导航功能`,
+                            color: 0x2196F3,
+                            size: 'medium',
+                            showSender: true,
+                            senderName: '导航'
+                        },
+                        subBubbles: [
+                            { text: '选项1', color: 0x4CAF50, size: 'small' },
+                            { text: '选项2', color: 0xFF9800, size: 'small' },
+                            { text: '选项3', color: 0xF44336, size: 'small' }
+                        ]
+                    };
+                    
+                    popupSystem.registerTrigger(trigger, config);
+                    triggerElements.push(trigger);
+                });
+                
+                // 顶部状态栏
+                const topIcons = ['📶', '🔋', '⏰', '🔔'];
+                const topY = 40;
+                const topSpacing = 60;
+                
+                topIcons.forEach((icon, index) => {
+                    const trigger = createIconTrigger(icon, 0x607D8B, `状态${index+1}`);
+                    trigger.x = screenWidth - (topSpacing * (index + 1));
+                    trigger.y = topY;
+                    trigger.scale.set(0.7); // 更小的状态栏图标
+                    app.stage.addChild(trigger);
+                    
+                    const config = {
+                        main: {
+                            text: `${icon} 状态信息`,
+                            color: 0x607D8B,
+                            size: 'small'
+                        },
+                        sideBubbles: [
+                            { text: '详情', color: 0x9C27B0, size: 'small' },
+                            { text: '设置', color: 0x795548, size: 'small' }
+                        ]
+                    };
+                    
+                    popupSystem.registerTrigger(trigger, config);
+                    triggerElements.push(trigger);
+                });
+                
+                // 中央应用图标
+                const appIcons = ['📱', '📧', '📷', '🎵', '🎮', '📱'];
+                const gridRows = 2;
+                const gridCols = 3;
+                const startX = screenWidth / 4;
+                const startY = screenHeight / 3;
+                const gridSpacingX = screenWidth / 6;
+                const gridSpacingY = screenHeight / 6;
+                
+                appIcons.forEach((icon, index) => {
+                    const row = Math.floor(index / gridCols);
+                    const col = index % gridCols;
+                    
+                    const trigger = createIconTrigger(icon, 0xFF6B35, `应用${index+1}`);
+                    trigger.x = startX + (col * gridSpacingX);
+                    trigger.y = startY + (row * gridSpacingY);
+                    app.stage.addChild(trigger);
+                    
+                    const config = {
+                        main: {
+                            text: `${icon} 应用`,
+                            color: 0xFF6B35,
+                            size: 'large',
+                            hasAvatar: true,
+                            showSender: true,
+                            senderName: `App${index+1}`
+                        },
+                        subBubbles: [
+                            {
+                                text: '快捷操作',
+                                color: 0x4CAF50,
+                                size: 'medium',
+                                sideBubbles: [
+                                    { text: '打开', color: 0x8BC34A, size: 'small' },
+                                    { text: '分享', color: 0x03DAC6, size: 'small' }
+                                ]
+                            },
+                            {
+                                text: '更多选项',
+                                color: 0x9C27B0,
+                                size: 'medium',
+                                sideBubbles: [
+                                    { text: '设置', color: 0x673AB7, size: 'small' },
+                                    { text: '卸载', color: 0xF44336, size: 'small' }
+                                ]
+                            }
+                        ],
+                        sideBubbles: [
+                            { text: '收藏', color: 0xFFC107, size: 'small' },
+                            { text: '通知', color: 0xFF5722, size: 'small' }
+                        ]
+                    };
+                    
+                    popupSystem.registerTrigger(trigger, config);
+                    triggerElements.push(trigger);
+                });
+                
+                performanceMonitor.setElementCount(triggerElements.length);
+                log(`移动端演示创建完成：${triggerElements.length}个移动端元素`, 'success');
+                
+            } catch (error) {
+                log(`移动端演示创建失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // ============ 性能测试 ============
+        function testPerformance() {
+            if (!popupSystem) {
+                log('请先初始化系统', 'error');
+                return;
+            }
+            
+            log('开始性能压力测试...', 'checkpoint');
+            
+            clearAllElements();
+            
+            try {
+                // 创建大量触发元素
+                const testCount = 50;
+                const icons = ['🎯', '⚡', '🚀', '💫', '⭐', '🔥', '💎', '🎪'];
+                const colors = [0x4CAF50, 0xFF9800, 0x2196F3, 0xF44336, 0x9C27B0, 0x00BCD4, 0x795548, 0x607D8B];
+                
+                for (let i = 0; i < testCount; i++) {
+                    const trigger = createIconTrigger(
+                        icons[i % icons.length],
+                        colors[i % colors.length],
+                        `测试元素${i+1}`
+                    );
+                    
+                    // 网格布局
+                    const cols = Math.ceil(Math.sqrt(testCount));
+                    const row = Math.floor(i / cols);
+                    const col = i % cols;
+                    
+                    const spacingX = (app.screen.width - 100) / cols;
+                    const spacingY = (app.screen.height - 100) / Math.ceil(testCount / cols);
+                    
+                    trigger.x = 50 + col * spacingX;
+                    trigger.y = 50 + row * spacingY;
+                    trigger.scale.set(0.6); // 更小的测试元素
+                    
+                    app.stage.addChild(trigger);
+                    
+                    // 简化的配置以测试性能
+                    const config = {
+                        main: {
+                            text: `测试${i+1}`,
+                            color: colors[i % colors.length],
+                            size: 'medium'
+                        },
+                        subBubbles: [
+                            { text: 'A', color: 0x4CAF50, size: 'small' },
+                            { text: 'B', color: 0xFF9800, size: 'small' },
+                            { text: 'C', color: 0x2196F3, size: 'small' }
+                        ],
+                        sideBubbles: [
+                            { text: 'X', color: 0xF44336, size: 'small' },
+                            { text: 'Y', color: 0x9C27B0, size: 'small' }
+                        ]
+                    };
+                    
+                    popupSystem.registerTrigger(trigger, config);
+                    triggerElements.push(trigger);
+                }
+                
+                performanceMonitor.setElementCount(triggerElements.length);
+                log(`性能测试创建完成：${triggerElements.length}个测试元素`, 'success');
+                
+                // 开始自动触发测试
+                setTimeout(() => {
+                    log('开始自动触发测试...', 'warning');
+                    autoTriggerTest();
+                }, 1000);
+                
+            } catch (error) {
+                log(`性能测试创建失败: ${error.message}`, 'error');
+            }
+        }
+        
+        // ============ 自动触发测试 ============
+        function autoTriggerTest() {
+            let triggerIndex = 0;
+            
+            const autoTrigger = () => {
+                if (triggerIndex < triggerElements.length) {
+                    const trigger = triggerElements[triggerIndex];
+                    if (trigger && trigger.emit) {
+                        trigger.emit('pointerdown', { 
+                            data: { global: { x: trigger.x, y: trigger.y } },
+                            stopPropagation: () => {}
+                        });
+                    }
+                    
+                    triggerIndex++;
+                    
+                    setTimeout(() => {
+                        // 关闭所有弹出层
+                        if (popupSystem) {
+                            popupSystem.closeAllPopups();
+                        }
+                        
+                        setTimeout(autoTrigger, 200);
+                    }, 500);
+                } else {
+                    log('自动触发测试完成', 'success');
+                }
+            };
+            
+            autoTrigger();
+        }
+        
+        // ============ 工具函数 ============
+        function toggleDebugMode() {
+            debugMode = !debugMode;
+            log(`调试模式: ${debugMode ? '已启用' : '已禁用'}`, debugMode ? 'warning' : 'normal');
+            
+            if (popupSystem) {
+                popupSystem.options.enableDebugLogs = debugMode;
+            }
+        }
+        
+        function clearAllElements() {
+            triggerElements.forEach(element => {
+                if (element.parent) {
+                    element.parent.removeChild(element);
+                }
+                element.destroy();
+            });
+            triggerElements = [];
+            
+            if (popupSystem) {
+                popupSystem.closeAllPopups();
+            }
+            
+            if (performanceMonitor) {
+                performanceMonitor.setElementCount(0);
+            }
+            
+            log('所有元素已清除', 'normal');
+        }
+        
+        function handleResize() {
+            if (app) {
+                app.renderer.resize(window.innerWidth, window.innerHeight);
+                
+                if (popupSystem) {
+                    popupSystem.updateSystem();
+                }
+                
+                log(`窗口大小调整: ${window.innerWidth}x${window.innerHeight}`, 'normal');
+            }
+        }
+        
+        // ============ 页面加载完成 ============
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🎨 PixiJS弹出层系统演示已加载', 'checkpoint');
+            log('✨ 支持多层级气泡、动态布局、连接线系统', 'normal');
+            log('📱 完美适配移动端和桌面端', 'normal');
+            log('⚡ 高性能动画和交互效果', 'normal');
+            log('👆 点击控制面板按钮开始演示', 'normal');
+        });
+        
+    </script>
+</body>
+</html>

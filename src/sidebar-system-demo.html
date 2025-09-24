@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>高性能侧边栏系统演示 - PixiJS v8 (触摸修复版)</title>
+    <script src="utils/MobileTouchHandler.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+            position: fixed;
+            touch-action: pan-y;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        #app {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+        
+        #leftSidebar {
+            border-right: 2px solid #34495e;
+        }
+        
+        #mainContent {
+            flex: 1;
+            background: rgba(44, 62, 80, 0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        #rightSidebar {
+            border-left: 2px solid #34495e;
+        }
+        
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 14px;
+            line-height: 1.5;
+            z-index: 1000;
+            max-width: 600px;
+        }
+        
+        .performance-stats {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #2ecc71;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 12px;
+            color: #bdc3c7;
+        }
+        
+        .control-group button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            font-size: 11px;
+        }
+        
+        .control-group button:hover {
+            background: #2980b9;
+        }
+        
+        .control-group input[type="range"] {
+            width: 120px;
+            margin-right: 10px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+            margin-top: 30px;
+        }
+        
+        .feature-list li {
+            background: rgba(255, 255, 255, 0.1);
+            margin: 10px 0;
+            padding: 10px 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-ready { background: #27ae60; }
+        .status-active { background: #3498db; }
+        .status-processing { background: #f39c12; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="leftSidebar"></div>
+        
+        <div id="mainContent">
+            <h1>高性能侧边栏系统</h1>
+            <p>左侧：1万个会话头像的虚拟化滚动</p>
+            <p>右侧：智囊团 + 17个工作流图标</p>
+            
+            <ul class="feature-list">
+                <li><span class="status-indicator status-ready"></span>虚拟化滚动 - 支持1万个元素</li>
+                <li><span class="status-indicator status-active"></span>当前会话指示器 - 眼睛+红点</li>
+                <li><span class="status-indicator status-processing"></span>5秒悬停触发 - 转发/朋友圈按钮</li>
+                <li><span class="status-indicator status-ready"></span>边界固定效果 - 当前会话置顶</li>
+                <li><span class="status-indicator status-active"></span>详细信息展示 - 悬停显示详情</li>
+                <li><span class="status-indicator status-processing"></span>三段式布局 - 账号/智囊团/工作流</li>
+                <li><span class="status-indicator status-ready"></span>滚动挤压效果 - 动态变形</li>
+                <li><span class="status-indicator status-active"></span>AIFF流程 - 动态文字滚播</li>
+                <li><span class="status-indicator status-processing"></span>高性能渲染 - PixiJS v8引擎</li>
+            </ul>
+        </div>
+        
+        <div id="rightSidebar"></div>
+    </div>
+    
+    <div class="info-panel">
+        <strong>操作指南：</strong>
+        <br>• 滚轮/拖拽滚动 • 悬停查看详情 • 长按5秒触发功能按钮
+        <br>• 右侧上下分别滚动 • AIFF图标有动态文字效果
+    </div>
+    
+    <div class="performance-stats" id="stats">
+        FPS: -- | 内存: -- | 可见对象: --
+    </div>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>左侧滚动控制</label>
+            <button onclick="leftSidebar.scrollToConversation(0)">顶部</button>
+            <button onclick="leftSidebar.scrollToConversation(4999)">中间</button>
+            <button onclick="leftSidebar.scrollToConversation(9999)">底部</button>
+        </div>
+        
+        <div class="control-group">
+            <label>当前会话切换</label>
+            <button onclick="leftSidebar.setCurrentConversation(100)">会话100</button>
+            <button onclick="leftSidebar.setCurrentConversation(5000)">会话5000</button>
+        </div>
+        
+        <div class="control-group">
+            <label>工作流状态</label>
+            <button onclick="updateWorkflowStatus(0, 'running')">运行</button>
+            <button onclick="updateWorkflowStatus(0, 'completed')">完成</button>
+            <button onclick="updateWorkflowStatus(0, 'error')">错误</button>
+        </div>
+        
+        <div class="control-group">
+            <label>AIFF滚动速度</label>
+            <input type="range" min="0.5" max="5" step="0.1" value="1" 
+                   onchange="updateAiffSpeed(this.value)">
+            <span id="speedValue">1.0x</span>
+        </div>
+    </div>
+
+    <script src="https://pixijs.download/release/pixi.min.js"></script>
+    <script type="module">
+        // Import components (in real environment these would be bundled)
+        console.log('Initializing high-performance sidebar system with PixiJS v8...');
+        
+        // Mock import implementation for demo
+        class ConversationAvatar extends PIXI.Container {
+            constructor(conversation, options = {}) {
+                super();
+                
+                this.conversation = conversation;
+                this.options = {
+                    width: 100,
+                    height: 60,
+                    avatarSize: 50,
+                    isCurrentConversation: false,
+                    showDetailedInfo: false,
+                    ...options
+                };
+                
+                this.isHovered = false;
+                this.detailContainer = null;
+                
+                this.setupContainer();
+                this.createAvatar();
+                this.createIndicators();
+                this.setupEvents();
+            }
+            
+            setupContainer() {
+                this.background = new PIXI.Graphics();
+                this.updateBackground();
+                this.addChild(this.background);
+                
+                this.hitArea = new PIXI.Rectangle(0, 0, this.options.width, this.options.height);
+                this.interactive = true;
+                this.buttonMode = true;
+            }
+            
+            updateBackground() {
+                this.background.clear();
+                
+                if (this.options.isCurrentConversation) {
+                    this.background.beginFill(0x3498db, 0.3);
+                    this.background.drawRoundedRect(2, 2, this.options.width - 4, this.options.height - 4, 8);
+                    this.background.endFill();
+                } else if (this.isHovered) {
+                    this.background.beginFill(0x34495e, 0.5);
+                    this.background.drawRoundedRect(2, 2, this.options.width - 4, this.options.height - 4, 8);
+                    this.background.endFill();
+                }
+            }
+            
+            createAvatar() {
+                this.avatarBg = new PIXI.Graphics();
+                this.avatarBg.beginFill(0x95a5a6);
+                this.avatarBg.drawCircle(0, 0, this.options.avatarSize / 2);
+                this.avatarBg.endFill();
+                
+                this.avatarBg.x = this.options.width / 2;
+                this.avatarBg.y = this.options.height / 2;
+                this.addChild(this.avatarBg);
+                
+                const initials = this.conversation.name.split('_')[0].substring(0, 2).toUpperCase();
+                this.avatarText = new PIXI.Text(initials, {
+                    fontSize: 16,
+                    fill: 0xffffff,
+                    fontWeight: 'bold'
+                });
+                this.avatarText.anchor.set(0.5);
+                this.avatarText.x = this.options.width / 2;
+                this.avatarText.y = this.options.height / 2;
+                this.addChild(this.avatarText);
+                
+                if (this.conversation.isOnline) {
+                    this.onlineIndicator = new PIXI.Graphics();
+                    this.onlineIndicator.beginFill(0x27ae60);
+                    this.onlineIndicator.drawCircle(0, 0, 5);
+                    this.onlineIndicator.endFill();
+                    this.onlineIndicator.x = this.options.width / 2 + this.options.avatarSize / 2 - 5;
+                    this.onlineIndicator.y = this.options.height / 2 + this.options.avatarSize / 2 - 5;
+                    this.addChild(this.onlineIndicator);
+                }
+            }
+            
+            createIndicators() {
+                if (!this.options.isCurrentConversation) return;
+                
+                // Top indicator - Eye icon
+                this.topIndicator = new PIXI.Container();
+                
+                const eyeBg = new PIXI.Graphics();
+                eyeBg.beginFill(0x2c3e50);
+                eyeBg.drawCircle(0, 0, 8);
+                eyeBg.endFill();
+                
+                const eyeShape = new PIXI.Graphics();
+                eyeShape.beginFill(0xffffff);
+                eyeShape.drawEllipse(0, 0, 6, 3);
+                eyeShape.endFill();
+                
+                eyeShape.beginFill(0x2c3e50);
+                eyeShape.drawCircle(0, 0, 2);
+                eyeShape.endFill();
+                
+                this.topIndicator.addChild(eyeBg);
+                this.topIndicator.addChild(eyeShape);
+                this.topIndicator.x = this.options.width / 2;
+                this.topIndicator.y = 8;
+                this.addChild(this.topIndicator);
+                
+                // Bottom indicator - Red dots
+                this.bottomIndicator = new PIXI.Container();
+                
+                for (let i = 0; i < 3; i++) {
+                    const dot = new PIXI.Graphics();
+                    dot.beginFill(0xe74c3c);
+                    dot.drawCircle(0, 0, 2);
+                    dot.endFill();
+                    dot.x = (i - 1) * 6;
+                    this.bottomIndicator.addChild(dot);
+                }
+                
+                this.bottomIndicator.x = this.options.width / 2;
+                this.bottomIndicator.y = this.options.height - 8;
+                this.addChild(this.bottomIndicator);
+            }
+            
+            setupEvents() {
+                this.on('pointerover', () => {
+                    this.isHovered = true;
+                    this.updateBackground();
+                    this.showDetailedInfo();
+                });
+                
+                this.on('pointerout', () => {
+                    this.isHovered = false;
+                    this.updateBackground();
+                    this.hideDetailedInfo();
+                });
+            }
+            
+            showDetailedInfo() {
+                if (this.detailContainer) return;
+                
+                this.detailContainer = new PIXI.Container();
+                
+                const detailBg = new PIXI.Graphics();
+                detailBg.beginFill(0x2c3e50, 0.9);
+                detailBg.drawRoundedRect(0, 0, 200, 120, 8);
+                detailBg.endFill();
+                this.detailContainer.addChild(detailBg);
+                
+                const nameText = new PIXI.Text(this.conversation.name, {
+                    fontSize: 14,
+                    fill: 0xffffff,
+                    fontWeight: 'bold'
+                });
+                nameText.x = 10;
+                nameText.y = 10;
+                this.detailContainer.addChild(nameText);
+                
+                const locationText = new PIXI.Text(`📍 ${this.conversation.location}`, {
+                    fontSize: 12,
+                    fill: 0x95a5a6
+                });
+                locationText.x = 10;
+                locationText.y = 30;
+                this.detailContainer.addChild(locationText);
+                
+                const tagsText = new PIXI.Text(`🏷️ ${this.conversation.tags.join(', ')}`, {
+                    fontSize: 12,
+                    fill: 0x3498db
+                });
+                tagsText.x = 10;
+                tagsText.y = 50;
+                this.detailContainer.addChild(tagsText);
+                
+                const messageText = new PIXI.Text(`💬 ${this.conversation.lastMessage}`, {
+                    fontSize: 11,
+                    fill: 0xecf0f1
+                });
+                messageText.x = 10;
+                messageText.y = 70;
+                this.detailContainer.addChild(messageText);
+                
+                this.detailContainer.x = this.options.width + 5;
+                this.detailContainer.y = -20;
+                this.addChild(this.detailContainer);
+            }
+            
+            hideDetailedInfo() {
+                if (this.detailContainer) {
+                    this.removeChild(this.detailContainer);
+                    this.detailContainer.destroy();
+                    this.detailContainer = null;
+                }
+            }
+            
+            setCurrentConversation(isCurrent) {
+                if (this.options.isCurrentConversation !== isCurrent) {
+                    this.options.isCurrentConversation = isCurrent;
+                    this.updateBackground();
+                    
+                    if (this.topIndicator) {
+                        this.removeChild(this.topIndicator);
+                        this.topIndicator.destroy();
+                        this.topIndicator = null;
+                    }
+                    
+                    if (this.bottomIndicator) {
+                        this.removeChild(this.bottomIndicator);
+                        this.bottomIndicator.destroy();
+                        this.bottomIndicator = null;
+                    }
+                    
+                    this.createIndicators();
+                }
+            }
+        }
+
+        // Simplified LeftSidebar implementation
+        class LeftSidebar extends PIXI.Container {
+            constructor(options = {}) {
+                super();
+                
+                this.options = {
+                    width: 100,
+                    height: window.innerHeight,
+                    itemHeight: 60,
+                    itemSpacing: 5,
+                    maxItems: 10000,
+                    ...options
+                };
+                
+                this.conversations = [];
+                this.visibleAvatars = new Map();
+                this.currentConversationIndex = 0;
+                this.hoverTimeout = null;
+                this.hoverTarget = null;
+                this.insertedButtons = null;
+                this.scrollY = 0;
+                this.maxScrollY = 0;
+                this.isDragging = false;
+                this.lastPointerY = 0;
+                
+                this.setupContainer();
+                this.generateMockData();
+                this.setupScrolling();
+                this.render();
+                
+                console.log('LeftSidebar: Initialized with 10K conversations');
+            }
+            
+            setupContainer() {
+                this.background = new PIXI.Graphics();
+                this.background.beginFill(0x2c3e50);
+                this.background.drawRect(0, 0, this.options.width, this.options.height);
+                this.background.endFill();
+                this.addChild(this.background);
+                
+                this.scrollContainer = new PIXI.Container();
+                this.addChild(this.scrollContainer);
+                
+                this.scrollMask = new PIXI.Graphics();
+                this.scrollMask.beginFill(0xffffff);
+                this.scrollMask.drawRect(0, 0, this.options.width, this.options.height);
+                this.scrollMask.endFill();
+                this.addChild(this.scrollMask);
+                this.scrollContainer.mask = this.scrollMask;
+            }
+            
+            generateMockData() {
+                const names = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank', 'Grace', 'Henry', 'Ivy', 'Jack'];
+                const locations = ['Beijing', 'Shanghai', 'Guangzhou', 'Shenzhen', 'Hangzhou', 'Nanjing'];
+                const tags = ['Work', 'Friend', 'Family', 'Business', 'School', 'Hobby'];
+                const messages = [
+                    'Hello there!',
+                    'How are you doing?',
+                    'See you tomorrow',
+                    'Thanks for the help',
+                    'Good morning!',
+                    'Have a nice day'
+                ];
+                
+                for (let i = 0; i < this.options.maxItems; i++) {
+                    this.conversations.push({
+                        id: i,
+                        name: `${names[i % names.length]}_${i}`,
+                        location: locations[i % locations.length],
+                        tags: [tags[i % tags.length], tags[(i + 1) % tags.length]],
+                        lastMessage: messages[i % messages.length],
+                        timestamp: new Date(Date.now() - Math.random() * 86400000 * 7).toISOString(),
+                        avatar: `avatar_${i % 10}.png`,
+                        isOnline: Math.random() > 0.3
+                    });
+                }
+                
+                this.maxScrollY = Math.max(0, (this.conversations.length * (this.options.itemHeight + this.options.itemSpacing)) - this.options.height);
+            }
+            
+            setupScrolling() {
+                this.interactive = true;
+                this.on('wheel', (event) => {
+                    const delta = event.deltaY;
+                    this.scrollY = Math.max(0, Math.min(this.maxScrollY, this.scrollY + delta));
+                    this.render();
+                });
+                
+                this.on('pointerdown', (event) => {
+                    this.isDragging = true;
+                    this.lastPointerY = event.data.global.y;
+                });
+                
+                this.on('pointermove', (event) => {
+                    if (this.isDragging) {
+                        const deltaY = event.data.global.y - this.lastPointerY;
+                        this.scrollY = Math.max(0, Math.min(this.maxScrollY, this.scrollY - deltaY));
+                        this.lastPointerY = event.data.global.y;
+                        this.render();
+                    }
+                });
+                
+                this.on('pointerup', () => {
+                    this.isDragging = false;
+                });
+                
+                this.on('pointerupoutside', () => {
+                    this.isDragging = false;
+                });
+            }
+            
+            render() {
+                // Clear existing avatars
+                this.visibleAvatars.forEach(avatar => {
+                    this.scrollContainer.removeChild(avatar);
+                    avatar.destroy();
+                });
+                this.visibleAvatars.clear();
+                
+                // Virtualized rendering
+                const itemTotalHeight = this.options.itemHeight + this.options.itemSpacing;
+                const startIndex = Math.max(0, Math.floor(this.scrollY / itemTotalHeight) - 2);
+                const endIndex = Math.min(this.conversations.length, startIndex + Math.ceil(this.options.height / itemTotalHeight) + 4);
+                
+                for (let i = startIndex; i < endIndex; i++) {
+                    const conversation = this.conversations[i];
+                    const y = i * itemTotalHeight - this.scrollY;
+                    
+                    const avatar = new ConversationAvatar(conversation, {
+                        width: this.options.width,
+                        height: this.options.itemHeight,
+                        isCurrentConversation: i === this.currentConversationIndex
+                    });
+                    
+                    avatar.y = y;
+                    this.scrollContainer.addChild(avatar);
+                    this.visibleAvatars.set(i, avatar);
+                    
+                    // Handle boundary fixing for current conversation
+                    if (i === this.currentConversationIndex) {
+                        if (y < 0 && this.scrollY > i * itemTotalHeight) {
+                            avatar.y = 0;
+                        }
+                        if (y + this.options.itemHeight > this.options.height && 
+                            this.scrollY < (i + 1) * itemTotalHeight - this.options.height) {
+                            avatar.y = this.options.height - this.options.itemHeight;
+                        }
+                    }
+                }
+                
+                // Update performance stats
+                this.updateStats();
+            }
+            
+            updateStats() {
+                const stats = document.getElementById('stats');
+                const fps = app.ticker.FPS.toFixed(1);
+                const memory = (performance.memory ? 
+                              (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(1) + 'MB' : 
+                              'N/A');
+                const visible = this.visibleAvatars.size;
+                
+                stats.textContent = `FPS: ${fps} | 内存: ${memory} | 可见对象: ${visible}/${this.conversations.length}`;
+            }
+            
+            setCurrentConversation(index) {
+                if (index >= 0 && index < this.conversations.length) {
+                    // Update old current conversation
+                    const oldAvatar = this.visibleAvatars.get(this.currentConversationIndex);
+                    if (oldAvatar) {
+                        oldAvatar.setCurrentConversation(false);
+                    }
+                    
+                    this.currentConversationIndex = index;
+                    
+                    // Update new current conversation
+                    const newAvatar = this.visibleAvatars.get(index);
+                    if (newAvatar) {
+                        newAvatar.setCurrentConversation(true);
+                    }
+                    
+                    this.render();
+                    console.log('LeftSidebar: Set current conversation to', index);
+                }
+            }
+            
+            scrollToConversation(index) {
+                if (index >= 0 && index < this.conversations.length) {
+                    const targetY = index * (this.options.itemHeight + this.options.itemSpacing);
+                    this.scrollY = Math.max(0, Math.min(this.maxScrollY, targetY - this.options.height / 2));
+                    this.render();
+                    console.log('LeftSidebar: Scrolled to conversation', index);
+                }
+            }
+        }
+
+        // Simplified RightSidebar implementation
+        class RightSidebar extends PIXI.Container {
+            constructor(options = {}) {
+                super();
+                
+                this.options = {
+                    width: 120,
+                    height: window.innerHeight,
+                    ...options
+                };
+                
+                this.workflows = [];
+                this.aiffIcon = null;
+                
+                this.calculateSections();
+                this.setupContainer();
+                this.generateWorkflows();
+                this.render();
+                
+                console.log('RightSidebar: Initialized with 17 workflows');
+            }
+            
+            calculateSections() {
+                this.accountSectionHeight = Math.floor(this.options.height * 0.35);
+                this.separatorHeight = 40;
+                this.workflowSectionHeight = this.options.height - this.accountSectionHeight - this.separatorHeight;
+                
+                this.accountSectionY = 0;
+                this.separatorY = this.accountSectionHeight;
+                this.workflowSectionY = this.accountSectionHeight + this.separatorHeight;
+            }
+            
+            setupContainer() {
+                this.background = new PIXI.Graphics();
+                this.background.beginFill(0x34495e);
+                this.background.drawRect(0, 0, this.options.width, this.options.height);
+                this.background.endFill();
+                this.addChild(this.background);
+                
+                this.createSeparator();
+            }
+            
+            createSeparator() {
+                const separatorBg = new PIXI.Graphics();
+                separatorBg.beginFill(0x2c3e50);
+                separatorBg.drawRect(0, this.separatorY, this.options.width, this.separatorHeight);
+                separatorBg.endFill();
+                this.addChild(separatorBg);
+                
+                const brainIcon = new PIXI.Graphics();
+                brainIcon.beginFill(0xf39c12);
+                brainIcon.drawCircle(0, 0, 15);
+                brainIcon.endFill();
+                
+                brainIcon.x = this.options.width / 2;
+                brainIcon.y = this.separatorY + this.separatorHeight / 2 - 8;
+                this.addChild(brainIcon);
+                
+                const brainText = new PIXI.Text('智囊团', {
+                    fontSize: 12,
+                    fill: 0xf39c12,
+                    fontWeight: 'bold'
+                });
+                brainText.anchor.set(0.5);
+                brainText.x = this.options.width / 2;
+                brainText.y = this.separatorY + this.separatorHeight / 2 + 10;
+                this.addChild(brainText);
+            }
+            
+            generateWorkflows() {
+                const workflowNames = [
+                    'Data Analysis', 'Report Generation', 'Email Automation', 'Content Creation',
+                    'Social Media', 'Research', 'Documentation', 'Testing', 'Deployment',
+                    'Monitoring', 'Backup', 'Security Scan', 'Performance', 'Integration',
+                    'Migration', 'Optimization', 'AIFF Flow'
+                ];
+                
+                for (let i = 0; i < 17; i++) {
+                    this.workflows.push({
+                        id: i,
+                        name: workflowNames[i],
+                        status: ['idle', 'running', 'completed', 'error'][Math.floor(Math.random() * 4)],
+                        progress: Math.random(),
+                        isAiff: i === 16
+                    });
+                }
+            }
+            
+            render() {
+                // Simple workflow rendering
+                this.workflows.forEach((workflow, index) => {
+                    const y = this.workflowSectionY + index * 45;
+                    
+                    if (workflow.isAiff && !this.aiffIcon) {
+                        this.createAiffIcon(workflow, y);
+                    } else if (!workflow.isAiff) {
+                        this.createWorkflowIcon(workflow, y);
+                    }
+                });
+            }
+            
+            createWorkflowIcon(workflow, y) {
+                const container = new PIXI.Container();
+                container.y = y;
+                
+                const iconBg = new PIXI.Graphics();
+                const color = this.getStatusColor(workflow.status);
+                iconBg.beginFill(color, 0.8);
+                iconBg.drawCircle(this.options.width / 2, 20, 15);
+                iconBg.endFill();
+                container.addChild(iconBg);
+                
+                const text = new PIXI.Text(workflow.name.substring(0, 8), {
+                    fontSize: 9,
+                    fill: 0xffffff
+                });
+                text.anchor.set(0.5);
+                text.x = this.options.width / 2;
+                text.y = 35;
+                container.addChild(text);
+                
+                this.addChild(container);
+            }
+            
+            createAiffIcon(workflow, y) {
+                const container = new PIXI.Container();
+                container.y = y;
+                
+                // Special AIFF styling
+                const iconBg = new PIXI.Graphics();
+                iconBg.beginFill(0x9b59b6);
+                iconBg.drawCircle(this.options.width / 2, 20, 15);
+                iconBg.endFill();
+                container.addChild(iconBg);
+                
+                // AIFF text pattern
+                const aiffText = new PIXI.Text('AIFF', {
+                    fontSize: 10,
+                    fill: 0xffffff,
+                    fontWeight: 'bold'
+                });
+                aiffText.anchor.set(0.5);
+                aiffText.x = this.options.width / 2;
+                aiffText.y = 20;
+                container.addChild(aiffText);
+                
+                // Scrolling text
+                const scrollText = new PIXI.Text('Flow System', {
+                    fontSize: 8,
+                    fill: 0xe74c3c
+                });
+                scrollText.anchor.set(0.5);
+                scrollText.x = this.options.width / 2;
+                scrollText.y = 35;
+                container.addChild(scrollText);
+                
+                // Animate scrolling text
+                const ticker = new PIXI.Ticker();
+                const phases = ['Analysis', 'Intelligence', 'Fusion', 'Flow'];
+                let phaseIndex = 0;
+                
+                ticker.add(() => {
+                    // Rotate text every 2 seconds
+                    if (ticker.lastTime % 120 === 0) {
+                        phaseIndex = (phaseIndex + 1) % phases.length;
+                        scrollText.text = phases[phaseIndex];
+                    }
+                });
+                ticker.start();
+                
+                this.addChild(container);
+                this.aiffIcon = container;
+            }
+            
+            getStatusColor(status) {
+                switch (status) {
+                    case 'running': return 0x3498db;
+                    case 'completed': return 0x27ae60;
+                    case 'error': return 0xe74c3c;
+                    default: return 0x95a5a6;
+                }
+            }
+        }
+
+        // Initialize PixiJS Application
+        const app = new PIXI.Application({
+            width: window.innerWidth,
+            height: window.innerHeight,
+            backgroundColor: 0x1e3c72,
+            antialias: true,
+            resolution: window.devicePixelRatio || 1,
+        });
+
+        // Add to DOM
+        document.getElementById('leftSidebar').appendChild(app.view);
+
+        // Create sidebar instances
+        const leftSidebar = new LeftSidebar({
+            width: 100,
+            height: window.innerHeight
+        });
+        app.stage.addChild(leftSidebar);
+
+        // Create right sidebar app
+        const rightApp = new PIXI.Application({
+            width: 120,
+            height: window.innerHeight,
+            backgroundColor: 0x34495e,
+            antialias: true,
+        });
+        
+        document.getElementById('rightSidebar').appendChild(rightApp.view);
+        
+        const rightSidebar = new RightSidebar({
+            width: 120,
+            height: window.innerHeight
+        });
+        rightApp.stage.addChild(rightSidebar);
+
+        // Initialize mobile touch handlers
+        initializeMobileTouchHandlers(app, rightApp, leftSidebar, rightSidebar);
+
+        // Global functions for controls
+        window.leftSidebar = leftSidebar;
+        
+        window.updateWorkflowStatus = (workflowId, status) => {
+            const workflow = rightSidebar.workflows[workflowId];
+            if (workflow) {
+                workflow.status = status;
+                console.log('Updated workflow', workflowId, 'to', status);
+            }
+        };
+        
+        window.updateAiffSpeed = (speed) => {
+            document.getElementById('speedValue').textContent = speed + 'x';
+            console.log('AIFF speed set to', speed);
+        };
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            app.renderer.resize(window.innerWidth, window.innerHeight);
+            rightApp.renderer.resize(120, window.innerHeight);
+            
+            leftSidebar.options.height = window.innerHeight;
+            rightSidebar.options.height = window.innerHeight;
+            rightSidebar.calculateSections();
+            
+            leftSidebar.render();
+            rightSidebar.render();
+        });
+
+        // Initialize mobile touch handlers function
+        function initializeMobileTouchHandlers(leftApp, rightApp, leftSidebar, rightSidebar) {
+            console.log('📱 初始化移动端触摸处理器...');
+            
+            // Left sidebar touch handler
+            const leftTouchHandler = new MobileTouchHandler(leftApp, {
+                enableLogging: true,
+                velocityDecay: 0.95,
+                bounceEffect: true
+            });
+            
+            // Register left sidebar scroll area
+            leftTouchHandler.registerScrollArea('leftSidebar', {
+                bounds: { x: 0, y: 0, width: 100, height: window.innerHeight },
+                container: leftSidebar.scrollContainer,
+                scrollBounds: { minY: -50000, maxY: 0 }, // 允许大量向上滚动
+                onScroll: (scrollState) => {
+                    // 触发左侧边栏重新渲染
+                    leftSidebar.render();
+                }
+            });
+            
+            // Right sidebar touch handler
+            const rightTouchHandler = new MobileTouchHandler(rightApp, {
+                enableLogging: true,
+                velocityDecay: 0.95,
+                bounceEffect: true
+            });
+            
+            // Register right sidebar scroll areas (two sections)
+            const midPoint = window.innerHeight / 2;
+            
+            // Top section (account avatars)
+            rightTouchHandler.registerScrollArea('accountSection', {
+                bounds: { x: 0, y: 0, width: 120, height: midPoint },
+                container: rightSidebar.accountContainer,
+                scrollBounds: { minY: -1000, maxY: 0 },
+                onScroll: (scrollState) => {
+                    rightSidebar.render();
+                }
+            });
+            
+            // Bottom section (workflow icons)
+            rightTouchHandler.registerScrollArea('workflowSection', {
+                bounds: { x: 0, y: midPoint, width: 120, height: midPoint },
+                container: rightSidebar.workflowContainer,
+                scrollBounds: { minY: -1000, maxY: 0 },
+                onScroll: (scrollState) => {
+                    rightSidebar.render();
+                }
+            });
+            
+            // Store touch handlers globally for cleanup
+            window.leftTouchHandler = leftTouchHandler;
+            window.rightTouchHandler = rightTouchHandler;
+            
+            console.log('✅ 移动端触摸处理器初始化完成');
+        }
+
+        // Page cleanup
+        window.addEventListener('beforeunload', () => {
+            if (window.leftTouchHandler) {
+                window.leftTouchHandler.destroy();
+            }
+            if (window.rightTouchHandler) {
+                window.rightTouchHandler.destroy();
+            }
+        });
+
+        console.log('High-performance sidebar system initialized successfully!');
+        console.log('- Left sidebar: 10,000 conversations with virtualized scrolling');
+        console.log('- Right sidebar: 17 workflows with AIFF dynamic text scrolling');
+        console.log('- Performance optimizations: Only renders visible elements');
+        console.log('- Mobile touch: Optimized touch handlers for smooth scrolling');
+    </script>
+</body>
+</html>

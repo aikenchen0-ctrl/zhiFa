@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Test - Step by Step Module Loading</title>
+    <style>
+        body {
+            font-family: monospace;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .log {
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            height: 300px;
+            overflow-y: auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        button {
+            margin: 5px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background: #007AFF;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .error {
+            color: #ff4444;
+        }
+        .success {
+            color: #44ff44;
+        }
+        .warning {
+            color: #ffaa44;
+        }
+    </style>
+</head>
+<body>
+    <h1>Debug Test - Module Loading</h1>
+    
+    <div class="test-section">
+        <h2>Step-by-step Module Testing</h2>
+        <button onclick="testBaseVirtualList()">Test BaseVirtualList</button>
+        <button onclick="testAnimationManager()">Test AnimationManager</button>
+        <button onclick="testPositionManager()">Test PositionManager</button>
+        <button onclick="testSVGPathCalculator()">Test SVGPathCalculator</button>
+        <button onclick="testFollowingConnectionLine()">Test FollowingConnectionLine</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div class="log" id="log"></div>
+
+    <div class="test-section">
+        <h2>Simple SVG Test</h2>
+        <div id="svg-container" style="width: 400px; height: 200px; border: 1px solid #ccc; position: relative;"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            logElement.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function testBaseVirtualList() {
+            try {
+                log('Testing BaseVirtualList import...', 'info');
+                const module = await import('../components/virtual-list/BaseVirtualList.js');
+                log('✓ BaseVirtualList imported successfully', 'success');
+                
+                const BaseVirtualList = module.default;
+                log('✓ BaseVirtualList class available', 'success');
+                
+                // Test instantiation
+                const container = document.createElement('div');
+                const instance = new BaseVirtualList(container);
+                log('✓ BaseVirtualList instance created successfully', 'success');
+                
+            } catch (error) {
+                log(`✗ BaseVirtualList test failed: ${error.message}`, 'error');
+                console.error('BaseVirtualList error:', error);
+            }
+        }
+
+        async function testAnimationManager() {
+            try {
+                log('Testing AnimationManager import...', 'info');
+                const module = await import('../core/AnimationManager.js');
+                log('✓ AnimationManager imported successfully', 'success');
+                
+                const AnimationManager = module.default;
+                log('✓ AnimationManager class available', 'success');
+                
+                // Test instantiation
+                const instance = new AnimationManager();
+                log('✓ AnimationManager instance created successfully', 'success');
+                
+                // Test basic method
+                const taskId = instance.add(() => {
+                    log('✓ Animation task executed', 'success');
+                    return false; // Don't repeat
+                });
+                log(`✓ Animation task added with ID: ${taskId}`, 'success');
+                
+            } catch (error) {
+                log(`✗ AnimationManager test failed: ${error.message}`, 'error');
+                console.error('AnimationManager error:', error);
+            }
+        }
+
+        async function testPositionManager() {
+            try {
+                log('Testing PositionManager import...', 'info');
+                
+                // First need AnimationManager
+                const animModule = await import('../core/AnimationManager.js');
+                const AnimationManager = animModule.default;
+                const animManager = new AnimationManager();
+                
+                const module = await import('../core/PositionManager.js');
+                log('✓ PositionManager imported successfully', 'success');
+                
+                const PositionManager = module.default;
+                log('✓ PositionManager class available', 'success');
+                
+                // Test instantiation
+                const instance = new PositionManager(animManager);
+                log('✓ PositionManager instance created successfully', 'success');
+                
+            } catch (error) {
+                log(`✗ PositionManager test failed: ${error.message}`, 'error');
+                console.error('PositionManager error:', error);
+            }
+        }
+
+        async function testSVGPathCalculator() {
+            try {
+                log('Testing SVGPathCalculator import...', 'info');
+                const module = await import('../components/connection-line/SVGPathCalculator.js');
+                log('✓ SVGPathCalculator imported successfully', 'success');
+                
+                const SVGPathCalculator = module.default;
+                log('✓ SVGPathCalculator class available', 'success');
+                
+                // Test instantiation
+                const instance = new SVGPathCalculator();
+                log('✓ SVGPathCalculator instance created successfully', 'success');
+                
+                // Test path calculation
+                const path = instance.calculateMessageToSessionPath(
+                    { x: 100, y: 100 },
+                    { x: 200, y: 150 }
+                );
+                log(`✓ Path calculated: ${path.substring(0, 50)}...`, 'success');
+                
+            } catch (error) {
+                log(`✗ SVGPathCalculator test failed: ${error.message}`, 'error');
+                console.error('SVGPathCalculator error:', error);
+            }
+        }
+
+        async function testFollowingConnectionLine() {
+            try {
+                log('Testing FollowingConnectionLine import...', 'info');
+                
+                const container = document.getElementById('svg-container');
+                
+                const module = await import('../components/connection-line/FollowingConnectionLine.js');
+                log('✓ FollowingConnectionLine imported successfully', 'success');
+                
+                const FollowingConnectionLine = module.default;
+                log('✓ FollowingConnectionLine class available', 'success');
+                
+                // Test instantiation
+                log('Creating FollowingConnectionLine instance...', 'info');
+                const instance = new FollowingConnectionLine(container);
+                log('✓ FollowingConnectionLine instance created successfully', 'success');
+                
+                // Check if SVG was created
+                const svg = container.querySelector('svg');
+                if (svg) {
+                    log('✓ SVG element created successfully', 'success');
+                } else {
+                    log('✗ SVG element not found', 'error');
+                }
+                
+            } catch (error) {
+                log(`✗ FollowingConnectionLine test failed: ${error.message}`, 'error');
+                log(`Error stack: ${error.stack}`, 'error');
+                console.error('FollowingConnectionLine error:', error);
+            }
+        }
+
+        // Test simple SVG creation
+        function testSimpleSVG() {
+            try {
+                const container = document.getElementById('svg-container');
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('width', '100%');
+                svg.setAttribute('height', '100%');
+                svg.style.border = '1px solid red';
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', 'M 50 50 L 200 100 L 350 50');
+                path.setAttribute('stroke', '#007AFF');
+                path.setAttribute('stroke-width', '2');
+                path.setAttribute('fill', 'none');
+                
+                svg.appendChild(path);
+                container.appendChild(svg);
+                
+                log('✓ Simple SVG test successful', 'success');
+            } catch (error) {
+                log(`✗ Simple SVG test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Run simple SVG test on load
+        document.addEventListener('DOMContentLoaded', () => {
+            log('Page loaded, running simple SVG test...', 'info');
+            testSimpleSVG();
+        });
+
+        // Catch any unhandled errors
+        window.addEventListener('error', (event) => {
+            log(`Global error: ${event.error.message} at ${event.filename}:${event.lineno}`, 'error');
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            log(`Unhandled promise rejection: ${event.reason}`, 'error');
+        });
+    </script>
+</body>
+</html>

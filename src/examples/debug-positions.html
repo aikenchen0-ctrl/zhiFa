@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Position Debug Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            margin: 20px;
+            background: #f0f0f0;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            height: 400px;
+        }
+        .list-container {
+            width: 200px;
+            height: 400px;
+            border: 2px solid #333;
+            overflow: auto;
+            background: white;
+        }
+        .debug-output {
+            flex: 1;
+            background: #000;
+            color: #0f0;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+        .virtual-list-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+    </style>
+</head>
+<body>
+    <h1>Position Debug Test</h1>
+    
+    <div class="container">
+        <div id="account-list" class="list-container">
+            <h3>Account List</h3>
+        </div>
+        
+        <div id="session-list" class="list-container">
+            <h3>Session List</h3>
+        </div>
+        
+        <div id="message-list" class="list-container">
+            <h3>Message List</h3>
+        </div>
+        
+        <div id="debug" class="debug-output"></div>
+    </div>
+
+    <script type="module">
+        import AccountAvatarList from '../components/virtual-list/AccountAvatarList.js';
+        import SessionAvatarList from '../components/virtual-list/SessionAvatarList.js';
+        import MessageBubbleList from '../components/virtual-list/MessageBubbleList.js';
+
+        function log(message) {
+            const debugEl = document.getElementById('debug');
+            const timestamp = new Date().toLocaleTimeString();
+            debugEl.innerHTML += `[${timestamp}] ${message}\n`;
+            debugEl.scrollTop = debugEl.scrollHeight;
+        }
+
+        // 简单数据
+        const accountData = [
+            { id: 'current-user', name: 'Me', avatar: 'avatar1.jpg' },
+            { id: 'account-0', name: 'User 1', avatar: 'avatar2.jpg' },
+            { id: 'account-1', name: 'User 2', avatar: 'avatar3.jpg' }
+        ];
+
+        const sessionData = [
+            { id: 'session-0', name: 'Session 1', avatar: 'session1.jpg' },
+            { id: 'session-1', name: 'Session 2', avatar: 'session2.jpg' }
+        ];
+
+        const messageData = [
+            { id: 'msg-0', senderId: 'current-user', text: 'Hello from me', isOwnMessage: true },
+            { id: 'msg-1', senderId: 'session-0', text: 'Hello from session 0', isOwnMessage: false },
+            { id: 'msg-2', senderId: 'current-user', text: 'Another message', isOwnMessage: true },
+            { id: 'msg-3', senderId: 'session-1', text: 'Hello from session 1', isOwnMessage: false }
+        ];
+
+        log('Creating virtual lists...');
+
+        // 创建虚拟列表
+        const accountList = new AccountAvatarList(
+            document.getElementById('account-list'),
+            { itemHeight: 60 }
+        );
+
+        const sessionList = new SessionAvatarList(
+            document.getElementById('session-list'),
+            { itemHeight: 60 }
+        );
+
+        const messageList = new MessageBubbleList(
+            document.getElementById('message-list'),
+            { estimatedItemHeight: 50 }
+        );
+
+        log('Setting up position callbacks...');
+
+        // 设置位置回调
+        accountList.setPositionUpdateCallback((positions, type) => {
+            log(`Account positions updated: ${positions.size} items, type: ${type}`);
+            positions.forEach((pos, id) => {
+                log(`  Account ${id}: x=${pos.centerX?.toFixed(1)}, y=${pos.centerY?.toFixed(1)}`);
+            });
+        });
+
+        sessionList.setPositionUpdateCallback((positions, type) => {
+            log(`Session positions updated: ${positions.size} items, type: ${type}`);
+            positions.forEach((pos, id) => {
+                log(`  Session ${id}: x=${pos.centerX?.toFixed(1)}, y=${pos.centerY?.toFixed(1)}`);
+            });
+        });
+
+        messageList.setPositionUpdateCallback((positions, type) => {
+            log(`Message positions updated: ${positions.size} items, type: ${type}`);
+            positions.forEach((pos, id) => {
+                log(`  Message ${id}: x=${pos.x?.toFixed(1)}, y=${pos.y?.toFixed(1)}, sender=${pos.data.senderId}`);
+            });
+        });
+
+        log('Loading data...');
+
+        // 加载数据
+        accountList.setData(accountData);
+        sessionList.setData(sessionData);
+        messageList.setData(messageData);
+
+        log('Data loaded, waiting for position updates...');
+
+        // 延迟检查渲染状态
+        setTimeout(() => {
+            log('=== Checking render state ===');
+            log(`Account list data length: ${accountList.data.length}`);
+            log(`Account list visible range: ${JSON.stringify(accountList.visibleRange)}`);
+            log(`Account list rendered items: ${accountList.renderedItems.size}`);
+            
+            log(`Session list data length: ${sessionList.data.length}`);
+            log(`Session list visible range: ${JSON.stringify(sessionList.visibleRange)}`);
+            log(`Session list rendered items: ${sessionList.renderedItems.size}`);
+            
+            log(`Message list data length: ${messageList.data.length}`);
+            log(`Message list visible range: ${JSON.stringify(messageList.visibleRange)}`);
+            log(`Message list rendered items: ${messageList.renderedItems.size}`);
+        }, 1000);
+    </script>
+</body>
+</html>

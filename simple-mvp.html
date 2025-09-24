@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Connection Line MVP - Three Container Test</title>
+    
+    <!-- CSS Anchor Positioning Polyfill -->
+    <script type="module" src="https://unpkg.com/@oddbird/css-anchor-positioning"></script>
+    
+    <style>
+        /* Reset and base styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f2f5;
+            overflow-x: hidden;
+            height: 100vh;
+            position: relative;
+        }
+        
+        /* 日志面板 */
+        .debug-panel {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 300px;
+            max-height: 200px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 12px;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-y: auto;
+            z-index: 10000;
+            display: none;
+        }
+        
+        .debug-panel.show {
+            display: block;
+        }
+        
+        /* 主容器布局 */
+        .main-container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+        
+        /* 第一个容器：会话头像 (窄) */
+        .conversation-avatars {
+            width: 80px;
+            background: #ffffff;
+            border-right: 1px solid #e4e6ea;
+            overflow-y: auto;
+            padding: 10px 8px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* 第二个容器：消息气泡 (宽) */
+        .message-bubbles {
+            flex: 1;
+            background: #ffffff;
+            border-right: 1px solid #e4e6ea;
+            overflow-y: auto;
+            padding: 10px 15px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* 第三个容器：账号头像 (窄) */
+        .account-avatars {
+            width: 80px;
+            background: #ffffff;
+            overflow-y: auto;
+            padding: 10px 8px;
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* 会话头像样式 */
+        .conv-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        /* 消息气泡样式 */
+        .message-bubble {
+            max-width: 80%;
+            padding: 12px 16px;
+            margin-bottom: 15px;
+            border-radius: 18px;
+            position: relative;
+            word-wrap: break-word;
+        }
+        
+        .message-bubble.other {
+            background: #e4e6ea;
+            color: #050505;
+            margin-right: auto;
+        }
+        
+        .message-bubble.self {
+            background: #0084ff;
+            color: white;
+            margin-left: auto;
+        }
+        
+        /* 账号头像样式 */
+        .acc-avatar {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #ffa726 0%, #ff7043 100%);
+            border-radius: 12px;
+            margin-bottom: 15px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        /* 连接线覆盖层 */
+        .connection-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        /* 控制面板 */
+        .control-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 9999;
+        }
+        
+        .control-panel button {
+            margin: 5px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .btn-primary {
+            background: #0084ff;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #e4e6ea;
+            color: #050505;
+        }
+        
+        /* CSS Anchor Positioning 检查点样式 */
+        .anchor-checkpoint {
+            position: relative;
+        }
+        
+        .anchor-checkpoint::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: red;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10;
+            display: none;
+        }
+        
+        .show-anchors .anchor-checkpoint::after {
+            display: block;
+        }
+        
+        /* 连接线样式 */
+        .connection-line {
+            position: absolute;
+            pointer-events: none;
+            z-index: 3;
+        }
+        
+        /* L型连接线 - 来自他人的消息 */
+        .connection-line.from-other {
+            background: linear-gradient(to right, 
+                transparent 0%, 
+                transparent 5px, 
+                #0084ff 5px, 
+                #0084ff calc(100% - 10px), 
+                transparent calc(100% - 10px), 
+                transparent 100%
+            );
+            height: 2px;
+            border-radius: 1px;
+        }
+        
+        /* L型连接线 - 来自自己的消息 */
+        .connection-line.from-self {
+            background: linear-gradient(to left, 
+                transparent 0%, 
+                transparent 5px, 
+                #0084ff 5px, 
+                #0084ff calc(100% - 10px), 
+                transparent calc(100% - 10px), 
+                transparent 100%
+            );
+            height: 2px;
+            border-radius: 1px;
+        }
+        
+        /* 垂直连接段 */
+        .connection-line.vertical {
+            width: 2px;
+            background: #0084ff;
+            border-radius: 1px;
+        }
+        
+        /* 圆角转折点 */
+        .connection-corner {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border: 2px solid #0084ff;
+            border-radius: 50%;
+            background: white;
+            z-index: 4;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 调试面板 -->
+    <div class="debug-panel" id="debugPanel">
+        <div>Debug Log:</div>
+        <div id="debugLog"></div>
+    </div>
+    
+    <!-- 控制面板 -->
+    <div class="control-panel">
+        <div style="margin-bottom: 10px;">
+            <button class="btn-primary" onclick="generateTestElements()">生成1000个测试元素</button>
+            <button class="btn-secondary" onclick="toggleDebug()">切换调试日志</button>
+        </div>
+        <div style="margin-bottom: 10px;">
+            <button class="btn-secondary" onclick="toggleAnchors()">显示Anchor点</button>
+            <button class="btn-secondary" onclick="testScrollSync()">测试滚动同步</button>
+        </div>
+        <div>
+            <button class="btn-secondary" onclick="startPerformanceMonitoring()">启动FPS监控</button>
+            <button class="btn-secondary" onclick="testRealTimeFollowing()">测试实时跟随</button>
+        </div>
+    </div>
+    
+    <!-- 主容器 -->
+    <div class="main-container">
+        <!-- 第一个容器：会话头像 (窄，圆角正方形) -->
+        <div class="conversation-avatars" id="conversationContainer">
+            <!-- 会话头像将动态生成 -->
+        </div>
+        
+        <!-- 第二个容器：消息气泡 -->
+        <div class="message-bubbles" id="messageContainer">
+            <!-- 消息气泡将动态生成 -->
+        </div>
+        
+        <!-- 第三个容器：账号头像 (窄，圆角正方形) -->
+        <div class="account-avatars" id="accountContainer">
+            <!-- 账号头像将动态生成 -->
+        </div>
+        
+        <!-- 连接线覆盖层 -->
+        <div class="connection-overlay" id="connectionOverlay">
+            <!-- 连接线将动态生成 -->
+        </div>
+    </div>
+
+    <script>
+        // 详细日志系统
+        class DebugLogger {
+            constructor() {
+                this.logs = [];
+                this.maxLogs = 50;
+                this.panel = document.getElementById('debugPanel');
+                this.logElement = document.getElementById('debugLog');
+                this.isVisible = false;
+            }
+            
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}`;
+                
+                this.logs.unshift(logEntry);
+                if (this.logs.length > this.maxLogs) {
+                    this.logs.pop();
+                }
+                
+                this.updateDisplay();
+                console.log(logEntry);
+            }
+            
+            error(message) {
+                this.log(message, 'error');
+            }
+            
+            warn(message) {
+                this.log(message, 'warn');
+            }
+            
+            success(message) {
+                this.log(message, 'success');
+            }
+            
+            updateDisplay() {
+                if (this.logElement) {
+                    this.logElement.innerHTML = this.logs.join('<br>');
+                }
+            }
+            
+            toggle() {
+                this.isVisible = !this.isVisible;
+                this.panel.classList.toggle('show', this.isVisible);
+            }
+        }
+        
+        // 全局调试器
+        const logger = new DebugLogger();
+        
+        // 页面加载时的初始检查
+        document.addEventListener('DOMContentLoaded', function() {
+            logger.log('📱 MVP页面开始加载');
+            
+            // 检查CSS Anchor Positioning支持
+            checkAnchorPositioningSupport();
+            
+            // 检查polyfill加载状态
+            checkPolyfillStatus();
+            
+            logger.log('✅ 基础HTML结构加载完成');
+        });
+        
+        // 检查CSS Anchor Positioning原生支持
+        function checkAnchorPositioningSupport() {
+            logger.log('🔍 检查CSS Anchor Positioning支持...');
+            
+            if (CSS && CSS.supports && CSS.supports('anchor-name', '--test')) {
+                logger.success('✅ 浏览器原生支持CSS Anchor Positioning');
+                return true;
+            } else {
+                logger.warn('⚠️ 浏览器不支持CSS Anchor Positioning，需要polyfill');
+                return false;
+            }
+        }
+        
+        // 检查polyfill加载状态
+        function checkPolyfillStatus() {
+            logger.log('📦 检查@oddbird/css-anchor-positioning polyfill状态...');
+            
+            // 等待polyfill加载
+            setTimeout(() => {
+                try {
+                    // 检查polyfill是否已加载
+                    if (window.CSS && window.CSS.supports && window.CSS.supports('anchor-name', '--test')) {
+                        logger.success('✅ CSS Anchor Positioning polyfill加载成功');
+                    } else {
+                        logger.error('❌ CSS Anchor Positioning polyfill加载失败');
+                    }
+                } catch (error) {
+                    logger.error(`❌ Polyfill检查出错: ${error.message}`);
+                }
+            }, 1000);
+        }
+        
+        // 生成1000个测试元素
+        function generateTestElements() {
+            logger.log('🏗️ 开始生成1000个测试元素...');
+            
+            const convContainer = document.getElementById('conversationContainer');
+            const msgContainer = document.getElementById('messageContainer');
+            const accContainer = document.getElementById('accountContainer');
+            
+            // 清空现有内容
+            convContainer.innerHTML = '';
+            msgContainer.innerHTML = '';
+            accContainer.innerHTML = '';
+            
+            logger.log('📝 生成会话头像、消息气泡、账号头像...');
+            
+            for (let i = 0; i < 1000; i++) {
+                // 生成会话头像
+                const convAvatar = createConversationAvatar(i);
+                convContainer.appendChild(convAvatar);
+                
+                // 生成消息气泡 (随机自己或他人)
+                const isSelf = Math.random() > 0.5;
+                const messageBubble = createMessageBubble(i, isSelf);
+                msgContainer.appendChild(messageBubble);
+                
+                // 生成账号头像
+                const accAvatar = createAccountAvatar(i);
+                accContainer.appendChild(accAvatar);
+                
+                // 每100个元素记录一次进度
+                if ((i + 1) % 100 === 0) {
+                    logger.log(`📊 已生成 ${i + 1}/1000 个元素`);
+                }
+            }
+            
+            logger.success('✅ 1000个测试元素生成完成');
+            
+            // 设置CSS Anchor Positioning
+            setupAnchorPositioning();
+            
+            // 自动启动实时滚动跟踪
+            setupRealTimeScrollTracking();
+            
+            // 自动启动性能监控
+            startPerformanceMonitoring();
+        }
+        
+        // 创建会话头像
+        function createConversationAvatar(index) {
+            const avatar = document.createElement('div');
+            avatar.className = 'conv-avatar anchor-checkpoint';
+            avatar.id = `conv-${index}`;
+            avatar.style.anchorName = `--conv-${index}`;
+            avatar.textContent = `C${index}`;
+            avatar.title = `会话头像 ${index}`;
+            
+            logger.log(`🟢 创建会话头像: conv-${index}`);
+            return avatar;
+        }
+        
+        // 创建消息气泡
+        function createMessageBubble(index, isSelf) {
+            const bubble = document.createElement('div');
+            bubble.className = `message-bubble anchor-checkpoint ${isSelf ? 'self' : 'other'}`;
+            bubble.id = `msg-${index}`;
+            bubble.style.anchorName = `--msg-${index}`;
+            bubble.textContent = `${isSelf ? '我' : '对方'}的消息 ${index}`;
+            bubble.title = `消息气泡 ${index}`;
+            
+            logger.log(`💬 创建消息气泡: msg-${index} (${isSelf ? '自己' : '他人'})`);
+            return bubble;
+        }
+        
+        // 创建账号头像
+        function createAccountAvatar(index) {
+            const avatar = document.createElement('div');
+            avatar.className = 'acc-avatar anchor-checkpoint';
+            avatar.id = `acc-${index}`;
+            avatar.style.anchorName = `--acc-${index}`;
+            avatar.textContent = `A${index}`;
+            avatar.title = `账号头像 ${index}`;
+            
+            logger.log(`🔷 创建账号头像: acc-${index}`);
+            return avatar;
+        }
+        
+        // 设置CSS Anchor Positioning
+        function setupAnchorPositioning() {
+            logger.log('⚓ 开始设置CSS Anchor Positioning关系...');
+            
+            try {
+                // 验证anchor-name属性设置
+                const convAvatars = document.querySelectorAll('.conv-avatar');
+                const messages = document.querySelectorAll('.message-bubble');
+                const accAvatars = document.querySelectorAll('.acc-avatar');
+                
+                logger.log(`🎯 找到 ${convAvatars.length} 个会话头像`);
+                logger.log(`💬 找到 ${messages.length} 个消息气泡`);
+                logger.log(`👤 找到 ${accAvatars.length} 个账号头像`);
+                
+                // 创建连接线
+                createConnectionLines();
+                
+                logger.success('✅ CSS Anchor Positioning设置完成');
+            } catch (error) {
+                logger.error(`❌ CSS Anchor Positioning设置失败: ${error.message}`);
+            }
+        }
+        
+        // 创建连接线
+        function createConnectionLines() {
+            logger.log('🔗 开始创建连接线...');
+            
+            const overlay = document.getElementById('connectionOverlay');
+            overlay.innerHTML = ''; // 清空现有连接线
+            
+            const messages = document.querySelectorAll('.message-bubble');
+            let lineCount = 0;
+            
+            messages.forEach((message, index) => {
+                try {
+                    const isSelf = message.classList.contains('self');
+                    const line = createSingleConnectionLine(index, isSelf);
+                    
+                    if (line) {
+                        overlay.appendChild(line);
+                        lineCount++;
+                        
+                        // 每100条连接线记录一次进度
+                        if (lineCount % 100 === 0) {
+                            logger.log(`📈 已创建 ${lineCount} 条连接线`);
+                        }
+                    }
+                } catch (error) {
+                    logger.error(`❌ 创建连接线 ${index} 失败: ${error.message}`);
+                }
+            });
+            
+            logger.success(`✅ 连接线创建完成，共 ${lineCount} 条`);
+        }
+        
+        // 创建单条连接线
+        function createSingleConnectionLine(index, isSelf) {
+            try {
+                const messageId = `msg-${index}`;
+                const convId = `conv-${index}`;
+                const accId = `acc-${index}`;
+                
+                // 创建连接线容器
+                const lineContainer = document.createElement('div');
+                lineContainer.className = 'connection-line-container';
+                lineContainer.id = `line-${index}`;
+                
+                if (isSelf) {
+                    // 自己发送的消息：连接到账号头像
+                    lineContainer.innerHTML = createSelfConnectionPath(messageId, accId);
+                    logger.log(`➡️ 创建自己的连接线: ${messageId} -> ${accId}`);
+                } else {
+                    // 他人发送的消息：连接到会话头像
+                    lineContainer.innerHTML = createOtherConnectionPath(messageId, convId);
+                    logger.log(`⬅️ 创建他人的连接线: ${messageId} -> ${convId}`);
+                }
+                
+                return lineContainer;
+                
+            } catch (error) {
+                logger.error(`❌ 创建单条连接线失败: ${error.message}`);
+                return null;
+            }
+        }
+        
+        // 创建自己消息的连接路径（右侧到账号头像）
+        function createSelfConnectionPath(messageId, accId) {
+            return `
+                <div class="connection-line from-self horizontal"
+                     style="
+                         left: anchor(--${messageId} right);
+                         top: anchor(--${messageId} center);
+                         width: calc(anchor(--${accId} left) - anchor(--${messageId} right));
+                     ">
+                </div>
+                <div class="connection-corner"
+                     style="
+                         left: calc(anchor(--${messageId} right) + 5px);
+                         top: calc(anchor(--${messageId} center) - 4px);
+                     ">
+                </div>
+                <div class="connection-line vertical"
+                     style="
+                         left: calc(anchor(--${messageId} right) + 5px);
+                         top: min(anchor(--${messageId} center), anchor(--${accId} center));
+                         height: abs(anchor(--${accId} center) - anchor(--${messageId} center));
+                     ">
+                </div>
+                <div class="connection-corner"
+                     style="
+                         left: calc(anchor(--${messageId} right) + 1px);
+                         top: calc(anchor(--${accId} center) - 4px);
+                     ">
+                </div>
+                <div class="connection-line from-self horizontal"
+                     style="
+                         left: calc(anchor(--${messageId} right) + 5px);
+                         top: anchor(--${accId} center);
+                         width: calc(anchor(--${accId} left) - anchor(--${messageId} right) - 5px);
+                     ">
+                </div>
+            `;
+        }
+        
+        // 创建他人消息的连接路径（左侧到会话头像）
+        function createOtherConnectionPath(messageId, convId) {
+            return `
+                <div class="connection-line from-other horizontal"
+                     style="
+                         left: anchor(--${convId} right);
+                         top: anchor(--${messageId} center);
+                         width: calc(anchor(--${messageId} left) - anchor(--${convId} right));
+                     ">
+                </div>
+                <div class="connection-corner"
+                     style="
+                         left: calc(anchor(--${convId} right) - 4px);
+                         top: calc(anchor(--${convId} center) - 4px);
+                     ">
+                </div>
+                <div class="connection-line vertical"
+                     style="
+                         left: anchor(--${convId} right);
+                         top: min(anchor(--${convId} center), anchor(--${messageId} center));
+                         height: abs(anchor(--${messageId} center) - anchor(--${convId} center));
+                     ">
+                </div>
+                <div class="connection-corner"
+                     style="
+                         left: calc(anchor(--${convId} right) - 4px);
+                         top: calc(anchor(--${messageId} center) - 4px);
+                     ">
+                </div>
+                <div class="connection-line from-other horizontal"
+                     style="
+                         left: calc(anchor(--${convId} right) + 5px);
+                         top: anchor(--${messageId} center);
+                         width: calc(anchor(--${messageId} left) - anchor(--${convId} right) - 5px);
+                     ">
+                </div>
+            `;
+        }
+        
+        // 切换调试日志显示
+        function toggleDebug() {
+            logger.toggle();
+        }
+        
+        // 切换显示Anchor检查点
+        function toggleAnchors() {
+            document.body.classList.toggle('show-anchors');
+            logger.log('🎯 切换Anchor检查点显示');
+        }
+        
+        // 设置实时滚动监听
+        function setupRealTimeScrollTracking() {
+            logger.log('🎯 设置实时滚动跟踪...');
+            
+            const containers = [
+                document.getElementById('conversationContainer'),
+                document.getElementById('messageContainer'),
+                document.getElementById('accountContainer')
+            ];
+            
+            containers.forEach((container, index) => {
+                if (container) {
+                    // 使用 requestAnimationFrame 实现实时跟踪，不依赖滚动事件
+                    startScrollTracking(container, index);
+                    logger.log(`📡 容器${index + 1}实时跟踪已启动`);
+                }
+            });
+            
+            logger.success('✅ 实时滚动跟踪设置完成');
+        }
+        
+        // 启动滚动跟踪
+        function startScrollTracking(container, containerIndex) {
+            let lastScrollTop = container.scrollTop;
+            let animationId;
+            
+            function trackScroll() {
+                const currentScrollTop = container.scrollTop;
+                
+                if (currentScrollTop !== lastScrollTop) {
+                    logger.log(`📜 容器${containerIndex + 1}滚动检测: ${lastScrollTop} -> ${currentScrollTop}`);
+                    lastScrollTop = currentScrollTop;
+                    
+                    // 实时更新连接线（这里CSS Anchor会自动处理）
+                    updateConnectionLineVisibility();
+                }
+                
+                animationId = requestAnimationFrame(trackScroll);
+            }
+            
+            // 启动跟踪
+            animationId = requestAnimationFrame(trackScroll);
+            
+            // 存储动画ID以便后续清理
+            container._trackingId = animationId;
+        }
+        
+        // 更新连接线可见性（优化性能）
+        function updateConnectionLineVisibility() {
+            // 这里可以添加连接线可见性优化逻辑
+            // CSS Anchor Positioning会自动处理位置更新
+        }
+        
+        // 测试滚动同步
+        function testScrollSync() {
+            logger.log('🔄 开始测试滚动同步...');
+            
+            const containers = [
+                document.getElementById('conversationContainer'),
+                document.getElementById('messageContainer'),
+                document.getElementById('accountContainer')
+            ];
+            
+            // 模拟滚动测试
+            containers.forEach((container, index) => {
+                if (container) {
+                    const originalScrollTop = container.scrollTop;
+                    const maxScroll = container.scrollHeight - container.clientHeight;
+                    const randomScroll = Math.random() * maxScroll;
+                    
+                    // 平滑滚动以测试实时跟随
+                    container.scrollTo({
+                        top: randomScroll,
+                        behavior: 'smooth'
+                    });
+                    
+                    logger.log(`📜 容器${index + 1}滚动测试: ${originalScrollTop} -> ${randomScroll}`);
+                }
+            });
+            
+            logger.success('✅ 滚动同步测试完成');
+        }
+        
+        // 性能监控
+        function startPerformanceMonitoring() {
+            logger.log('📊 启动性能监控...');
+            
+            let frameCount = 0;
+            let lastTime = performance.now();
+            
+            function measureFPS() {
+                frameCount++;
+                const currentTime = performance.now();
+                
+                if (currentTime - lastTime >= 1000) {
+                    const fps = Math.round((frameCount * 1000) / (currentTime - lastTime));
+                    logger.log(`⚡ FPS: ${fps}`);
+                    
+                    frameCount = 0;
+                    lastTime = currentTime;
+                }
+                
+                requestAnimationFrame(measureFPS);
+            }
+            
+            requestAnimationFrame(measureFPS);
+        }
+        
+        // 测试实时跟随功能
+        function testRealTimeFollowing() {
+            logger.log('🎯 开始测试实时跟随功能...');
+            
+            const containers = [
+                document.getElementById('conversationContainer'),
+                document.getElementById('messageContainer'),
+                document.getElementById('accountContainer')
+            ];
+            
+            // 连续滚动测试
+            let testIndex = 0;
+            const maxTests = 9; // 每个容器测试3次
+            
+            function runScrollTest() {
+                if (testIndex >= maxTests) {
+                    logger.success('✅ 实时跟随测试完成');
+                    return;
+                }
+                
+                const containerIndex = testIndex % 3;
+                const container = containers[containerIndex];
+                
+                if (container) {
+                    const maxScroll = container.scrollHeight - container.clientHeight;
+                    const targetScroll = (Math.random() * 0.8 + 0.1) * maxScroll; // 10%-90%的位置
+                    
+                    logger.log(`🔄 测试${Math.floor(testIndex/3) + 1}/3 - 容器${containerIndex + 1}滚动到 ${Math.round(targetScroll)}px`);
+                    
+                    container.scrollTo({
+                        top: targetScroll,
+                        behavior: 'smooth'
+                    });
+                }
+                
+                testIndex++;
+                setTimeout(runScrollTest, 2000); // 每2秒测试一次
+            }
+            
+            runScrollTest();
+        }
+        
+        // 全局错误捕获
+        window.addEventListener('error', function(event) {
+            logger.error(`全局错误: ${event.message} (${event.filename}:${event.lineno})`);
+        });
+        
+        // 捕获未处理的Promise拒绝
+        window.addEventListener('unhandledrejection', function(event) {
+            logger.error(`未处理的Promise拒绝: ${event.reason}`);
+        });
+        
+        // 页面加载完成日志
+        window.addEventListener('load', function() {
+            logger.success('🎉 MVP页面完全加载完成');
+        });
+    </script>
+</body>
+</html>

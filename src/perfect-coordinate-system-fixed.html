@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfect SVG Coordinate System - FIXED - Cross-Container Connection Lines</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .main-container {
+            height: 100vh;
+            display: flex;
+            background: transparent;
+        }
+
+        .column {
+            height: 100vh;
+            overflow-y: auto;
+            border-right: 1px solid #e0e0e0;
+            position: relative;
+        }
+
+        .session-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .messages-column {
+            flex: 1;
+            background: transparent;
+            position: relative;
+        }
+
+        .account-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .avatar-item {
+            width: 66px;
+            height: 66px;
+            margin: 10px 0;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            position: relative;
+        }
+
+        .avatar-item.account {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .message-item {
+            margin: 15px 20px;
+            position: relative;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .message-content {
+            background: #e9ecef;
+            border-radius: 18px;
+            padding: 12px 16px;
+            position: relative;
+            word-wrap: break-word;
+            width: 100%;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .message-content.own {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-text {
+            flex: 1;
+        }
+
+        .message-time {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+
+        /* 关键：全局SVG覆盖层用于跨容器连接线 */
+        .connection-svg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 1000;
+            overflow: visible;
+        }
+
+        .connection-path {
+            stroke: #007bff;
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            opacity: 0.8;
+        }
+
+        .connection-path.own {
+            stroke: #e91e63;
+        }
+
+        /* 调试模式 */
+        .debug-point {
+            fill: red;
+            /* r属性将通过JavaScript设置 */
+        }
+
+        .debug-point.bubble-edge {
+            fill: green;
+        }
+
+        .debug-point.avatar-edge {
+            fill: blue;
+        }
+
+        .debug-point.path-corner {
+            fill: orange;
+        }
+
+        /* 控制面板 */
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 2000;
+        }
+
+        .controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .debug-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 2001;
+            max-width: 500px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        /* 视觉网格辅助 */
+        .debug-grid {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 999;
+            opacity: 0.1;
+            background-image: 
+                linear-gradient(to right, gray 1px, transparent 1px),
+                linear-gradient(to bottom, gray 1px, transparent 1px);
+            background-size: 20px 20px;
+            display: none;
+        }
+
+        .debug-mode .debug-grid {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button onclick="generateTestData(5)">Generate 5 Items</button>
+        <button onclick="generateTestData(20)">Generate 20 Items</button>
+        <button onclick="updateConnections()">Update Connections</button>
+        <button onclick="toggleDebugMode()">Toggle Debug Mode</button>
+        <button onclick="clearAll()">Clear All</button>
+        <button onclick="scrollToCenter()">Scroll to Center</button>
+    </div>
+
+    <div class="debug-info" id="debugInfo">
+        Perfect Coordinate System FIXED: Ready<br>
+        全局SVG + 精确跨容器坐标计算 + 修复路径格式问题
+    </div>
+
+    <!-- 调试网格 -->
+    <div class="debug-grid"></div>
+
+    <!-- 全局SVG用于绘制跨容器连接线 -->
+    <svg class="connection-svg" id="connectionSvg">
+        <!-- 连接线将在这里动态生成 -->
+    </svg>
+
+    <div class="main-container">
+        <!-- 会话头像列 -->
+        <div class="column session-avatars-column" id="sessionAvatars">
+        </div>
+
+        <!-- 消息气泡列 -->
+        <div class="column messages-column" id="messagesColumn">
+        </div>
+
+        <!-- 账号头像列 -->
+        <div class="column account-avatars-column" id="accountAvatars">
+        </div>
+    </div>
+
+    <script>
+        class PerfectCoordinateManager {
+            constructor() {
+                this.sessionColumn = document.getElementById('sessionAvatars');
+                this.messageColumn = document.getElementById('messagesColumn');
+                this.accountColumn = document.getElementById('accountAvatars');
+                this.connectionSvg = document.getElementById('connectionSvg');
+                this.debugInfo = document.getElementById('debugInfo');
+                
+                this.debugMode = false;
+                this.messages = [];
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                console.log('Perfect Coordinate Manager FIXED initialized');
+            }
+
+            setupEventListeners() {
+                // 滚动监听 - 实时更新连接线
+                [this.sessionColumn, this.messageColumn, this.accountColumn].forEach(column => {
+                    column.addEventListener('scroll', () => {
+                        this.updateConnections();
+                    });
+                });
+
+                // 窗口大小改变
+                window.addEventListener('resize', () => {
+                    this.updateConnections();
+                });
+            }
+
+            generateTestData(count = 5) {
+                this.clearAll();
+                
+                const startTime = performance.now();
+                this.updateDebugInfo('generate', `Generating ${count} FIXED perfect coordinate connections...`);
+                
+                for (let i = 0; i < count; i++) {
+                    // 会话头像
+                    const sessionAvatar = document.createElement('div');
+                    sessionAvatar.className = 'avatar-item session';
+                    sessionAvatar.id = `session-${i}`;
+                    sessionAvatar.textContent = `S${i + 1}`;
+                    this.sessionColumn.appendChild(sessionAvatar);
+
+                    // 消息气泡
+                    const isOwn = i % 2 === 0;
+                    const messageItem = document.createElement('div');
+                    messageItem.className = 'message-item';
+                    messageItem.id = `message-${i}`;
+                    messageItem.setAttribute('data-is-own', isOwn);
+                    messageItem.setAttribute('data-session-index', i);
+                    messageItem.setAttribute('data-account-index', i);
+                    
+                    messageItem.innerHTML = `
+                        <div class="message-content ${isOwn ? 'own' : ''}">
+                            <div class="message-text">
+                                ${isOwn ? 
+                                    '右连接：气泡右边框中心 → 右延5px → 转折 → 账号头像左边缘中心' : 
+                                    '左连接：气泡左边框中心 → 左延5px → 转折 → 会话头像右边缘中心'}
+                                <div class="message-time">10:${30 + i}0 AM</div>
+                            </div>
+                        </div>
+                    `;
+                    this.messageColumn.appendChild(messageItem);
+
+                    // 账号头像
+                    const accountAvatar = document.createElement('div');
+                    accountAvatar.className = 'avatar-item account';
+                    accountAvatar.id = `account-${i}`;
+                    accountAvatar.textContent = `A${i + 1}`;
+                    this.accountColumn.appendChild(accountAvatar);
+
+                    this.messages.push({
+                        messageId: `message-${i}`,
+                        sessionId: `session-${i}`,
+                        accountId: `account-${i}`,
+                        isOwn: isOwn
+                    });
+                }
+
+                const generateTime = performance.now() - startTime;
+                
+                // 延迟更新连接线以确保DOM完全渲染
+                setTimeout(() => {
+                    this.updateConnections();
+                    this.updateDebugInfo('complete', 
+                        `Generated ${count} FIXED perfect connections in ${Math.round(generateTime)}ms`);
+                }, 200);
+            }
+
+            updateConnections() {
+                const startTime = performance.now();
+                let updatedCount = 0;
+                
+                // 清除现有连接线
+                this.connectionSvg.innerHTML = '';
+
+                this.messages.forEach((msg, index) => {
+                    const messageElement = document.getElementById(msg.messageId);
+                    const sessionElement = document.getElementById(msg.sessionId);
+                    const accountElement = document.getElementById(msg.accountId);
+
+                    if (!messageElement || !sessionElement || !accountElement) return;
+
+                    if (msg.isOwn) {
+                        // 自己的消息：右连接到账号头像
+                        this.drawPerfectConnection(messageElement, accountElement, 'right', index);
+                        updatedCount++;
+                    } else {
+                        // 别人的消息：左连接到会话头像
+                        this.drawPerfectConnection(messageElement, sessionElement, 'left', index);
+                        updatedCount++;
+                    }
+                });
+                
+                const updateTime = performance.now() - startTime;
+                if (this.debugMode) {
+                    this.updateDebugInfo('update', 
+                        `Updated ${updatedCount} FIXED perfect connections in ${Math.round(updateTime)}ms`);
+                }
+            }
+
+            drawPerfectConnection(messageElement, targetAvatar, direction, index) {
+                try {
+                    // 关键：使用getBoundingClientRect获取准确的viewport绝对坐标
+                    const messageContent = messageElement.querySelector('.message-content');
+                    const bubbleRect = messageContent.getBoundingClientRect();
+                    const avatarRect = targetAvatar.getBoundingClientRect();
+
+                    // 验证矩形数据有效性
+                    if (!this.isValidRect(bubbleRect) || !this.isValidRect(avatarRect)) {
+                        console.warn('Invalid rect data:', { bubbleRect, avatarRect });
+                        return;
+                    }
+
+                    // 第一步：计算气泡边框的精确中点
+                    let bubbleEdgePoint;
+                    if (direction === 'left') {
+                        // 左侧连接：气泡左边框垂直中点
+                        bubbleEdgePoint = {
+                            x: bubbleRect.left,
+                            y: bubbleRect.top + bubbleRect.height / 2
+                        };
+                    } else {
+                        // 右侧连接：气泡右边框垂直中点
+                        bubbleEdgePoint = {
+                            x: bubbleRect.right,
+                            y: bubbleRect.top + bubbleRect.height / 2
+                        };
+                    }
+
+                    // 第二步：计算头像边缘的精确中点
+                    let avatarEdgePoint;
+                    if (direction === 'left') {
+                        // 左侧连接：会话头像右边缘中点
+                        avatarEdgePoint = {
+                            x: avatarRect.right,
+                            y: avatarRect.top + avatarRect.height / 2
+                        };
+                    } else {
+                        // 右侧连接：账号头像左边缘中点
+                        avatarEdgePoint = {
+                            x: avatarRect.left,
+                            y: avatarRect.top + avatarRect.height / 2
+                        };
+                    }
+
+                    // 第三步：计算中间转折点
+                    const horizontalOffset = 5; // 水平延伸5px
+                    const horizontalExtendPoint = {
+                        x: bubbleEdgePoint.x + (direction === 'left' ? -horizontalOffset : horizontalOffset),
+                        y: bubbleEdgePoint.y
+                    };
+
+                    const verticalExtendPoint = {
+                        x: horizontalExtendPoint.x,
+                        y: avatarEdgePoint.y
+                    };
+
+                    // 验证所有坐标点
+                    const points = [bubbleEdgePoint, horizontalExtendPoint, verticalExtendPoint, avatarEdgePoint];
+                    if (!points.every(this.isValidPoint)) {
+                        console.warn('Invalid coordinate points:', points);
+                        return;
+                    }
+
+                    // 第四步：生成SVG路径 - 修复格式问题
+                    const pathData = this.generatePerfectPath(
+                        bubbleEdgePoint,
+                        horizontalExtendPoint,
+                        verticalExtendPoint,
+                        avatarEdgePoint,
+                        direction
+                    );
+
+                    if (!pathData) {
+                        console.warn('Failed to generate path data');
+                        return;
+                    }
+
+                    // 第五步：创建SVG路径元素
+                    const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    pathElement.setAttribute('d', pathData);
+                    pathElement.setAttribute('class', `connection-path ${direction === 'right' ? 'own' : ''}`);
+                    this.connectionSvg.appendChild(pathElement);
+
+                    // 调试模式：添加关键点标记 - 修复半径属性
+                    if (this.debugMode) {
+                        this.addDebugPoint(bubbleEdgePoint.x, bubbleEdgePoint.y, 'bubble-edge');
+                        this.addDebugPoint(horizontalExtendPoint.x, horizontalExtendPoint.y, 'path-corner');
+                        this.addDebugPoint(verticalExtendPoint.x, verticalExtendPoint.y, 'path-corner');
+                        this.addDebugPoint(avatarEdgePoint.x, avatarEdgePoint.y, 'avatar-edge');
+                        
+                        // 更新详细调试信息
+                        this.updateDebugInfo('connection', direction, {
+                            bubbleEdgePoint,
+                            horizontalExtendPoint,
+                            verticalExtendPoint,
+                            avatarEdgePoint,
+                            bubbleRect: {
+                                left: Math.round(bubbleRect.left),
+                                right: Math.round(bubbleRect.right),
+                                top: Math.round(bubbleRect.top),
+                                bottom: Math.round(bubbleRect.bottom),
+                                width: Math.round(bubbleRect.width),
+                                height: Math.round(bubbleRect.height)
+                            },
+                            avatarRect: {
+                                left: Math.round(avatarRect.left),
+                                right: Math.round(avatarRect.right),
+                                top: Math.round(avatarRect.top),
+                                bottom: Math.round(avatarRect.bottom),
+                                width: Math.round(avatarRect.width),
+                                height: Math.round(avatarRect.height)
+                            },
+                            pathData: pathData
+                        });
+                    }
+                } catch (error) {
+                    console.error('Error drawing connection:', error);
+                    this.updateDebugInfo('error', `Connection drawing failed: ${error.message}`);
+                }
+            }
+
+            // 修复：生成正确格式的SVG路径字符串
+            generatePerfectPath(bubblePoint, horizontalPoint, verticalPoint, avatarPoint, direction) {
+                try {
+                    const cornerRadius = 8;
+                    
+                    // 检查是否需要圆角
+                    const horizontalDistance = Math.abs(horizontalPoint.x - bubblePoint.x);
+                    const verticalDistance = Math.abs(verticalPoint.y - horizontalPoint.y);
+                    const finalDistance = Math.abs(avatarPoint.x - verticalPoint.x);
+                    
+                    // 修复：删除换行符和多余空格，确保路径字符串格式正确
+                    if (verticalDistance < cornerRadius * 2 || finalDistance < cornerRadius) {
+                        return `M ${bubblePoint.x} ${bubblePoint.y} L ${horizontalPoint.x} ${horizontalPoint.y} L ${verticalPoint.x} ${verticalPoint.y} L ${avatarPoint.x} ${avatarPoint.y}`;
+                    }
+
+                    // 计算圆角方向
+                    const horizontalDirection = direction === 'left' ? -1 : 1;
+                    const verticalDirection = avatarPoint.y > bubblePoint.y ? 1 : -1;
+                    const finalDirection = direction === 'left' ? 1 : -1;
+
+                    // 修复：生成带圆角的正确格式路径
+                    return `M ${bubblePoint.x} ${bubblePoint.y} L ${horizontalPoint.x - cornerRadius * horizontalDirection} ${horizontalPoint.y} Q ${horizontalPoint.x} ${horizontalPoint.y} ${horizontalPoint.x} ${horizontalPoint.y + cornerRadius * verticalDirection} L ${verticalPoint.x} ${verticalPoint.y - cornerRadius * verticalDirection} Q ${verticalPoint.x} ${verticalPoint.y} ${verticalPoint.x + cornerRadius * finalDirection} ${verticalPoint.y} L ${avatarPoint.x} ${avatarPoint.y}`;
+                } catch (error) {
+                    console.error('Error generating path:', error);
+                    return null;
+                }
+            }
+
+            // 修复：正确设置调试点的半径属性
+            addDebugPoint(x, y, type) {
+                try {
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', x);
+                    circle.setAttribute('cy', y);
+                    circle.setAttribute('r', '4'); // 修复：明确设置半径属性
+                    circle.className = `debug-point ${type}`;
+                    this.connectionSvg.appendChild(circle);
+                } catch (error) {
+                    console.error('Error adding debug point:', error);
+                }
+            }
+
+            // 新增：验证矩形数据有效性
+            isValidRect(rect) {
+                return rect && 
+                       typeof rect.left === 'number' && 
+                       typeof rect.top === 'number' && 
+                       typeof rect.width === 'number' && 
+                       typeof rect.height === 'number' &&
+                       rect.width > 0 && 
+                       rect.height > 0 &&
+                       !isNaN(rect.left) && 
+                       !isNaN(rect.top);
+            }
+
+            // 新增：验证坐标点有效性
+            isValidPoint(point) {
+                return point && 
+                       typeof point.x === 'number' && 
+                       typeof point.y === 'number' &&
+                       !isNaN(point.x) && 
+                       !isNaN(point.y);
+            }
+
+            toggleDebugMode() {
+                this.debugMode = !this.debugMode;
+                document.body.classList.toggle('debug-mode', this.debugMode);
+                
+                if (this.debugMode) {
+                    this.updateDebugInfo('mode', 'Debug Mode: ENABLED - 绿点=气泡边缘，蓝点=头像边缘，橙点=转折点');
+                    this.updateConnections();
+                } else {
+                    this.updateDebugInfo('mode', 'Debug Mode: DISABLED');
+                }
+            }
+
+            updateDebugInfo(type, info, connectionData = null) {
+                const timestamp = new Date().toLocaleTimeString();
+                
+                if (type === 'connection' && connectionData) {
+                    this.debugInfo.innerHTML = `
+                        <strong>FIXED ${info.toUpperCase()} CONNECTION DEBUG:</strong><br>
+                        <strong>时间:</strong> ${timestamp}<br>
+                        <strong>连接规则:</strong> ${info === 'left' ? 
+                            '气泡左边框中心 → 左延5px → 转折 → 会话头像右边缘中心' : 
+                            '气泡右边框中心 → 右延5px → 转折 → 账号头像左边缘中心'}<br><br>
+                        
+                        <strong>关键坐标点 (viewport绝对坐标):</strong><br>
+                        <strong>1. 气泡边缘点:</strong> (${Math.round(connectionData.bubbleEdgePoint.x)}, ${Math.round(connectionData.bubbleEdgePoint.y)})<br>
+                        <strong>2. 水平延伸点:</strong> (${Math.round(connectionData.horizontalExtendPoint.x)}, ${Math.round(connectionData.horizontalExtendPoint.y)})<br>
+                        <strong>3. 垂直延伸点:</strong> (${Math.round(connectionData.verticalExtendPoint.x)}, ${Math.round(connectionData.verticalExtendPoint.y)})<br>
+                        <strong>4. 头像边缘点:</strong> (${Math.round(connectionData.avatarEdgePoint.x)}, ${Math.round(connectionData.avatarEdgePoint.y)})<br><br>
+                        
+                        <strong>SVG路径数据:</strong><br>
+                        <code style="word-break: break-all; background: #333; padding: 2px;">${connectionData.pathData}</code><br><br>
+                        
+                        <strong>气泡矩形 (getBoundingClientRect):</strong><br>
+                        left: ${connectionData.bubbleRect.left}, right: ${connectionData.bubbleRect.right}<br>
+                        top: ${connectionData.bubbleRect.top}, bottom: ${connectionData.bubbleRect.bottom}<br>
+                        size: ${connectionData.bubbleRect.width} × ${connectionData.bubbleRect.height}<br><br>
+                        
+                        <strong>头像矩形 (getBoundingClientRect):</strong><br>
+                        left: ${connectionData.avatarRect.left}, right: ${connectionData.avatarRect.right}<br>
+                        top: ${connectionData.avatarRect.top}, bottom: ${connectionData.avatarRect.bottom}<br>
+                        size: ${connectionData.avatarRect.width} × ${connectionData.avatarRect.height}<br><br>
+                        
+                        <strong>坐标系统:</strong> ✓ 全局viewport绝对坐标<br>
+                        <strong>跨容器:</strong> ✓ 支持独立滚动<br>
+                        <strong>实时同步:</strong> ✓ 滚动时精确跟随<br>
+                        <strong>格式修复:</strong> ✓ SVG路径字符串格式正确<br>
+                        <strong>调试点修复:</strong> ✓ 半径属性正确设置
+                    `;
+                } else {
+                    this.debugInfo.innerHTML = `
+                        <strong>Perfect Coordinate System FIXED - ${type.toUpperCase()}:</strong><br>
+                        <strong>Time:</strong> ${timestamp}<br>
+                        <strong>Info:</strong> ${info}<br>
+                        <strong>原理:</strong> 全局SVG覆盖层 + getBoundingClientRect精确坐标<br>
+                        <strong>优势:</strong> 支持三容器独立滚动的跨容器连接线<br>
+                        <strong>修复:</strong> SVG路径格式 + 调试点半径 + 错误处理
+                    `;
+                }
+            }
+
+            scrollToCenter() {
+                // 滚动到中间位置进行测试
+                const scrollTop = this.messageColumn.scrollHeight / 3;
+                this.sessionColumn.scrollTop = scrollTop;
+                this.messageColumn.scrollTop = scrollTop;
+                this.accountColumn.scrollTop = scrollTop;
+                
+                this.updateDebugInfo('scroll', 'Scrolled to center for testing - FIXED version');
+            }
+
+            clearAll() {
+                this.sessionColumn.innerHTML = '';
+                this.messageColumn.innerHTML = '';
+                this.accountColumn.innerHTML = '';
+                this.connectionSvg.innerHTML = '';
+                this.messages = [];
+                this.updateDebugInfo('status', 'Perfect Coordinate System FIXED: Cleared');
+            }
+        }
+
+        // 初始化
+        let perfectManager;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            perfectManager = new PerfectCoordinateManager();
+            setTimeout(() => {
+                perfectManager.generateTestData(5);
+            }, 500);
+        });
+
+        // 全局函数
+        function generateTestData(count) {
+            perfectManager.generateTestData(count);
+        }
+
+        function updateConnections() {
+            perfectManager.updateConnections();
+        }
+
+        function toggleDebugMode() {
+            perfectManager.toggleDebugMode();
+        }
+
+        function scrollToCenter() {
+            perfectManager.scrollToCenter();
+        }
+
+        function clearAll() {
+            perfectManager.clearAll();
+        }
+    </script>
+</body>
+</html>

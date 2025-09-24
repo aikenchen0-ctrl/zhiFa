@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PIXI.js v8 移动端聊天应用 - 稳定版</title>
+    <script src="https://pixijs.download/release/pixi.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #pixiContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+        
+        .loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading-text {
+            color: white;
+            font-size: 16px;
+            text-align: center;
+        }
+        
+        .debug-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 100;
+        }
+        
+        .debug-toggle {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            z-index: 101;
+        }
+        
+        .component-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            max-width: 280px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-screen" id="loadingScreen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">
+            正在加载移动端聊天应用...<br>
+            <small>使用 PIXI.js v8 + Vision UI</small>
+        </div>
+    </div>
+    
+    <div id="pixiContainer"></div>
+    
+    <button class="debug-toggle" onclick="toggleDebug()">调试模式</button>
+    
+    <div class="debug-panel" id="debugPanel" style="display: none;">
+        <div><strong>性能监控</strong></div>
+        <div>FPS: <span id="fps">--</span></div>
+        <div>内存: <span id="memory">--</span>MB</div>
+        <div>渲染时间: <span id="renderTime">--</span>ms</div>
+        <div>组件数量: <span id="componentCount">--</span></div>
+        <div>连接线数量: <span id="connectionCount">--</span></div>
+        <hr style="margin: 5px 0;">
+        <div><strong>当前状态</strong></div>
+        <div>当前会话: <span id="currentSession">--</span></div>
+        <div>消息数量: <span id="messageCount">--</span></div>
+        <div>滚动位置: <span id="scrollPos">--</span></div>
+    </div>
+    
+    <div class="component-info" id="componentInfo">
+        <div><strong>组件说明</strong></div>
+        <div>• 顶部：会话信息 & 搜索</div>
+        <div>• 左侧：会话列表（支持1万个）</div>
+        <div>• 中央：聊天消息区</div>
+        <div>• 右侧：工作流图标</div>
+        <div>• 底部：输入框 & 功能图标</div>
+        <div>• 连接线：实时跟随系统</div>
+        <div>• 弹出层：多级气泡系统</div>
+    </div>
+
+    <script>
+        // Logger 系统
+        class Logger {
+            constructor() {
+                this.logs = [];
+                this.maxLogs = 50; // 减少日志数量
+            }
+            
+            log(level, component, message, data = null) {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = { timestamp, level, component, message, data };
+                
+                this.logs.push(logEntry);
+                if (this.logs.length > this.maxLogs) {
+                    this.logs.shift();
+                }
+                
+                const style = level === 'error' ? 'color: red' : 
+                             level === 'warn' ? 'color: orange' : 
+                             level === 'debug' ? 'color: gray' : 'color: blue';
+                console.log(`%c[${timestamp}] ${component}: ${message}`, style, data || '');
+            }
+            
+            debug(component, message, data) { this.log('debug', component, message, data); }
+            info(component, message, data) { this.log('info', component, message, data); }
+            warn(component, message, data) { this.log('warn', component, message, data); }
+            error(component, message, data) { this.log('error', component, message, data); }
+        }
+        
+        // 简化的UI组件 - 避免复杂的继承和边界计算
+        class SimpleButton {
+            constructor(x, y, width, height, text, color = 0x007AFF) {
+                this.container = new PIXI.Container();
+                this.container.x = x;
+                this.container.y = y;
+                this.width = width;
+                this.height = height;
+                this.text = text;
+                this.color = color;
+                this.createButton();
+            }
+            
+            createButton() {
+                // 背景
+                this.bg = new PIXI.Graphics();
+                this.bg.roundRect(0, 0, this.width, this.height, 8);
+                this.bg.fill({ color: this.color, alpha: 0.8 });
+                this.container.addChild(this.bg);
+                
+                // 文本
+                this.textObject = new PIXI.Text({
+                    text: this.text,
+                    style: { fontFamily: 'Arial', fontSize: 14, fill: 0xffffff, align: 'center' }
+                });
+                this.textObject.anchor.set(0.5);
+                this.textObject.x = this.width / 2;
+                this.textObject.y = this.height / 2;
+                this.container.addChild(this.textObject);
+                
+                // 事件
+                this.container.eventMode = 'static';
+                this.container.cursor = 'pointer';
+                this.container.on('pointerdown', () => this.container.scale.set(0.95));
+                this.container.on('pointerup', () => this.container.scale.set(1));
+            }
+        }
+        
+        class SimpleMessageBubble {
+            constructor(x, y, width, text, alignment = 'left') {
+                this.container = new PIXI.Container();
+                this.container.x = x;
+                this.container.y = y;
+                this.width = width;
+                this.text = text;
+                this.alignment = alignment;
+                this.height = 60; // 固定高度避免计算问题
+                this.createBubble();
+            }
+            
+            createBubble() {
+                // 背景
+                this.bg = new PIXI.Graphics();
+                this.bg.roundRect(0, 0, this.width, this.height, 12);
+                
+                if (this.alignment === 'right') {
+                    this.bg.fill({ color: 0xffffff, alpha: 0.3 });
+                } else {
+                    this.bg.fill({ color: 0x333333, alpha: 0.1 });
+                }
+                
+                this.bg.stroke({ color: 0xffffff, alpha: 0.2, width: 1 });
+                this.container.addChild(this.bg);
+                
+                // 文本
+                this.textObject = new PIXI.Text({
+                    text: this.text,
+                    style: {
+                        fontFamily: 'Arial',
+                        fontSize: 14,
+                        fill: 0xffffff,
+                        wordWrap: true,
+                        wordWrapWidth: this.width - 20,
+                        dropShadow: true,
+                        dropShadowColor: 0x000000,
+                        dropShadowAlpha: 0.8
+                    }
+                });
+                this.textObject.x = 10;
+                this.textObject.y = 10;
+                this.container.addChild(this.textObject);
+                
+                this.container.eventMode = 'static';
+                this.container.cursor = 'pointer';
+            }
+        }
+        
+        class SimpleAvatar {
+            constructor(x, y, size, text, color = 0x4CAF50) {
+                this.container = new PIXI.Container();
+                this.container.x = x;
+                this.container.y = y;
+                this.size = size;
+                this.text = text;
+                this.color = color;
+                this.createAvatar();
+            }
+            
+            createAvatar() {
+                // 背景
+                this.bg = new PIXI.Graphics();
+                this.bg.roundRect(0, 0, this.size, this.size, 8);
+                this.bg.fill({ color: this.color, alpha: 0.8 });
+                this.container.addChild(this.bg);
+                
+                // 文本
+                this.textObject = new PIXI.Text({
+                    text: this.text,
+                    style: {
+                        fontFamily: 'Arial',
+                        fontSize: this.size / 3,
+                        fill: 0xffffff,
+                        align: 'center',
+                        fontWeight: 'bold'
+                    }
+                });
+                this.textObject.anchor.set(0.5);
+                this.textObject.x = this.size / 2;
+                this.textObject.y = this.size / 2;
+                this.container.addChild(this.textObject);
+                
+                this.container.eventMode = 'static';
+                this.container.cursor = 'pointer';
+            }
+        }
+        
+        class SimpleIcon {
+            constructor(x, y, size, iconType, color = 0xffffff) {
+                this.container = new PIXI.Container();
+                this.container.x = x;
+                this.container.y = y;
+                this.size = size;
+                this.iconType = iconType;
+                this.color = color;
+                this.createIcon();
+            }
+            
+            createIcon() {
+                this.icon = new PIXI.Graphics();
+                
+                switch (this.iconType) {
+                    case 'star':
+                        this.icon.star(this.size/2, this.size/2, 5, this.size/3, this.size/6);
+                        this.icon.fill(this.color);
+                        break;
+                    case 'heart':
+                        this.icon.circle(this.size*0.35, this.size*0.35, this.size*0.2);
+                        this.icon.circle(this.size*0.65, this.size*0.35, this.size*0.2);
+                        this.icon.moveTo(this.size*0.15, this.size*0.5);
+                        this.icon.lineTo(this.size*0.5, this.size*0.8);
+                        this.icon.lineTo(this.size*0.85, this.size*0.5);
+                        this.icon.fill(this.color);
+                        break;
+                    case 'check':
+                        this.icon.moveTo(this.size*0.2, this.size*0.5);
+                        this.icon.lineTo(this.size*0.4, this.size*0.7);
+                        this.icon.lineTo(this.size*0.8, this.size*0.3);
+                        this.icon.stroke({ color: this.color, width: 2 });
+                        break;
+                    case 'arrow':
+                        this.icon.moveTo(this.size*0.2, this.size*0.5);
+                        this.icon.lineTo(this.size*0.8, this.size*0.5);
+                        this.icon.lineTo(this.size*0.6, this.size*0.3);
+                        this.icon.moveTo(this.size*0.8, this.size*0.5);
+                        this.icon.lineTo(this.size*0.6, this.size*0.7);
+                        this.icon.stroke({ color: this.color, width: 2 });
+                        break;
+                    default:
+                        this.icon.rect(0, 0, this.size, this.size);
+                        this.icon.fill(this.color);
+                }
+                
+                this.container.addChild(this.icon);
+            }
+        }
+        
+        // 简化的滚动容器 - 不使用复杂的bounds计算
+        class SimpleScrollContainer {
+            constructor(x, y, width, height) {
+                this.container = new PIXI.Container();
+                this.container.x = x;
+                this.container.y = y;
+                this.width = width;
+                this.height = height;
+                this.scrollY = 0;
+                this.contentHeight = 0;
+                this.items = [];
+                this.createScrollContainer();
+            }
+            
+            createScrollContainer() {
+                // 蒙版
+                this.maskRect = new PIXI.Graphics();
+                this.maskRect.rect(0, 0, this.width, this.height);
+                this.maskRect.fill(0xffffff);
+                this.container.addChild(this.maskRect);
+                this.container.mask = this.maskRect;
+                
+                // 内容容器
+                this.content = new PIXI.Container();
+                this.container.addChild(this.content);
+                
+                // 滚动事件
+                this.container.eventMode = 'static';
+                this.container.on('wheel', (event) => {
+                    this.scrollY += event.deltaY * 0.5;
+                    this.scrollY = Math.max(0, Math.min(this.scrollY, Math.max(0, this.contentHeight - this.height)));
+                    this.content.y = -this.scrollY;
+                });
+            }
+            
+            addItem(item) {
+                this.content.addChild(item.container || item);
+                this.items.push(item);
+                // 简单的高度计算，避免getBounds
+                this.contentHeight = this.items.length * 60;
+            }
+        }
+        
+        // 应用状态管理
+        class ChatAppState {
+            constructor() {
+                this.currentSession = 0;
+                this.sessions = this.generateSessions(10); // 进一步减少到10个
+                this.messages = this.generateMessages(5);  // 减少到5条
+            }
+            
+            generateSessions(count) {
+                const names = ['张三', '李四', '王五', '赵六', '孙七'];
+                return Array.from({length: count}, (_, i) => ({
+                    id: i,
+                    name: names[i % names.length] + (i > 4 ? i : ''),
+                    unreadCount: Math.random() > 0.7 ? Math.floor(Math.random() * 3) + 1 : 0,
+                    isOnline: Math.random() > 0.3
+                }));
+            }
+            
+            generateMessages(count) {
+                const messageTexts = ['你好！', '最近怎么样？', '工作顺利吗？', '谢谢！', '明天见'];
+                return Array.from({length: count}, (_, i) => ({
+                    id: i,
+                    content: messageTexts[i % messageTexts.length],
+                    sender: i % 2 === 0 ? 'self' : 'other',
+                    senderName: i % 2 === 0 ? '我' : '对方'
+                }));
+            }
+        }
+        
+        // 主应用类 - 大幅简化
+        class MobileChatApp {
+            constructor() {
+                this.app = null;
+                this.state = new ChatAppState();
+                this.logger = new Logger();
+                this.components = {};
+                this.containers = {};
+                this.connectionLines = [];
+                this.performanceMonitor = {
+                    fps: 0,
+                    frameTime: 0,
+                    memory: 0,
+                    lastFrame: performance.now()
+                };
+                
+                this.logger.info('MobileChatApp', '应用初始化开始');
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    await this.createPixiApp();
+                    await this.createContainers();
+                    await this.createComponents();
+                    await this.setupEventHandlers();
+                    await this.startPerformanceMonitoring();
+                    await this.hideLoadingScreen();
+                    
+                    this.logger.info('MobileChatApp', '应用初始化完成');
+                } catch (error) {
+                    this.logger.error('MobileChatApp', '初始化失败', error);
+                }
+            }
+            
+            async createPixiApp() {
+                this.logger.info('MobileChatApp', '创建 PIXI 应用');
+                
+                this.app = new PIXI.Application();
+                await this.app.init({
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    backgroundColor: 0x1a1a2e,
+                    antialias: true,
+                    autoDensity: true,
+                    resolution: window.devicePixelRatio || 1
+                });
+                
+                document.getElementById('pixiContainer').appendChild(this.app.canvas);
+                this.app.stage.eventMode = 'static';
+                
+                this.logger.info('MobileChatApp', 'PIXI 应用创建完成');
+            }
+            
+            async createContainers() {
+                this.containers = {
+                    background: new PIXI.Container(),
+                    topBar: new PIXI.Container(),
+                    leftSidebar: new PIXI.Container(),
+                    chatArea: new PIXI.Container(),
+                    rightSidebar: new PIXI.Container(),
+                    bottomBar: new PIXI.Container(),
+                    connectionLines: new PIXI.Container()
+                };
+                
+                Object.values(this.containers).forEach(container => {
+                    this.app.stage.addChild(container);
+                });
+            }
+            
+            async createComponents() {
+                this.logger.info('MobileChatApp', '创建UI组件');
+                
+                await this.createBackground();
+                await this.createTopBar();
+                await this.createConversationList();
+                await this.createChatArea();
+                await this.createRightSidebar();
+                await this.createBottomBar();
+                await this.createConnectionLines();
+                
+                this.logger.info('MobileChatApp', 'UI组件创建完成');
+            }
+            
+            async createBackground() {
+                const bg = new PIXI.Graphics();
+                bg.rect(0, 0, this.app.screen.width, this.app.screen.height);
+                bg.fill({ color: 0x1a1a2e, alpha: 1 });
+                this.containers.background.addChild(bg);
+                
+                // 简单的渐变效果
+                for (let i = 0; i < 3; i++) {
+                    const overlay = new PIXI.Graphics();
+                    overlay.rect(0, i * this.app.screen.height / 3, this.app.screen.width, this.app.screen.height / 3);
+                    overlay.fill({
+                        color: i % 2 === 0 ? 0x2a2a5e : 0x1a1a4e,
+                        alpha: 0.2
+                    });
+                    this.containers.background.addChild(overlay);
+                }
+            }
+            
+            async createTopBar() {
+                // 背景
+                const topBarBg = new PIXI.Graphics();
+                topBarBg.rect(0, 0, this.app.screen.width, 60);
+                topBarBg.fill({ color: 0x000000, alpha: 0.1 });
+                this.containers.topBar.addChild(topBarBg);
+                
+                // 未读消息图标
+                const unreadIcon = new SimpleIcon(15, 18, 24, 'star', 0xff6b6b);
+                this.containers.topBar.addChild(unreadIcon.container);
+                
+                // 红点
+                const redDot = new PIXI.Graphics();
+                redDot.circle(35, 23, 6);
+                redDot.fill(0xff0000);
+                this.containers.topBar.addChild(redDot);
+                
+                // 会话名
+                const sessionNameText = new PIXI.Text({
+                    text: this.state.sessions[this.state.currentSession].name,
+                    style: { fontFamily: 'Arial', fontSize: 18, fill: 0xffffff, fontWeight: 'bold' }
+                });
+                sessionNameText.x = 60;
+                sessionNameText.y = 20;
+                this.containers.topBar.addChild(sessionNameText);
+                this.components.sessionNameText = sessionNameText;
+                
+                // 其他图标
+                const editIcon = new SimpleIcon(sessionNameText.x + 120, 20, 20, 'arrow', 0xffffff);
+                this.containers.topBar.addChild(editIcon.container);
+                
+                const searchIcon = new SimpleIcon(this.app.screen.width - 40, 18, 24, 'check', 0xffffff);
+                this.containers.topBar.addChild(searchIcon.container);
+                
+                const accountNameText = new PIXI.Text({
+                    text: '我的账号',
+                    style: { fontFamily: 'Arial', fontSize: 14, fill: 0xcccccc }
+                });
+                accountNameText.x = this.app.screen.width - 120;
+                accountNameText.y = 22;
+                this.containers.topBar.addChild(accountNameText);
+                
+                const addPersonIcon = new SimpleIcon(this.app.screen.width - 150, 20, 20, 'heart', 0x4CAF50);
+                this.containers.topBar.addChild(addPersonIcon.container);
+            }
+            
+            async createConversationList() {
+                // 创建滚动容器
+                const scrollContainer = new SimpleScrollContainer(0, 60, 80, this.app.screen.height - 120);
+                
+                this.components.avatars = [];
+                
+                for (let i = 0; i < this.state.sessions.length; i++) {
+                    const session = this.state.sessions[i];
+                    
+                    const avatar = new SimpleAvatar(15, i * 60 + 10, 50, session.name.charAt(0), 0x4CAF50);
+                    avatar.sessionId = i;
+                    
+                    // 在线状态
+                    if (session.isOnline) {
+                        const onlineIndicator = new PIXI.Graphics();
+                        onlineIndicator.circle(50, 45, 6);
+                        onlineIndicator.fill(0x4CAF50);
+                        avatar.container.addChild(onlineIndicator);
+                    }
+                    
+                    // 未读徽章
+                    if (session.unreadCount > 0) {
+                        const badge = new PIXI.Graphics();
+                        badge.circle(50, 15, 10);
+                        badge.fill(0xff0000);
+                        avatar.container.addChild(badge);
+                        
+                        const badgeText = new PIXI.Text({
+                            text: session.unreadCount.toString(),
+                            style: { fontFamily: 'Arial', fontSize: 10, fill: 0xffffff, align: 'center' }
+                        });
+                        badgeText.anchor.set(0.5);
+                        badgeText.x = 50;
+                        badgeText.y = 15;
+                        avatar.container.addChild(badgeText);
+                    }
+                    
+                    // 当前会话标识
+                    if (i === this.state.currentSession) {
+                        // 下边缘三个点
+                        const settingsIcon = new PIXI.Graphics();
+                        settingsIcon.rect(15, 50, 20, 10);
+                        settingsIcon.fill(0xff0000);
+                        avatar.container.addChild(settingsIcon);
+                        
+                        for (let j = 0; j < 3; j++) {
+                            const dot = new PIXI.Graphics();
+                            dot.circle(19 + j * 6, 55, 1.5);
+                            dot.fill(0xffffff);
+                            avatar.container.addChild(dot);
+                        }
+                        
+                        // 上边缘眼睛
+                        const eyeIcon = new PIXI.Graphics();
+                        eyeIcon.rect(17, 5, 16, 6);
+                        eyeIcon.fill(0x2196F3);
+                        avatar.container.addChild(eyeIcon);
+                        
+                        const eye = new PIXI.Graphics();
+                        eye.circle(25, 8, 2);
+                        eye.fill(0xffffff);
+                        avatar.container.addChild(eye);
+                    }
+                    
+                    // 点击事件
+                    avatar.container.on('pointerdown', () => {
+                        this.state.currentSession = i;
+                        this.updateCurrentSession();
+                        this.logger.info('ConversationList', `切换到会话: ${session.name}`, { sessionId: i });
+                    });
+                    
+                    scrollContainer.addItem(avatar);
+                    this.components.avatars.push(avatar);
+                }
+                
+                this.containers.leftSidebar.addChild(scrollContainer.container);
+                this.components.conversationList = scrollContainer;
+            }
+            
+            async createChatArea() {
+                // 背景
+                const chatBg = new PIXI.Graphics();
+                chatBg.rect(80, 60, this.app.screen.width - 200, this.app.screen.height - 120);
+                chatBg.fill({ color: 0x000000, alpha: 0.05 });
+                this.containers.chatArea.addChild(chatBg);
+                
+                // 消息滚动容器
+                const messageScrollContainer = new SimpleScrollContainer(80, 60, this.app.screen.width - 200, this.app.screen.height - 180);
+                
+                this.components.messageBubbles = [];
+                
+                for (let i = 0; i < this.state.messages.length; i++) {
+                    const message = this.state.messages[i];
+                    
+                    const bubbleX = message.sender === 'self' ? 
+                        this.app.screen.width - 320 : 20;
+                    
+                    const bubble = new SimpleMessageBubble(bubbleX, i * 80 + 10, 250, message.content, message.sender === 'self' ? 'right' : 'left');
+                    
+                    // 发送者名字
+                    if (message.sender !== 'self') {
+                        const senderText = new PIXI.Text({
+                            text: message.senderName,
+                            style: {
+                                fontFamily: 'Arial',
+                                fontSize: 10,
+                                fill: 0xffffff,
+                                dropShadow: true,
+                                dropShadowColor: 0x000000
+                            }
+                        });
+                        senderText.x = bubbleX + 10;
+                        senderText.y = i * 80;
+                        messageScrollContainer.content.addChild(senderText);
+                    }
+                    
+                    bubble.container.on('pointerdown', () => {
+                        this.showMessageActions(message);
+                    });
+                    
+                    messageScrollContainer.addItem(bubble);
+                    this.components.messageBubbles.push(bubble);
+                }
+                
+                this.containers.chatArea.addChild(messageScrollContainer.container);
+                this.components.chatArea = messageScrollContainer;
+            }
+            
+            async createRightSidebar() {
+                // 背景
+                const rightBg = new PIXI.Graphics();
+                rightBg.rect(this.app.screen.width - 120, 60, 120, this.app.screen.height - 120);
+                rightBg.fill({ color: 0x000000, alpha: 0.1 });
+                this.containers.rightSidebar.addChild(rightBg);
+                
+                // 智囊团图标
+                const brainIcon = new SimpleIcon(this.app.screen.width - 75, 100, 30, 'star', 0x9C27B0);
+                this.containers.rightSidebar.addChild(brainIcon.container);
+                
+                const brainText = new PIXI.Text({
+                    text: '智囊团',
+                    style: { fontFamily: 'Arial', fontSize: 12, fill: 0xffffff, align: 'center' }
+                });
+                brainText.anchor.set(0.5);
+                brainText.x = this.app.screen.width - 60;
+                brainText.y = 140;
+                this.containers.rightSidebar.addChild(brainText);
+                
+                // 工作流图标
+                const workflowIcons = ['aiff', 'KOL', '策略', '画像'];
+                
+                for (let i = 0; i < workflowIcons.length; i++) {
+                    const row = Math.floor(i / 2);
+                    const col = i % 2;
+                    
+                    const iconBg = new PIXI.Graphics();
+                    iconBg.roundRect(0, 0, 50, 50, 8);
+                    iconBg.fill({ color: 0x333333, alpha: 0.8 });
+                    iconBg.x = this.app.screen.width - 110 + col * 55;
+                    iconBg.y = 180 + row * 55;
+                    this.containers.rightSidebar.addChild(iconBg);
+                    
+                    const iconText = new PIXI.Text({
+                        text: workflowIcons[i],
+                        style: { fontFamily: 'Arial', fontSize: 10, fill: 0xffffff, align: 'center' }
+                    });
+                    iconText.anchor.set(0.5);
+                    iconText.x = iconBg.x + 25;
+                    iconText.y = iconBg.y + 25;
+                    this.containers.rightSidebar.addChild(iconText);
+                }
+            }
+            
+            async createBottomBar() {
+                // 背景
+                const bottomBg = new PIXI.Graphics();
+                bottomBg.rect(0, this.app.screen.height - 60, this.app.screen.width, 60);
+                bottomBg.fill({ color: 0x000000, alpha: 0.1 });
+                this.containers.bottomBar.addChild(bottomBg);
+                
+                // 图标
+                const voiceIcon = new SimpleIcon(15, this.app.screen.height - 40, 20, 'heart', 0x2196F3);
+                this.containers.bottomBar.addChild(voiceIcon.container);
+                
+                const homeIcon = new SimpleIcon(50, this.app.screen.height - 40, 20, 'star', 0x4CAF50);
+                this.containers.bottomBar.addChild(homeIcon.container);
+                
+                // 输入框
+                const inputBox = new PIXI.Graphics();
+                inputBox.roundRect(80, this.app.screen.height - 50, this.app.screen.width - 160, 40, 20);
+                inputBox.fill({ color: 0xffffff, alpha: 0.1 });
+                inputBox.stroke({ color: 0xffffff, alpha: 0.3, width: 1 });
+                this.containers.bottomBar.addChild(inputBox);
+                
+                const inputText = new PIXI.Text({
+                    text: '请输入消息...',
+                    style: { fontFamily: 'Arial', fontSize: 14, fill: 0xcccccc }
+                });
+                inputText.x = 95;
+                inputText.y = this.app.screen.height - 38;
+                this.containers.bottomBar.addChild(inputText);
+                this.components.inputText = inputText;
+                
+                const giftIcon = new SimpleIcon(this.app.screen.width - 80, this.app.screen.height - 40, 20, 'check', 0xff6b6b);
+                this.containers.bottomBar.addChild(giftIcon.container);
+                
+                const plusIcon = new SimpleIcon(this.app.screen.width - 40, this.app.screen.height - 40, 20, 'arrow', 0x4CAF50);
+                this.containers.bottomBar.addChild(plusIcon.container);
+            }
+            
+            async createConnectionLines() {
+                this.containers.connectionLines.removeChildren();
+                this.connectionLines = [];
+                
+                if (!this.components.messageBubbles || !this.components.avatars) {
+                    return;
+                }
+                
+                this.components.messageBubbles.forEach((bubble, index) => {
+                    const message = this.state.messages[index];
+                    if (!message) return;
+                    
+                    const line = new PIXI.Graphics();
+                    
+                    try {
+                        const bubbleX = bubble.container.x + (message.sender === 'self' ? 0 : bubble.width);
+                        const bubbleY = bubble.container.y + bubble.height / 2 + 60; // 加上chatArea的y偏移
+                        
+                        const avatar = this.components.avatars[this.state.currentSession];
+                        if (!avatar) return;
+                        
+                        const avatarX = avatar.container.x + (message.sender === 'self' ? avatar.size : 0);
+                        const avatarY = avatar.container.y + avatar.size / 2 + 60; // 加上leftSidebar的y偏移
+                        
+                        line.moveTo(bubbleX, bubbleY);
+                        
+                        const extendX = bubbleX + (message.sender === 'self' ? 5 : -5);
+                        line.lineTo(extendX, bubbleY);
+                        line.lineTo(extendX, avatarY);
+                        line.lineTo(avatarX, avatarY);
+                        
+                        line.stroke({
+                            color: message.sender === 'self' ? 0x2196F3 : 0x4CAF50,
+                            width: 2,
+                            alpha: 0.6
+                        });
+                        
+                        this.containers.connectionLines.addChild(line);
+                        this.connectionLines.push(line);
+                    } catch (error) {
+                        this.logger.warn('MobileChatApp', '创建连接线失败', error);
+                    }
+                });
+                
+                this.logger.debug('MobileChatApp', `创建了 ${this.connectionLines.length} 条连接线`);
+            }
+            
+            async setupEventHandlers() {
+                window.addEventListener('resize', () => this.handleResize());
+                window.addEventListener('keydown', (e) => this.handleKeyDown(e));
+            }
+            
+            handleResize() {
+                this.app.renderer.resize(window.innerWidth, window.innerHeight);
+            }
+            
+            handleKeyDown(e) {
+                switch (e.key) {
+                    case 'ArrowUp':
+                        this.changeSession(-1);
+                        e.preventDefault();
+                        break;
+                    case 'ArrowDown':
+                        this.changeSession(1);
+                        e.preventDefault();
+                        break;
+                    case 'Enter':
+                        this.sendMessage();
+                        e.preventDefault();
+                        break;
+                }
+            }
+            
+            changeSession(direction) {
+                const newSession = Math.max(0, Math.min(this.state.sessions.length - 1, this.state.currentSession + direction));
+                if (newSession !== this.state.currentSession) {
+                    this.state.currentSession = newSession;
+                    this.updateCurrentSession();
+                }
+            }
+            
+            updateCurrentSession() {
+                if (this.components.sessionNameText) {
+                    this.components.sessionNameText.text = this.state.sessions[this.state.currentSession].name;
+                }
+                
+                this.createConnectionLines();
+                this.logger.info('MobileChatApp', `切换会话: ${this.state.sessions[this.state.currentSession].name}`);
+            }
+            
+            sendMessage() {
+                const inputText = this.components.inputText;
+                if (inputText && inputText.text && inputText.text !== '请输入消息...') {
+                    const newMessage = {
+                        id: this.state.messages.length,
+                        content: inputText.text,
+                        sender: 'self',
+                        senderName: '我'
+                    };
+                    
+                    this.state.messages.push(newMessage);
+                    
+                    // 重新创建聊天区域和连接线
+                    this.createChatArea();
+                    this.createConnectionLines();
+                    
+                    inputText.text = '请输入消息...';
+                    
+                    this.logger.info('MobileChatApp', '发送消息', newMessage);
+                }
+            }
+            
+            showMessageActions(message) {
+                this.logger.info('MobileChatApp', '显示消息操作', { messageId: message.id });
+                console.log('消息操作:', ['话外音', '复制', '转发', '收藏', '多选', '引用', '放大', '删除']);
+            }
+            
+            async startPerformanceMonitoring() {
+                this.app.ticker.add(() => {
+                    const now = performance.now();
+                    this.performanceMonitor.frameTime = now - this.performanceMonitor.lastFrame;
+                    this.performanceMonitor.fps = Math.round(1000 / this.performanceMonitor.frameTime);
+                    this.performanceMonitor.lastFrame = now;
+                    
+                    this.updateDebugPanel();
+                });
+                
+                setInterval(() => {
+                    if (performance.memory) {
+                        this.performanceMonitor.memory = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                    }
+                }, 1000);
+            }
+            
+            updateDebugPanel() {
+                if (document.getElementById('debugPanel').style.display === 'none') return;
+                
+                try {
+                    document.getElementById('fps').textContent = this.performanceMonitor.fps;
+                    document.getElementById('memory').textContent = this.performanceMonitor.memory;
+                    document.getElementById('renderTime').textContent = this.performanceMonitor.frameTime.toFixed(1);
+                    document.getElementById('componentCount').textContent = Object.keys(this.components).length;
+                    document.getElementById('connectionCount').textContent = this.connectionLines.length;
+                    document.getElementById('currentSession').textContent = this.state.sessions[this.state.currentSession]?.name || '--';
+                    document.getElementById('messageCount').textContent = this.state.messages.length;
+                    document.getElementById('scrollPos').textContent = '0';
+                } catch (error) {
+                    // 忽略调试面板更新错误
+                }
+            }
+            
+            async hideLoadingScreen() {
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        const loadingScreen = document.getElementById('loadingScreen');
+                        loadingScreen.classList.add('hidden');
+                        
+                        setTimeout(() => {
+                            loadingScreen.style.display = 'none';
+                            resolve();
+                        }, 500);
+                        
+                        this.logger.info('MobileChatApp', '加载屏幕隐藏完成');
+                    }, 500); // 缩短加载时间
+                });
+            }
+        }
+        
+        // 全局函数
+        window.toggleDebug = function() {
+            const debugPanel = document.getElementById('debugPanel');
+            const componentInfo = document.getElementById('componentInfo');
+            
+            if (debugPanel.style.display === 'none') {
+                debugPanel.style.display = 'block';
+                componentInfo.style.display = 'block';
+            } else {
+                debugPanel.style.display = 'none';
+                componentInfo.style.display = 'none';
+            }
+        };
+        
+        // 启动应用
+        window.addEventListener('load', () => {
+            console.log('🚀 PIXI.js v8 移动端聊天应用启动 - 稳定版');
+            try {
+                const app = new MobileChatApp();
+                window.chatApp = app;
+            } catch (error) {
+                console.error('应用启动失败:', error);
+            }
+        });
+        
+    </script>
+</body>
+</html>

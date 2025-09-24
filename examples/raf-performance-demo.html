@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>requestAnimationFrame 性能优化演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f7;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .header h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1d1d1f;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #6e6e73;
+            font-size: 16px;
+        }
+
+        .demo-section {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1d1d1f;
+            margin-bottom: 16px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #007aff;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.2s;
+        }
+
+        .btn:hover {
+            background: #0056cc;
+        }
+
+        .btn.danger {
+            background: #ff3b30;
+        }
+
+        .btn.danger:hover {
+            background: #d70015;
+        }
+
+        .btn.success {
+            background: #30d158;
+        }
+
+        .btn.success:hover {
+            background: #00c4cc;
+        }
+
+        .metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .metric {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #007aff;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #6e6e73;
+            margin-top: 4px;
+        }
+
+        .scroll-container {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            background: white;
+            position: relative;
+        }
+
+        .scroll-item {
+            height: 50px;
+            padding: 12px 16px;
+            border-bottom: 1px solid #f1f1f3;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            transition: transform 0.2s ease;
+        }
+
+        .scroll-item:nth-child(even) {
+            background: #fafafa;
+        }
+
+        .scroll-item.highlighted {
+            background: #e3f2fd;
+            transform: translateX(5px);
+        }
+
+        .connection-demo {
+            position: relative;
+            height: 300px;
+            border: 1px solid #d1d1d6;
+            border-radius: 8px;
+            overflow: hidden;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        .bubble {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .bubble:hover {
+            transform: scale(1.1);
+        }
+
+        .connection-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .connection-path {
+            fill: none;
+            stroke: rgba(255, 255, 255, 0.8);
+            stroke-width: 3;
+            stroke-linecap: round;
+        }
+
+        .performance-chart {
+            height: 200px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chart-line {
+            position: absolute;
+            bottom: 0;
+            width: 2px;
+            background: #007aff;
+            transition: height 0.1s ease;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-good { background: #30d158; }
+        .status-warning { background: #ff9500; }
+        .status-error { background: #ff3b30; }
+
+        .optimization-log {
+            height: 150px;
+            overflow-y: auto;
+            background: #1e1e1e;
+            color: #f1f1f1;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin-bottom: 4px;
+        }
+
+        .log-info { color: #5ac8fa; }
+        .log-warning { color: #ff9500; }
+        .log-error { color: #ff453a; }
+        .log-success { color: #30d158; }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .metrics {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .controls {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>requestAnimationFrame 性能优化演示</h1>
+            <p>深度分析与实时性能监控</p>
+        </div>
+
+        <!-- 性能指标展示 -->
+        <div class="demo-section">
+            <h2 class="section-title">
+                <span class="status-indicator status-good" id="performanceStatus"></span>
+                实时性能指标
+            </h2>
+            <div class="metrics">
+                <div class="metric">
+                    <div class="metric-value" id="fpsValue">60</div>
+                    <div class="metric-label">FPS</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="frameTimeValue">16.7</div>
+                    <div class="metric-label">帧时间 (ms)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="memoryValue">0</div>
+                    <div class="metric-label">内存使用 (MB)</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="elementCount">0</div>
+                    <div class="metric-label">活跃元素</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="connectionCount">0</div>
+                    <div class="metric-label">连接线数量</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="refreshRate">60</div>
+                    <div class="metric-label">刷新率 (Hz)</div>
+                </div>
+            </div>
+            <div class="performance-chart" id="performanceChart"></div>
+        </div>
+
+        <!-- 虚拟滚动演示 -->
+        <div class="demo-section">
+            <h2 class="section-title">虚拟滚动性能对比</h2>
+            <div class="controls">
+                <button class="btn" onclick="createScrollItems(100)">100 元素</button>
+                <button class="btn" onclick="createScrollItems(1000)">1,000 元素</button>
+                <button class="btn" onclick="createScrollItems(5000)">5,000 元素</button>
+                <button class="btn" onclick="createScrollItems(10000)">10,000 元素</button>
+                <button class="btn success" onclick="toggleVirtualScrolling()">
+                    <span id="virtualScrollToggle">启用虚拟滚动</span>
+                </button>
+                <button class="btn danger" onclick="clearScrollItems()">清空</button>
+            </div>
+            <div class="scroll-container" id="scrollContainer"></div>
+        </div>
+
+        <!-- SVG连接线动画演示 -->
+        <div class="demo-section">
+            <h2 class="section-title">SVG连接线跟随动画</h2>
+            <div class="controls">
+                <button class="btn" onclick="addBubbles(5)">添加 5 个气泡</button>
+                <button class="btn" onclick="addBubbles(10)">添加 10 个气泡</button>
+                <button class="btn" onclick="startRandomMovement()">开始随机运动</button>
+                <button class="btn" onclick="stopRandomMovement()">停止运动</button>
+                <button class="btn success" onclick="toggleSVGOptimization()">
+                    <span id="svgOptToggle">启用 SVG 优化</span>
+                </button>
+                <button class="btn danger" onclick="clearBubbles()">清空气泡</button>
+            </div>
+            <div class="connection-demo" id="connectionDemo">
+                <svg class="connection-svg" id="connectionSvg"></svg>
+            </div>
+        </div>
+
+        <!-- 优化日志 -->
+        <div class="demo-section">
+            <h2 class="section-title">自动优化日志</h2>
+            <div class="optimization-log" id="optimizationLog"></div>
+        </div>
+    </div>
+
+    <script>
+        class PerformanceDemo {
+            constructor() {
+                this.fps = 60;
+                this.frameTime = 16.67;
+                this.frameCount = 0;
+                this.lastFrameTime = performance.now();
+                this.frameTimes = [];
+                this.refreshRate = 60;
+                
+                this.virtualScrollEnabled = false;
+                this.svgOptimizationEnabled = false;
+                this.randomMovementInterval = null;
+                
+                this.scrollItems = [];
+                this.visibleItems = new Set();
+                this.bubbles = [];
+                this.connections = [];
+                
+                this.performanceChart = [];
+                this.maxChartPoints = 100;
+                
+                this.init();
+            }
+            
+            async init() {
+                await this.detectRefreshRate();
+                this.setupPerformanceMonitoring();
+                this.setupScrollContainer();
+                this.setupConnectionDemo();
+                this.log('系统初始化完成', 'success');
+            }
+            
+            async detectRefreshRate() {
+                return new Promise((resolve) => {
+                    let frameCount = 0;
+                    let startTime = performance.now();
+                    
+                    const measure = () => {
+                        frameCount++;
+                        if (frameCount === 60) {
+                            const elapsed = performance.now() - startTime;
+                            const detectedRate = Math.round(60000 / elapsed);
+                            this.refreshRate = detectedRate > 100 ? 120 : 60;
+                            document.getElementById('refreshRate').textContent = this.refreshRate;
+                            this.log(`检测到显示器刷新率: ${this.refreshRate}Hz`, 'info');
+                            resolve();
+                        } else {
+                            requestAnimationFrame(measure);
+                        }
+                    };
+                    
+                    requestAnimationFrame(measure);
+                });
+            }
+            
+            setupPerformanceMonitoring() {
+                const updatePerformanceMetrics = () => {
+                    const currentTime = performance.now();
+                    const deltaTime = currentTime - this.lastFrameTime;
+                    
+                    this.frameCount++;
+                    this.frameTimes.push(deltaTime);
+                    
+                    if (this.frameTimes.length > 60) {
+                        this.frameTimes.shift();
+                    }
+                    
+                    // 计算平均帧时间和 FPS
+                    if (this.frameTimes.length > 0) {
+                        this.frameTime = this.frameTimes.reduce((a, b) => a + b) / this.frameTimes.length;
+                        this.fps = 1000 / this.frameTime;
+                    }
+                    
+                    this.lastFrameTime = currentTime;
+                    this.updateUI();
+                    this.updatePerformanceChart();
+                    this.checkPerformanceThresholds();
+                    
+                    requestAnimationFrame(updatePerformanceMetrics);
+                };
+                
+                requestAnimationFrame(updatePerformanceMetrics);
+            }
+            
+            updateUI() {
+                document.getElementById('fpsValue').textContent = Math.round(this.fps);
+                document.getElementById('frameTimeValue').textContent = this.frameTime.toFixed(1);
+                document.getElementById('elementCount').textContent = this.scrollItems.length;
+                document.getElementById('connectionCount').textContent = this.connections.length;
+                
+                if (performance.memory) {
+                    const memoryMB = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                    document.getElementById('memoryValue').textContent = memoryMB;
+                }
+                
+                // 更新性能状态指示器
+                const statusElement = document.getElementById('performanceStatus');
+                if (this.fps > 55) {
+                    statusElement.className = 'status-indicator status-good';
+                } else if (this.fps > 30) {
+                    statusElement.className = 'status-indicator status-warning';
+                } else {
+                    statusElement.className = 'status-indicator status-error';
+                }
+            }
+            
+            updatePerformanceChart() {
+                this.performanceChart.push(this.fps);
+                if (this.performanceChart.length > this.maxChartPoints) {
+                    this.performanceChart.shift();
+                }
+                
+                const chart = document.getElementById('performanceChart');
+                chart.innerHTML = '';
+                
+                this.performanceChart.forEach((fps, index) => {
+                    const line = document.createElement('div');
+                    line.className = 'chart-line';
+                    line.style.left = `${(index / this.maxChartPoints) * 100}%`;
+                    line.style.height = `${(fps / 120) * 100}%`;
+                    
+                    if (fps > 55) {
+                        line.style.background = '#30d158';
+                    } else if (fps > 30) {
+                        line.style.background = '#ff9500';
+                    } else {
+                        line.style.background = '#ff3b30';
+                    }
+                    
+                    chart.appendChild(line);
+                });
+            }
+            
+            checkPerformanceThresholds() {
+                if (this.fps < 30 && !this.autoOptimizing) {
+                    this.autoOptimizing = true;
+                    this.log('检测到严重性能问题，启动自动优化', 'warning');
+                    this.applyAutoOptimizations();
+                } else if (this.fps < 45) {
+                    this.log(`FPS 低于预期: ${Math.round(this.fps)}`, 'warning');
+                }
+            }
+            
+            applyAutoOptimizations() {
+                if (!this.virtualScrollEnabled && this.scrollItems.length > 1000) {
+                    this.toggleVirtualScrolling();
+                    this.log('自动启用虚拟滚动优化', 'success');
+                }
+                
+                if (!this.svgOptimizationEnabled && this.connections.length > 10) {
+                    this.toggleSVGOptimization();
+                    this.log('自动启用 SVG 优化', 'success');
+                }
+                
+                setTimeout(() => {
+                    this.autoOptimizing = false;
+                }, 2000);
+            }
+            
+            setupScrollContainer() {
+                const container = document.getElementById('scrollContainer');
+                
+                container.addEventListener('scroll', () => {
+                    if (this.virtualScrollEnabled) {
+                        this.updateVirtualScrolling();
+                    }
+                });
+            }
+            
+            createScrollItems(count) {
+                const container = document.getElementById('scrollContainer');
+                this.clearScrollItems();
+                
+                this.log(`创建 ${count} 个滚动元素`, 'info');
+                
+                if (this.virtualScrollEnabled) {
+                    this.createVirtualScrollItems(count);
+                } else {
+                    this.createRegularScrollItems(count);
+                }
+            }
+            
+            createRegularScrollItems(count) {
+                const container = document.getElementById('scrollContainer');
+                const fragment = document.createDocumentFragment();
+                
+                for (let i = 0; i < count; i++) {
+                    const item = document.createElement('div');
+                    item.className = 'scroll-item';
+                    item.innerHTML = `
+                        <span>元素 #${i + 1}</span>
+                        <span>位置: ${i * 50}px</span>
+                    `;
+                    
+                    this.scrollItems.push(item);
+                    fragment.appendChild(item);
+                }
+                
+                container.appendChild(fragment);
+            }
+            
+            createVirtualScrollItems(count) {
+                const container = document.getElementById('scrollContainer');
+                container.innerHTML = '';
+                
+                // 创建虚拟滚动容器
+                const scrollArea = document.createElement('div');
+                scrollArea.style.height = `${count * 50}px`;
+                container.appendChild(scrollArea);
+                
+                this.scrollItems = Array.from({ length: count }, (_, i) => ({
+                    id: i,
+                    element: null,
+                    y: i * 50
+                }));
+                
+                this.updateVirtualScrolling();
+            }
+            
+            updateVirtualScrolling() {
+                const container = document.getElementById('scrollContainer');
+                const scrollTop = container.scrollTop;
+                const containerHeight = container.clientHeight;
+                
+                const startIndex = Math.floor(scrollTop / 50);
+                const endIndex = Math.min(
+                    this.scrollItems.length - 1,
+                    Math.ceil((scrollTop + containerHeight) / 50) + 5
+                );
+                
+                // 移除不可见的元素
+                this.visibleItems.forEach(index => {
+                    if (index < startIndex || index > endIndex) {
+                        const item = this.scrollItems[index];
+                        if (item.element) {
+                            item.element.remove();
+                            item.element = null;
+                        }
+                        this.visibleItems.delete(index);
+                    }
+                });
+                
+                // 添加新的可见元素
+                for (let i = startIndex; i <= endIndex; i++) {
+                    if (!this.visibleItems.has(i) && this.scrollItems[i]) {
+                        const item = this.scrollItems[i];
+                        const element = document.createElement('div');
+                        element.className = 'scroll-item';
+                        element.style.position = 'absolute';
+                        element.style.top = `${item.y}px`;
+                        element.style.width = '100%';
+                        element.innerHTML = `
+                            <span>虚拟元素 #${i + 1}</span>
+                            <span>位置: ${item.y}px</span>
+                        `;
+                        
+                        item.element = element;
+                        container.appendChild(element);
+                        this.visibleItems.add(i);
+                    }
+                }
+            }
+            
+            toggleVirtualScrolling() {
+                this.virtualScrollEnabled = !this.virtualScrollEnabled;
+                const toggle = document.getElementById('virtualScrollToggle');
+                toggle.textContent = this.virtualScrollEnabled ? '禁用虚拟滚动' : '启用虚拟滚动';
+                
+                this.log(`虚拟滚动 ${this.virtualScrollEnabled ? '已启用' : '已禁用'}`, 'info');
+                
+                if (this.scrollItems.length > 0) {
+                    const count = this.scrollItems.length;
+                    this.createScrollItems(count);
+                }
+            }
+            
+            clearScrollItems() {
+                const container = document.getElementById('scrollContainer');
+                container.innerHTML = '';
+                this.scrollItems = [];
+                this.visibleItems.clear();
+                this.log('清空所有滚动元素', 'info');
+            }
+            
+            setupConnectionDemo() {
+                const demo = document.getElementById('connectionDemo');
+                const svg = document.getElementById('connectionSvg');
+                
+                // 设置 SVG viewBox
+                svg.setAttribute('viewBox', `0 0 ${demo.clientWidth} ${demo.clientHeight}`);
+            }
+            
+            addBubbles(count) {
+                const demo = document.getElementById('connectionDemo');
+                const svg = document.getElementById('connectionSvg');
+                
+                for (let i = 0; i < count; i++) {
+                    const bubble = document.createElement('div');
+                    bubble.className = 'bubble';
+                    bubble.textContent = this.bubbles.length + 1;
+                    
+                    const x = Math.random() * (demo.clientWidth - 60);
+                    const y = Math.random() * (demo.clientHeight - 60);
+                    
+                    bubble.style.left = x + 'px';
+                    bubble.style.top = y + 'px';
+                    
+                    bubble.addEventListener('mousedown', (e) => {
+                        this.startDragging(bubble, e);
+                    });
+                    
+                    demo.appendChild(bubble);
+                    this.bubbles.push({
+                        element: bubble,
+                        x: x + 30,
+                        y: y + 30,
+                        vx: (Math.random() - 0.5) * 2,
+                        vy: (Math.random() - 0.5) * 2
+                    });
+                }
+                
+                this.updateConnections();
+                this.log(`添加了 ${count} 个气泡`, 'info');
+            }
+            
+            startDragging(bubble, e) {
+                const bubbleData = this.bubbles.find(b => b.element === bubble);
+                if (!bubbleData) return;
+                
+                const demo = document.getElementById('connectionDemo');
+                const rect = demo.getBoundingClientRect();
+                
+                const startX = e.clientX - rect.left;
+                const startY = e.clientY - rect.top;
+                const startBubbleX = bubbleData.x - 30;
+                const startBubbleY = bubbleData.y - 30;
+                
+                const onMouseMove = (e) => {
+                    const newX = startBubbleX + (e.clientX - rect.left - startX);
+                    const newY = startBubbleY + (e.clientY - rect.top - startY);
+                    
+                    const clampedX = Math.max(0, Math.min(demo.clientWidth - 60, newX));
+                    const clampedY = Math.max(0, Math.min(demo.clientHeight - 60, newY));
+                    
+                    bubble.style.left = clampedX + 'px';
+                    bubble.style.top = clampedY + 'px';
+                    
+                    bubbleData.x = clampedX + 30;
+                    bubbleData.y = clampedY + 30;
+                    
+                    this.updateConnections();
+                };
+                
+                const onMouseUp = () => {
+                    document.removeEventListener('mousemove', onMouseMove);
+                    document.removeEventListener('mouseup', onMouseUp);
+                };
+                
+                document.addEventListener('mousemove', onMouseMove);
+                document.addEventListener('mouseup', onMouseUp);
+            }
+            
+            updateConnections() {
+                const svg = document.getElementById('connectionSvg');
+                
+                // 清除现有连接
+                svg.innerHTML = '';
+                this.connections = [];
+                
+                // 创建所有气泡之间的连接
+                for (let i = 0; i < this.bubbles.length; i++) {
+                    for (let j = i + 1; j < this.bubbles.length; j++) {
+                        const bubble1 = this.bubbles[i];
+                        const bubble2 = this.bubbles[j];
+                        
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        path.className = 'connection-path';
+                        
+                        const pathData = this.generateSmoothPath(bubble1, bubble2);
+                        path.setAttribute('d', pathData);
+                        
+                        if (this.svgOptimizationEnabled) {
+                            path.style.willChange = 'd';
+                        }
+                        
+                        svg.appendChild(path);
+                        this.connections.push({
+                            path,
+                            bubble1,
+                            bubble2
+                        });
+                    }
+                }
+            }
+            
+            generateSmoothPath(bubble1, bubble2) {
+                const dx = bubble2.x - bubble1.x;
+                const dy = bubble2.y - bubble1.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                const controlOffset = Math.min(distance * 0.3, 100);
+                const cp1x = bubble1.x + controlOffset * (dx / distance);
+                const cp1y = bubble1.y;
+                const cp2x = bubble2.x - controlOffset * (dx / distance);
+                const cp2y = bubble2.y;
+                
+                return `M ${bubble1.x} ${bubble1.y} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${bubble2.x} ${bubble2.y}`;
+            }
+            
+            startRandomMovement() {
+                if (this.randomMovementInterval) return;
+                
+                this.randomMovementInterval = setInterval(() => {
+                    const demo = document.getElementById('connectionDemo');
+                    
+                    this.bubbles.forEach(bubble => {
+                        // 更新速度（添加随机扰动）
+                        bubble.vx += (Math.random() - 0.5) * 0.5;
+                        bubble.vy += (Math.random() - 0.5) * 0.5;
+                        
+                        // 限制速度
+                        const maxSpeed = 3;
+                        const speed = Math.sqrt(bubble.vx ** 2 + bubble.vy ** 2);
+                        if (speed > maxSpeed) {
+                            bubble.vx = (bubble.vx / speed) * maxSpeed;
+                            bubble.vy = (bubble.vy / speed) * maxSpeed;
+                        }
+                        
+                        // 更新位置
+                        bubble.x += bubble.vx;
+                        bubble.y += bubble.vy;
+                        
+                        // 边界反弹
+                        if (bubble.x <= 30 || bubble.x >= demo.clientWidth - 30) {
+                            bubble.vx *= -0.8;
+                            bubble.x = Math.max(30, Math.min(demo.clientWidth - 30, bubble.x));
+                        }
+                        if (bubble.y <= 30 || bubble.y >= demo.clientHeight - 30) {
+                            bubble.vy *= -0.8;
+                            bubble.y = Math.max(30, Math.min(demo.clientHeight - 30, bubble.y));
+                        }
+                        
+                        // 更新 DOM 位置
+                        bubble.element.style.left = (bubble.x - 30) + 'px';
+                        bubble.element.style.top = (bubble.y - 30) + 'px';
+                    });
+                    
+                    this.updateConnections();
+                }, 16);
+                
+                this.log('开始随机运动', 'info');
+            }
+            
+            stopRandomMovement() {
+                if (this.randomMovementInterval) {
+                    clearInterval(this.randomMovementInterval);
+                    this.randomMovementInterval = null;
+                    this.log('停止随机运动', 'info');
+                }
+            }
+            
+            toggleSVGOptimization() {
+                this.svgOptimizationEnabled = !this.svgOptimizationEnabled;
+                const toggle = document.getElementById('svgOptToggle');
+                toggle.textContent = this.svgOptimizationEnabled ? '禁用 SVG 优化' : '启用 SVG 优化';
+                
+                this.log(`SVG 优化 ${this.svgOptimizationEnabled ? '已启用' : '已禁用'}`, 'info');
+                
+                // 应用优化设置
+                this.connections.forEach(connection => {
+                    if (this.svgOptimizationEnabled) {
+                        connection.path.style.willChange = 'd';
+                    } else {
+                        connection.path.style.willChange = 'auto';
+                    }
+                });
+            }
+            
+            clearBubbles() {
+                this.stopRandomMovement();
+                
+                this.bubbles.forEach(bubble => {
+                    bubble.element.remove();
+                });
+                
+                this.bubbles = [];
+                this.connections = [];
+                
+                const svg = document.getElementById('connectionSvg');
+                svg.innerHTML = '';
+                
+                this.log('清空所有气泡和连接线', 'info');
+            }
+            
+            log(message, type = 'info') {
+                const logContainer = document.getElementById('optimizationLog');
+                const timestamp = new Date().toLocaleTimeString();
+                
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+                entry.textContent = `[${timestamp}] ${message}`;
+                
+                logContainer.appendChild(entry);
+                logContainer.scrollTop = logContainer.scrollHeight;
+                
+                // 限制日志条目数量
+                while (logContainer.children.length > 100) {
+                    logContainer.removeChild(logContainer.firstChild);
+                }
+            }
+        }
+        
+        // 全局函数
+        let demo;
+        
+        function createScrollItems(count) {
+            demo.createScrollItems(count);
+        }
+        
+        function toggleVirtualScrolling() {
+            demo.toggleVirtualScrolling();
+        }
+        
+        function clearScrollItems() {
+            demo.clearScrollItems();
+        }
+        
+        function addBubbles(count) {
+            demo.addBubbles(count);
+        }
+        
+        function startRandomMovement() {
+            demo.startRandomMovement();
+        }
+        
+        function stopRandomMovement() {
+            demo.stopRandomMovement();
+        }
+        
+        function toggleSVGOptimization() {
+            demo.toggleSVGOptimization();
+        }
+        
+        function clearBubbles() {
+            demo.clearBubbles();
+        }
+        
+        // 初始化演示
+        document.addEventListener('DOMContentLoaded', () => {
+            demo = new PerformanceDemo();
+        });
+    </script>
+</body>
+</html>

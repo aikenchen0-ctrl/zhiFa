@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PixiJS v8 正确语法连接线系统</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            overflow: hidden;
+            height: 100vh;
+            padding: 10px;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            z-index: 1000;
+            font-size: 12px;
+            min-width: 280px;
+        }
+        
+        .controls h3 {
+            color: #00ff41;
+            margin-bottom: 10px;
+        }
+        
+        .controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            background: #333;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background 0.2s;
+        }
+        
+        .controls button:hover {
+            background: #444;
+        }
+        
+        .controls button.success {
+            background: #1a5a1a;
+            border-color: #2d7d2d;
+        }
+        
+        .status {
+            margin-top: 10px;
+            padding: 8px;
+            background: #000;
+            border-radius: 4px;
+            font-size: 10px;
+            color: #aaa;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .debug-info {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #333;
+            z-index: 1001;
+            font-size: 10px;
+            color: #00ff41;
+            font-family: monospace;
+            min-width: 250px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <h3>🚀 PixiJS v8 正确语法测试</h3>
+        <button onclick="initSystem()">初始化系统</button>
+        <button onclick="testV8Syntax()">✅ v8正确语法连接线</button>
+        <button onclick="testV7Syntax()">❌ v7旧语法连接线</button>
+        <button onclick="createRealConnectionSystem()">🔗 真实连接线系统</button>
+        <button onclick="generateMobileTest()">📱 移动端滚动测试</button>
+        <button onclick="clearAll()">清除所有</button>
+        
+        <div class="status" id="statusLog">
+            准备测试PixiJS v8正确语法...
+        </div>
+    </div>
+    
+    <div class="debug-info" id="debugInfo">
+        FPS: 0<br>
+        Objects: 0<br>
+        Lines: 0<br>
+        Status: 未初始化
+    </div>
+
+    <script>
+        let app = null;
+        let stage = null;
+        let mainContainer = null;
+        let containers = {
+            conv: null,
+            msg: null,
+            acc: null,
+            lines: null
+        };
+        let elements = {
+            conversations: [],
+            messages: [],
+            accounts: [],
+            connections: []
+        };
+        let scrollOffsets = { conv: 0, msg: 0, acc: 0 };
+        
+        function log(message, type = 'info') {
+            const time = new Date().toLocaleTimeString();
+            const statusLog = document.getElementById('statusLog');
+            const color = type === 'error' ? '#ff4444' : type === 'success' ? '#00ff41' : '#aaa';
+            statusLog.innerHTML += `<span style="color: ${color}">[${time}] ${message}</span><br>`;
+            statusLog.scrollTop = statusLog.scrollHeight;
+            console.log(message);
+        }
+        
+        function updateDebugInfo() {
+            const debugDiv = document.getElementById('debugInfo');
+            const totalObjects = stage ? stage.children.length : 0;
+            const totalLines = elements.connections.length;
+            debugDiv.innerHTML = `
+                FPS: ${app ? Math.round(app.ticker.FPS) : 0}<br>
+                Objects: ${totalObjects}<br>
+                Lines: ${totalLines}<br>
+                Status: ${app ? '运行中' : '未初始化'}
+            `;
+        }
+        
+        async function initSystem() {
+            try {
+                log('🚀 初始化PixiJS v8系统...');
+                
+                if (app) {
+                    app.destroy();
+                }
+                
+                app = new PIXI.Application();
+                await app.init({
+                    width: window.innerWidth - 40,
+                    height: window.innerHeight - 40,
+                    backgroundColor: 0x1a1a1a,
+                    antialias: true,
+                    resolution: window.devicePixelRatio || 1
+                });
+                
+                document.body.appendChild(app.canvas);
+                app.canvas.style.position = 'absolute';
+                app.canvas.style.top = '20px';
+                app.canvas.style.left = '20px';
+                app.canvas.style.border = '1px solid #333';
+                
+                stage = app.stage;
+                
+                // 创建主容器
+                mainContainer = new PIXI.Container();
+                stage.addChild(mainContainer);
+                
+                // 创建子容器
+                containers.conv = new PIXI.Container();
+                containers.conv.x = 10;
+                containers.conv.name = 'conversations';
+                mainContainer.addChild(containers.conv);
+                
+                containers.msg = new PIXI.Container();
+                containers.msg.x = 100;
+                containers.msg.name = 'messages';
+                mainContainer.addChild(containers.msg);
+                
+                containers.acc = new PIXI.Container();
+                containers.acc.x = app.screen.width - 90;
+                containers.acc.name = 'accounts';
+                mainContainer.addChild(containers.acc);
+                
+                containers.lines = new PIXI.Container();
+                containers.lines.name = 'connectionLines';
+                mainContainer.addChild(containers.lines);
+                
+                app.ticker.add(updateDebugInfo);
+                
+                log(`✅ PixiJS v${PIXI.VERSION} 初始化成功`, 'success');
+                log(`Canvas: ${app.canvas.width}x${app.canvas.height}`);
+                
+            } catch (error) {
+                log(`❌ 初始化失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testV8Syntax() {
+            if (!app) { log('❌ 请先初始化系统', 'error'); return; }
+            
+            log('🔧 测试PixiJS v8正确语法...');
+            
+            try {
+                // 方法1: v8推荐的语法
+                const line1 = new PIXI.Graphics()
+                    .moveTo(50, 100)
+                    .lineTo(200, 100)
+                    .stroke({ width: 4, color: 0xFF0000 });
+                
+                mainContainer.addChild(line1);
+                log('✅ v8语法方法1: moveTo + lineTo + stroke', 'success');
+                
+                // 方法2: L型连接线
+                const line2 = new PIXI.Graphics()
+                    .moveTo(50, 150)
+                    .lineTo(100, 150)
+                    .lineTo(100, 200)
+                    .lineTo(200, 200)
+                    .stroke({ width: 4, color: 0x00FF00 });
+                
+                mainContainer.addChild(line2);
+                log('✅ v8语法方法2: L型连接线', 'success');
+                
+                // 方法3: 多段连接线
+                const line3 = new PIXI.Graphics()
+                    .moveTo(50, 250)
+                    .lineTo(80, 250)
+                    .stroke({ width: 3, color: 0x0000FF })
+                    .moveTo(80, 250)
+                    .lineTo(80, 280)
+                    .stroke({ width: 3, color: 0x0000FF })
+                    .moveTo(80, 280)
+                    .lineTo(200, 280)
+                    .stroke({ width: 3, color: 0x0000FF });
+                
+                mainContainer.addChild(line3);
+                log('✅ v8语法方法3: 分段绘制', 'success');
+                
+            } catch (error) {
+                log(`❌ v8语法测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function testV7Syntax() {
+            if (!app) { log('❌ 请先初始化系统', 'error'); return; }
+            
+            log('⚠️ 测试PixiJS v7旧语法(可能失败)...');
+            
+            try {
+                // v7旧语法测试
+                const oldLine1 = new PIXI.Graphics();
+                oldLine1.lineStyle(4, 0xFFFF00, 1);
+                oldLine1.moveTo(300, 100);
+                oldLine1.lineTo(450, 100);
+                mainContainer.addChild(oldLine1);
+                log('⚠️ v7语法: lineStyle + moveTo + lineTo');
+                
+                // v7 L型测试
+                const oldLine2 = new PIXI.Graphics();
+                oldLine2.lineStyle(4, 0xFF9500, 1);
+                oldLine2.moveTo(300, 150);
+                oldLine2.lineTo(350, 150);
+                oldLine2.lineTo(350, 200);
+                oldLine2.lineTo(450, 200);
+                mainContainer.addChild(oldLine2);
+                log('⚠️ v7语法: L型连接');
+                
+            } catch (error) {
+                log(`❌ v7语法测试失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function createRealConnectionSystem() {
+            if (!app) { log('❌ 请先初始化系统', 'error'); return; }
+            
+            log('🔗 创建真实连接线系统...');
+            
+            try {
+                // 清除现有元素
+                Object.values(containers).forEach(container => {
+                    if (container) container.removeChildren();
+                });
+                elements.conversations = [];
+                elements.messages = [];
+                elements.accounts = [];
+                elements.connections = [];
+                
+                // 创建测试元素
+                for (let i = 0; i < 5; i++) {
+                    const isSelf = i % 2 === 0;
+                    
+                    // 会话头像
+                    const conv = createAvatar(40, i * 80 + 50, 0x4CAF50, `C${i}`);
+                    containers.conv.addChild(conv);
+                    elements.conversations.push(conv);
+                    
+                    // 消息气泡
+                    const msg = createBubble(isSelf ? 300 : 50, i * 80 + 50, isSelf ? 0x2196F3 : 0xE0E0E0, `消息${i}`, isSelf);
+                    containers.msg.addChild(msg);
+                    elements.messages.push(msg);
+                    
+                    // 账号头像
+                    const acc = createAvatar(40, i * 80 + 50, 0xFF9800, `A${i}`);
+                    containers.acc.addChild(acc);
+                    elements.accounts.push(acc);
+                    
+                    // 连接线 - 使用v8正确语法
+                    const connection = createConnection(i, isSelf);
+                    containers.lines.addChild(connection);
+                    elements.connections.push(connection);
+                }
+                
+                log(`✅ 创建了${elements.connections.length}条连接线`, 'success');
+                
+            } catch (error) {
+                log(`❌ 连接线系统创建失败: ${error.message}`, 'error');
+            }
+        }
+        
+        function createAvatar(x, y, color, text) {
+            const container = new PIXI.Container();
+            
+            const bg = new PIXI.Graphics()
+                .roundRect(-20, -20, 40, 40, 8)
+                .fill(color);
+            container.addChild(bg);
+            
+            const label = new PIXI.Text({
+                text: text,
+                style: { fontSize: 12, fill: 0xffffff, fontWeight: 'bold' }
+            });
+            label.anchor.set(0.5);
+            container.addChild(label);
+            
+            container.x = x;
+            container.y = y;
+            container.userData = { type: 'avatar', text: text };
+            
+            return container;
+        }
+        
+        function createBubble(x, y, color, text, isSelf) {
+            const container = new PIXI.Container();
+            
+            const width = 100 + Math.random() * 100;
+            const bg = new PIXI.Graphics()
+                .roundRect(isSelf ? -width : 0, -20, width, 40, 15)
+                .fill(color);
+            container.addChild(bg);
+            
+            const label = new PIXI.Text({
+                text: text,
+                style: { fontSize: 11, fill: isSelf ? 0xffffff : 0x000000 }
+            });
+            label.anchor.set(isSelf ? 1 : 0, 0.5);
+            label.x = isSelf ? -10 : 10;
+            container.addChild(label);
+            
+            container.x = x;
+            container.y = y;
+            container.userData = { type: 'bubble', isSelf: isSelf, width: width };
+            
+            return container;
+        }
+        
+        function createConnection(index, isSelf) {
+            const color = isSelf ? 0xFF6B35 : 0x007AFF;
+            
+            // 获取元素位置
+            const conv = elements.conversations[index];
+            const msg = elements.messages[index];
+            const acc = elements.accounts[index];
+            
+            if (!conv || !msg || !acc) return new PIXI.Graphics();
+            
+            // 计算连接点
+            let startX, startY, endX, endY;
+            
+            if (isSelf) {
+                // 自己的消息：从消息右侧到账号左侧
+                startX = containers.msg.x + msg.x;
+                startY = msg.y;
+                endX = containers.acc.x + acc.x - 20;
+                endY = acc.y;
+            } else {
+                // 他人消息：从会话右侧到消息左侧
+                startX = containers.conv.x + conv.x + 20;
+                startY = conv.y;
+                endX = containers.msg.x + msg.x;
+                endY = msg.y;
+            }
+            
+            // 使用v8正确语法绘制L型连接线
+            const connection = new PIXI.Graphics()
+                .moveTo(startX, startY)
+                .lineTo(startX + (isSelf ? 20 : 30), startY)
+                .lineTo(startX + (isSelf ? 20 : 30), endY)
+                .lineTo(endX, endY)
+                .stroke({ width: 3, color: color, alpha: 0.8 });
+                
+            connection.userData = { type: 'connection', index: index, isSelf: isSelf };
+            
+            return connection;
+        }
+        
+        function generateMobileTest() {
+            if (!app) { log('❌ 请先初始化系统', 'error'); return; }
+            
+            log('📱 生成移动端滚动测试...');
+            
+            // 设置触摸滚动
+            setupMobileScrolling();
+            
+            // 创建更多元素用于滚动测试
+            createRealConnectionSystem();
+            
+            log('✅ 移动端测试准备完成', 'success');
+        }
+        
+        function setupMobileScrolling() {
+            // 简单的触摸滚动实现
+            let touchStartY = 0;
+            let currentContainer = null;
+            
+            app.canvas.addEventListener('touchstart', (e) => {
+                touchStartY = e.touches[0].clientY;
+                // 简化：所有区域都滚动消息容器
+                currentContainer = containers.msg;
+            });
+            
+            app.canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (currentContainer) {
+                    const deltaY = e.touches[0].clientY - touchStartY;
+                    currentContainer.y += deltaY * 0.5;
+                    touchStartY = e.touches[0].clientY;
+                    
+                    // 更新连接线
+                    updateConnections();
+                }
+            });
+        }
+        
+        function updateConnections() {
+            // 重新绘制所有连接线
+            elements.connections.forEach((connection, index) => {
+                if (connection.userData) {
+                    const newConnection = createConnection(index, connection.userData.isSelf);
+                    connection.clear();
+                    connection.geometry = newConnection.geometry;
+                }
+            });
+        }
+        
+        function clearAll() {
+            if (mainContainer) {
+                mainContainer.removeChildren();
+                elements.conversations = [];
+                elements.messages = [];
+                elements.accounts = [];
+                elements.connections = [];
+                log('🧹 清除所有内容');
+            }
+        }
+        
+        // 页面加载完成
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🎯 PixiJS v8 正确语法系统已加载');
+            log('💡 基于最新官方文档的v8语法实现');
+        });
+        
+        // 防止页面滚动
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+    </script>
+</body>
+</html>

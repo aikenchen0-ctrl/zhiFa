@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Animation System Test - PIXI.js v8 滚动和动画系统测试</title>
+    <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.0.0/dist/pixi.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+        }
+        
+        .controls h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        .control-group label {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 3px;
+        }
+        
+        .control-group button {
+            padding: 5px 10px;
+            margin: 2px;
+            border: none;
+            border-radius: 4px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 11px;
+        }
+        
+        .control-group button:hover {
+            background: #0056b3;
+        }
+        
+        .stats {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            min-width: 200px;
+        }
+        
+        .instructions {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            max-width: 300px;
+        }
+        
+        .canvas-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div class="canvas-container" id="canvas-container"></div>
+    
+    <div class="controls">
+        <h3>Animation System Test Controls</h3>
+        
+        <div class="control-group">
+            <label>Bubble Animations:</label>
+            <button onclick="testBubbleAppear()">Bubble Appear</button>
+            <button onclick="testBubbleDisappear()">Bubble Disappear</button>
+        </div>
+        
+        <div class="control-group">
+            <label>UI Animations:</label>
+            <button onclick="testButtonClick()">Button Click</button>
+            <button onclick="testPopupExpand()">Popup Expand</button>
+            <button onclick="testPopupCollapse()">Popup Collapse</button>
+        </div>
+        
+        <div class="control-group">
+            <label>Connection Animations:</label>
+            <button onclick="testConnectionDraw()">Draw Connection</button>
+            <button onclick="testConnectionMove()">Move Connection</button>
+        </div>
+        
+        <div class="control-group">
+            <label>Scroll Functions:</label>
+            <button onclick="testSmoothScroll()">Smooth Scroll</button>
+            <button onclick="testScrollBounds()">Test Bounds</button>
+            <button onclick="resetScroll()">Reset Scroll</button>
+        </div>
+        
+        <div class="control-group">
+            <label>Performance:</label>
+            <button onclick="stressTest()">Stress Test</button>
+            <button onclick="toggleDebug()">Toggle Debug</button>
+            <button onclick="enableMobileOptim()">Mobile Optim</button>
+        </div>
+    </div>
+    
+    <div class="stats" id="stats">
+        <div>Loading stats...</div>
+    </div>
+    
+    <div class="instructions">
+        <strong>Instructions:</strong><br>
+        • 拖拽画布进行滚动<br>
+        • 使用鼠标滚轮缩放<br>
+        • 点击按钮测试各种动画<br>
+        • 查看右上角性能统计<br>
+        • 支持惯性滚动和边界回弹
+    </div>
+
+    <script type="module">
+        // Import PIXI and AnimationSystem (simulated for demo)
+        class MockAnimationSystem {
+            constructor(app, options = {}) {
+                this.app = app;
+                this.config = { debugMode: false, showPerformanceStats: true };
+                this.animations = new Map();
+                this.scrollState = { position: { x: 0, y: 0 }, velocity: { x: 0, y: 0 } };
+                this.performanceMetrics = {
+                    fps: 60,
+                    frameTime: 16.67,
+                    animationsActive: 0,
+                    memoryUsage: { used: 0, total: 0 },
+                    objectsPooled: 0
+                };
+                
+                this.logger = {
+                    info: (msg) => console.log(`[AnimationSystem] ${msg}`),
+                    warn: (msg) => console.warn(`[AnimationSystem] ${msg}`),
+                    error: (msg, err) => console.error(`[AnimationSystem] ${msg}`, err)
+                };
+                
+                this.init();
+            }
+            
+            async init() {
+                this.logger.info('Mock AnimationSystem initialized');
+                this.setupTicker();
+                this.setupEventHandlers();
+                this.startPerformanceMonitoring();
+            }
+            
+            setupTicker() {
+                this.app.ticker.add(() => {
+                    this.updateFrame();
+                });
+            }
+            
+            updateFrame() {
+                // Update animations
+                this.updateAnimations();
+                
+                // Update scroll physics
+                if (Math.abs(this.scrollState.velocity.x) > 0.1 || Math.abs(this.scrollState.velocity.y) > 0.1) {
+                    this.scrollState.velocity.x *= 0.92;
+                    this.scrollState.velocity.y *= 0.92;
+                    
+                    this.scrollState.position.x += this.scrollState.velocity.x;
+                    this.scrollState.position.y += this.scrollState.velocity.y;
+                    
+                    this.updateScrollPosition(this.scrollState.position.x, this.scrollState.position.y);
+                }
+            }
+            
+            updateAnimations() {
+                const currentTime = performance.now();
+                for (const [id, animation] of this.animations) {
+                    const elapsed = currentTime - animation.startTime;
+                    const progress = Math.min(elapsed / animation.duration, 1);
+                    
+                    // Apply easing and update values
+                    const easedProgress = this.easeOutCubic(progress);
+                    for (const [key, targetValue] of Object.entries(animation.to)) {
+                        const fromValue = animation.from[key];
+                        const currentValue = fromValue + (targetValue - fromValue) * easedProgress;
+                        animation.target[key] = currentValue;
+                    }
+                    
+                    if (animation.onUpdate) {
+                        animation.onUpdate();
+                    }
+                    
+                    if (progress >= 1) {
+                        if (animation.onComplete) animation.onComplete();
+                        this.animations.delete(id);
+                        this.performanceMetrics.animationsActive--;
+                    }
+                }
+            }
+            
+            easeOutCubic(t) {
+                return 1 - Math.pow(1 - t, 3);
+            }
+            
+            createAnimation(options) {
+                const id = Date.now() + Math.random();
+                const from = {};
+                for (const key of Object.keys(options.to)) {
+                    from[key] = options.target[key] || 0;
+                }
+                
+                const animation = {
+                    id,
+                    target: options.target,
+                    from,
+                    to: options.to,
+                    duration: options.duration || 300,
+                    startTime: performance.now(),
+                    onUpdate: options.onUpdate,
+                    onComplete: options.onComplete
+                };
+                
+                this.animations.set(id, animation);
+                this.performanceMetrics.animationsActive++;
+                
+                return { id, cancel: () => this.animations.delete(id) };
+            }
+            
+            setupEventHandlers() {
+                const canvas = this.app.canvas;
+                let isDragging = false;
+                let lastPos = { x: 0, y: 0 };
+                
+                canvas.addEventListener('pointerdown', (e) => {
+                    isDragging = true;
+                    lastPos = { x: e.clientX, y: e.clientY };
+                });
+                
+                window.addEventListener('pointermove', (e) => {
+                    if (!isDragging) return;
+                    
+                    const deltaX = e.clientX - lastPos.x;
+                    const deltaY = e.clientY - lastPos.y;
+                    
+                    this.scrollState.velocity.x = deltaX * 0.5;
+                    this.scrollState.velocity.y = deltaY * 0.5;
+                    
+                    this.scrollState.position.x += deltaX;
+                    this.scrollState.position.y += deltaY;
+                    
+                    this.updateScrollPosition(this.scrollState.position.x, this.scrollState.position.y);
+                    
+                    lastPos = { x: e.clientX, y: e.clientY };
+                });
+                
+                window.addEventListener('pointerup', () => {
+                    isDragging = false;
+                });
+                
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                    this.scrollState.position.x -= e.deltaX;
+                    this.scrollState.position.y -= e.deltaY;
+                    this.updateScrollPosition(this.scrollState.position.x, this.scrollState.position.y);
+                });
+            }
+            
+            updateScrollPosition(x, y) {
+                this.app.stage.x = x;
+                this.app.stage.y = y;
+            }
+            
+            startPerformanceMonitoring() {
+                let frameCount = 0;
+                let lastTime = performance.now();
+                
+                setInterval(() => {
+                    const currentTime = performance.now();
+                    this.performanceMetrics.fps = Math.round(frameCount / ((currentTime - lastTime) / 1000));
+                    frameCount = 0;
+                    lastTime = currentTime;
+                    
+                    if (performance.memory) {
+                        this.performanceMetrics.memoryUsage = {
+                            used: Math.round(performance.memory.usedJSHeapSize / 1024 / 1024),
+                            total: Math.round(performance.memory.totalJSHeapSize / 1024 / 1024)
+                        };
+                    }
+                    
+                    this.updateStatsDisplay();
+                }, 1000);
+                
+                this.app.ticker.add(() => frameCount++);
+            }
+            
+            updateStatsDisplay() {
+                const stats = document.getElementById('stats');
+                if (stats) {
+                    stats.innerHTML = `
+                        <div><strong>Animation System Stats</strong></div>
+                        <div>FPS: ${this.performanceMetrics.fps}</div>
+                        <div>Frame Time: ${this.performanceMetrics.frameTime.toFixed(2)}ms</div>
+                        <div>Active Animations: ${this.performanceMetrics.animationsActive}</div>
+                        <div>Memory Used: ${this.performanceMetrics.memoryUsage.used}MB</div>
+                        <div>Scroll X: ${this.scrollState.position.x.toFixed(1)}</div>
+                        <div>Scroll Y: ${this.scrollState.position.y.toFixed(1)}</div>
+                        <div>Velocity X: ${this.scrollState.velocity.x.toFixed(2)}</div>
+                        <div>Velocity Y: ${this.scrollState.velocity.y.toFixed(2)}</div>
+                    `;
+                }
+            }
+            
+            // Public API methods for testing
+            animateBubble(bubble, type, options = {}) {
+                switch (type) {
+                    case 'appear':
+                        bubble.alpha = 0;
+                        bubble.scale.set(0.8);
+                        return this.createAnimation({
+                            target: bubble,
+                            to: { alpha: 1, scaleX: 1, scaleY: 1 },
+                            duration: 400
+                        });
+                    case 'disappear':
+                        return this.createAnimation({
+                            target: bubble,
+                            to: { alpha: 0, scaleX: 0.8, scaleY: 0.8 },
+                            duration: 300,
+                            onComplete: () => bubble.parent?.removeChild(bubble)
+                        });
+                }
+            }
+            
+            animateButton(button) {
+                const originalScale = { x: button.scale.x, y: button.scale.y };
+                return this.createAnimation({
+                    target: button,
+                    to: { scaleX: 0.95, scaleY: 0.95 },
+                    duration: 100,
+                    onComplete: () => {
+                        this.createAnimation({
+                            target: button,
+                            to: { scaleX: originalScale.x, scaleY: originalScale.y },
+                            duration: 150
+                        });
+                    }
+                });
+            }
+            
+            animatePopup(popup, type) {
+                switch (type) {
+                    case 'expand':
+                        popup.scale.set(0);
+                        popup.alpha = 0;
+                        return this.createAnimation({
+                            target: popup,
+                            to: { scaleX: 1, scaleY: 1, alpha: 1 },
+                            duration: 350
+                        });
+                    case 'collapse':
+                        return this.createAnimation({
+                            target: popup,
+                            to: { scaleX: 0, scaleY: 0, alpha: 0 },
+                            duration: 250
+                        });
+                }
+            }
+            
+            scrollTo(x, y, smooth = true) {
+                if (smooth) {
+                    return this.createAnimation({
+                        target: this.scrollState.position,
+                        to: { x, y },
+                        duration: 500,
+                        onUpdate: () => {
+                            this.updateScrollPosition(this.scrollState.position.x, this.scrollState.position.y);
+                        }
+                    });
+                } else {
+                    this.scrollState.position.x = x;
+                    this.scrollState.position.y = y;
+                    this.updateScrollPosition(x, y);
+                }
+            }
+            
+            enableDebugMode(enabled) {
+                this.config.debugMode = enabled;
+                this.config.showPerformanceStats = enabled;
+                this.logger.info(`Debug mode ${enabled ? 'enabled' : 'disabled'}`);
+            }
+            
+            getPerformanceMetrics() {
+                return { ...this.performanceMetrics };
+            }
+        }
+
+        // Initialize PIXI Application
+        let app, animationSystem;
+        let testObjects = [];
+
+        async function initApp() {
+            // Create PIXI Application
+            app = new PIXI.Application();
+            await app.init({
+                width: window.innerWidth,
+                height: window.innerHeight,
+                backgroundColor: 0x1099bb,
+                backgroundAlpha: 0,
+                antialias: true,
+                resolution: window.devicePixelRatio || 1
+            });
+
+            // Add canvas to container
+            const container = document.getElementById('canvas-container');
+            container.appendChild(app.canvas);
+
+            // Initialize Animation System
+            animationSystem = new MockAnimationSystem(app);
+
+            // Create test content
+            createTestContent();
+
+            console.log('Animation System Test initialized');
+        }
+
+        function createTestContent() {
+            // Create background
+            const background = new PIXI.Graphics()
+                .rect(0, 0, 3000, 2000)
+                .fill(0x2c3e50);
+            app.stage.addChild(background);
+
+            // Create test bubbles
+            for (let i = 0; i < 10; i++) {
+                const bubble = createTestBubble();
+                bubble.x = 200 + i * 250;
+                bubble.y = 200 + (i % 3) * 150;
+                app.stage.addChild(bubble);
+                testObjects.push(bubble);
+            }
+
+            // Create test buttons
+            for (let i = 0; i < 5; i++) {
+                const button = createTestButton();
+                button.x = 100 + i * 200;
+                button.y = 700;
+                app.stage.addChild(button);
+                testObjects.push(button);
+            }
+
+            // Create connection lines
+            for (let i = 0; i < 5; i++) {
+                const line = createTestConnection();
+                line.x = 150 + i * 300;
+                line.y = 900;
+                app.stage.addChild(line);
+                testObjects.push(line);
+            }
+        }
+
+        function createTestBubble() {
+            const container = new PIXI.Container();
+            
+            // Bubble background
+            const background = new PIXI.Graphics()
+                .roundRect(0, 0, 200, 80, 20)
+                .fill(0xffffff, 0.9)
+                .stroke({ width: 2, color: 0x007bff });
+            
+            // Bubble text
+            const text = new PIXI.Text({
+                text: 'Test Bubble',
+                style: {
+                    fontFamily: 'Arial',
+                    fontSize: 16,
+                    fill: 0x333333,
+                    align: 'center'
+                }
+            });
+            text.x = 100;
+            text.y = 40;
+            text.anchor.set(0.5);
+            
+            container.addChild(background);
+            container.addChild(text);
+            
+            // Make interactive
+            container.eventMode = 'static';
+            container.cursor = 'pointer';
+            
+            return container;
+        }
+
+        function createTestButton() {
+            const button = new PIXI.Graphics()
+                .roundRect(0, 0, 120, 40, 10)
+                .fill(0x007bff)
+                .stroke({ width: 2, color: 0x0056b3 });
+            
+            const text = new PIXI.Text({
+                text: 'Click Me',
+                style: {
+                    fontFamily: 'Arial',
+                    fontSize: 14,
+                    fill: 0xffffff
+                }
+            });
+            text.x = 60;
+            text.y = 20;
+            text.anchor.set(0.5);
+            
+            button.addChild(text);
+            button.eventMode = 'static';
+            button.cursor = 'pointer';
+            
+            button.on('pointerdown', () => {
+                animationSystem.animateButton(button);
+            });
+            
+            return button;
+        }
+
+        function createTestConnection() {
+            const line = new PIXI.Graphics()
+                .moveTo(0, 0)
+                .lineTo(100, 50)
+                .lineTo(200, 0)
+                .stroke({ width: 3, color: 0x00ff00 });
+            
+            return line;
+        }
+
+        // Test functions for UI controls
+        window.testBubbleAppear = function() {
+            const bubble = testObjects.find(obj => obj.children && obj.children.length > 1);
+            if (bubble) {
+                animationSystem.animateBubble(bubble, 'appear');
+            }
+        };
+
+        window.testBubbleDisappear = function() {
+            const bubble = testObjects.find(obj => obj.children && obj.children.length > 1 && obj.alpha > 0.5);
+            if (bubble) {
+                animationSystem.animateBubble(bubble, 'disappear');
+            }
+        };
+
+        window.testButtonClick = function() {
+            const button = testObjects.find(obj => obj.cursor === 'pointer' && !obj.children?.length);
+            if (button) {
+                animationSystem.animateButton(button);
+            }
+        };
+
+        window.testPopupExpand = function() {
+            const popup = createTestBubble();
+            popup.x = 400;
+            popup.y = 300;
+            app.stage.addChild(popup);
+            animationSystem.animatePopup(popup, 'expand');
+        };
+
+        window.testPopupCollapse = function() {
+            const popup = app.stage.children.find(child => child.x === 400 && child.y === 300);
+            if (popup) {
+                animationSystem.animatePopup(popup, 'collapse');
+            }
+        };
+
+        window.testConnectionDraw = function() {
+            const line = testObjects.find(obj => obj.geometry);
+            if (line) {
+                line.alpha = 0;
+                animationSystem.createAnimation({
+                    target: line,
+                    to: { alpha: 1 },
+                    duration: 600
+                });
+            }
+        };
+
+        window.testConnectionMove = function() {
+            const line = testObjects.find(obj => obj.geometry);
+            if (line) {
+                animationSystem.createAnimation({
+                    target: line,
+                    to: { rotation: line.rotation + Math.PI / 4 },
+                    duration: 400
+                });
+            }
+        };
+
+        window.testSmoothScroll = function() {
+            const targetX = Math.random() * -1000;
+            const targetY = Math.random() * -500;
+            animationSystem.scrollTo(targetX, targetY, true);
+        };
+
+        window.testScrollBounds = function() {
+            animationSystem.scrollTo(-2000, -1000, true);
+        };
+
+        window.resetScroll = function() {
+            animationSystem.scrollTo(0, 0, true);
+        };
+
+        window.stressTest = function() {
+            // Create many animations simultaneously
+            for (let i = 0; i < 20; i++) {
+                setTimeout(() => {
+                    const obj = testObjects[Math.floor(Math.random() * testObjects.length)];
+                    if (obj) {
+                        animationSystem.createAnimation({
+                            target: obj,
+                            to: { 
+                                rotation: Math.random() * Math.PI * 2,
+                                scaleX: 0.8 + Math.random() * 0.4,
+                                scaleY: 0.8 + Math.random() * 0.4
+                            },
+                            duration: 500 + Math.random() * 1000
+                        });
+                    }
+                }, i * 50);
+            }
+        };
+
+        window.toggleDebug = function() {
+            const currentDebug = animationSystem.config.debugMode;
+            animationSystem.enableDebugMode(!currentDebug);
+        };
+
+        window.enableMobileOptim = function() {
+            // Simulate mobile optimization
+            app.renderer.resolution = Math.min(1.5, window.devicePixelRatio);
+            animationSystem.logger.info('Mobile optimizations applied');
+        };
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            app.renderer.resize(window.innerWidth, window.innerHeight);
+        });
+
+        // Initialize the application
+        initApp().catch(console.error);
+    </script>
+</body>
+</html>

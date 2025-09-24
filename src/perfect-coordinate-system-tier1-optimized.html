@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三列元素容器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .main-container {
+            height: 100vh;
+            display: flex;
+            background: transparent;
+        }
+
+        .column {
+            height: 100vh;
+            overflow-y: auto;
+            border-right: 1px solid #e0e0e0;
+            position: relative;
+        }
+
+        .session-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .messages-column {
+            flex: 1;
+            background: transparent;
+            position: relative;
+        }
+
+        .account-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .avatar-item {
+            width: 66px;
+            height: 66px;
+            margin: 10px 0;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            position: relative;
+        }
+
+        .avatar-item.account {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .message-item {
+            margin: 15px 20px;
+            position: relative;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .message-content {
+            background: #e9ecef;
+            border-radius: 18px;
+            padding: 12px 16px;
+            position: relative;
+            word-wrap: break-word;
+            width: 100%;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .message-content.own {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-text {
+            flex: 1;
+        }
+
+        .message-time {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+        /* 控制面板 */
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 2000;
+        }
+
+        .controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .controls button:hover {
+            background: #0056b3;
+        }
+
+        /* 状态信息 */
+        .status-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-size: 12px;
+            z-index: 2001;
+        }
+
+        /* SVG连接线容器 */
+        .connection-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* 连接线样式 */
+        .connection-path {
+            fill: none;
+            stroke: #007bff;
+            stroke-width: 2;
+            stroke-dasharray: 8, 4;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            filter: drop-shadow(0 2px 4px rgba(0, 123, 255, 0.3));
+            animation: dash-flow 2s linear infinite;
+        }
+
+        .connection-path.account {
+            stroke: #fa709a;
+            filter: drop-shadow(0 2px 4px rgba(250, 112, 154, 0.3));
+        }
+
+        @keyframes dash-flow {
+            0% {
+                stroke-dashoffset: 0;
+            }
+            100% {
+                stroke-dashoffset: -24;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button onclick="generateItems(500)">生成 500 个测试项</button>
+        <button onclick="clearAll()">清空所有</button>
+        <button onclick="scrollToTop()">滚动到顶部</button>
+        <button onclick="scrollToBottom()">滚动到底部</button>
+        <button onclick="toggleConnections()">切换连接线显示</button>
+        <button onclick="runPerformanceAnalysis()">性能分析</button>
+        <button onclick="toggleTier1Optimization()">切换Tier1优化</button>
+        <button onclick="runTier1Benchmark()">Tier1基准测试</button>
+        <button onclick="generateItems(1000)">生成 1000 大型测试</button>
+    </div>
+
+    <div class="status-info" id="statusInfo">
+        已加载: 100 个默认项
+    </div>
+
+    <div class="main-container">
+        <!-- SVG连接线容器 -->
+        <svg class="connection-svg" id="connectionSvg">
+            <defs>
+                <filter id="glow">
+                    <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                    <feMerge> 
+                        <feMergeNode in="coloredBlur"/>
+                        <feMergeNode in="SourceGraphic"/> 
+                    </feMerge>
+                </filter>
+            </defs>
+        </svg>
+
+        <!-- 会话头像列 -->
+        <div class="column session-avatars-column" id="sessionAvatars">
+        </div>
+
+        <!-- 消息气泡列 -->
+        <div class="column messages-column" id="messagesColumn">
+        </div>
+
+        <!-- 账号头像列 -->
+        <div class="column account-avatars-column" id="accountAvatars">
+        </div>
+    </div>
+
+    <script>
+        // 性能分析器
+        class PerformanceAnalyzer {
+            constructor() {
+                this.metrics = {
+                    animationFrameTime: [],
+                    pathCalculationTime: [],
+                    domUpdateTime: [],
+                    memoryUsage: [],
+                    scrollEventTime: []
+                };
+                this.isAnalyzing = false;
+                this.analysisStartTime = 0;
+            }
+            
+            startAnalysis() {
+                this.isAnalyzing = true;
+                this.analysisStartTime = performance.now();
+                this.metrics = {
+                    animationFrameTime: [],
+                    pathCalculationTime: [],
+                    domUpdateTime: [],
+                    memoryUsage: [],
+                    scrollEventTime: []
+                };
+                console.log('🔍 性能分析开始...');
+            }
+            
+            recordMetric(type, duration) {
+                if (!this.isAnalyzing) return;
+                
+                if (this.metrics[type]) {
+                    this.metrics[type].push(duration);
+                    
+                    // 限制历史记录数量，防止内存泄漏
+                    if (this.metrics[type].length > 1000) {
+                        this.metrics[type] = this.metrics[type].slice(-500);
+                    }
+                }
+            }
+            
+            measureFunction(fn, metricType) {
+                if (!this.isAnalyzing) return fn();
+                
+                const start = performance.now();
+                const result = fn();
+                const duration = performance.now() - start;
+                this.recordMetric(metricType, duration);
+                return result;
+            }
+            
+            recordMemoryUsage() {
+                if (!this.isAnalyzing) return;
+                
+                if (performance.memory) {
+                    this.metrics.memoryUsage.push({
+                        used: performance.memory.usedJSHeapSize / 1024 / 1024,
+                        total: performance.memory.totalJSHeapSize / 1024 / 1024,
+                        limit: performance.memory.jsHeapSizeLimit / 1024 / 1024,
+                        timestamp: performance.now() - this.analysisStartTime
+                    });
+                }
+            }
+            
+            getAnalysisReport() {
+                if (!this.isAnalyzing) return null;
+                
+                this.isAnalyzing = false;
+                const totalTime = performance.now() - this.analysisStartTime;
+                
+                const report = {
+                    totalAnalysisTime: totalTime,
+                    animationFrame: this.calculateStats(this.metrics.animationFrameTime),
+                    pathCalculation: this.calculateStats(this.metrics.pathCalculationTime),
+                    domUpdate: this.calculateStats(this.metrics.domUpdateTime),
+                    scrollEvent: this.calculateStats(this.metrics.scrollEventTime),
+                    memoryStats: this.calculateMemoryStats()
+                };
+                
+                return this.generatePerformanceRanking(report);
+            }
+            
+            calculateStats(data) {
+                if (!data.length) return { count: 0, avg: 0, max: 0, total: 0 };
+                
+                const total = data.reduce((sum, val) => sum + val, 0);
+                const avg = total / data.length;
+                const max = Math.max(...data);
+                
+                return {
+                    count: data.length,
+                    avg: Math.round(avg * 1000) / 1000,
+                    max: Math.round(max * 1000) / 1000,
+                    total: Math.round(total * 1000) / 1000
+                };
+            }
+            
+            calculateMemoryStats() {
+                if (!this.metrics.memoryUsage.length) return null;
+                
+                const first = this.metrics.memoryUsage[0];
+                const last = this.metrics.memoryUsage[this.metrics.memoryUsage.length - 1];
+                
+                return {
+                    initialMemory: Math.round(first.used * 100) / 100,
+                    finalMemory: Math.round(last.used * 100) / 100,
+                    memoryIncrease: Math.round((last.used - first.used) * 100) / 100,
+                    maxMemory: Math.round(Math.max(...this.metrics.memoryUsage.map(m => m.used)) * 100) / 100
+                };
+            }
+            
+            generatePerformanceRanking(report) {
+                const issues = [];
+                
+                // 按影响程度排序
+                if (report.animationFrame.avg > 8.33) {
+                    issues.push({
+                        priority: 'HIGH',
+                        component: '120Hz动画循环',
+                        avgTime: report.animationFrame.avg,
+                        impact: '超过120Hz目标(8.33ms)，会导致卡顿',
+                        suggestion: '降低刷新率或优化更新逻辑'
+                    });
+                }
+                
+                if (report.pathCalculation.total > report.animationFrame.total * 0.5) {
+                    issues.push({
+                        priority: 'HIGH',
+                        component: 'SVG路径计算',
+                        avgTime: report.pathCalculation.avg,
+                        impact: '占用动画循环50%以上时间',
+                        suggestion: '缓存路径结果，优化数学计算'
+                    });
+                }
+                
+                if (report.domUpdate.avg > 2) {
+                    issues.push({
+                        priority: 'MEDIUM',
+                        component: 'DOM更新',
+                        avgTime: report.domUpdate.avg,
+                        impact: 'SVG属性更新过慢',
+                        suggestion: '批量更新，减少DOM操作频率'
+                    });
+                }
+                
+                if (report.memoryStats && report.memoryStats.memoryIncrease > 10) {
+                    issues.push({
+                        priority: 'MEDIUM',
+                        component: '内存管理',
+                        avgTime: 0,
+                        impact: `内存增长${report.memoryStats.memoryIncrease}MB`,
+                        suggestion: '检查内存泄漏，清理未使用对象'
+                    });
+                }
+                
+                return {
+                    summary: {
+                        totalIssues: issues.length,
+                        highPriority: issues.filter(i => i.priority === 'HIGH').length,
+                        mediumPriority: issues.filter(i => i.priority === 'MEDIUM').length
+                    },
+                    detailedReport: report,
+                    performanceIssues: issues.sort((a, b) => {
+                        const priorityOrder = { 'HIGH': 3, 'MEDIUM': 2, 'LOW': 1 };
+                        return priorityOrder[b.priority] - priorityOrder[a.priority];
+                    }),
+                    recommendations: this.generateRecommendations(issues)
+                };
+            }
+            
+            generateRecommendations(issues) {
+                const recommendations = [];
+                
+                if (issues.some(i => i.component.includes('动画循环'))) {
+                    recommendations.push('⬇️ 降低刷新率至60Hz或使用自适应刷新');
+                }
+                
+                if (issues.some(i => i.component.includes('路径计算'))) {
+                    recommendations.push('💾 实现路径缓存机制');
+                    recommendations.push('🎨 简化SVG路径复杂度');
+                }
+                
+                if (issues.some(i => i.component.includes('DOM'))) {
+                    recommendations.push('🚀 使用requestAnimationFrame批量更新');
+                }
+                
+                if (issues.some(i => i.component.includes('内存'))) {
+                    recommendations.push('🧹 实现对象池管理');
+                }
+                
+                return recommendations;
+            }
+        }
+        
+        // 四叉树空间分区系统
+        class SpatialQuadTree {
+            constructor(bounds, maxObjects = 10, maxLevels = 5, level = 0) {
+                this.maxObjects = maxObjects;
+                this.maxLevels = maxLevels;
+                this.level = level;
+                this.bounds = bounds; // { x, y, width, height }
+                this.objects = [];
+                this.nodes = [];
+            }
+            
+            clear() {
+                this.objects = [];
+                for (let i = 0; i < this.nodes.length; i++) {
+                    if (this.nodes[i]) {
+                        this.nodes[i].clear();
+                        this.nodes[i] = null;
+                    }
+                }
+                this.nodes = [];
+            }
+            
+            split() {
+                const subWidth = this.bounds.width / 2;
+                const subHeight = this.bounds.height / 2;
+                const x = this.bounds.x;
+                const y = this.bounds.y;
+                
+                this.nodes[0] = new SpatialQuadTree(
+                    { x: x + subWidth, y: y, width: subWidth, height: subHeight },
+                    this.maxObjects, this.maxLevels, this.level + 1
+                );
+                this.nodes[1] = new SpatialQuadTree(
+                    { x: x, y: y, width: subWidth, height: subHeight },
+                    this.maxObjects, this.maxLevels, this.level + 1
+                );
+                this.nodes[2] = new SpatialQuadTree(
+                    { x: x, y: y + subHeight, width: subWidth, height: subHeight },
+                    this.maxObjects, this.maxLevels, this.level + 1
+                );
+                this.nodes[3] = new SpatialQuadTree(
+                    { x: x + subWidth, y: y + subHeight, width: subWidth, height: subHeight },
+                    this.maxObjects, this.maxLevels, this.level + 1
+                );
+            }
+            
+            getIndex(bounds) {
+                let index = -1;
+                const verticalMidpoint = this.bounds.x + (this.bounds.width / 2);
+                const horizontalMidpoint = this.bounds.y + (this.bounds.height / 2);
+                
+                const topQuadrant = (bounds.y < horizontalMidpoint && bounds.y + bounds.height < horizontalMidpoint);
+                const bottomQuadrant = (bounds.y > horizontalMidpoint);
+                
+                if (bounds.x < verticalMidpoint && bounds.x + bounds.width < verticalMidpoint) {
+                    if (topQuadrant) {
+                        index = 1;
+                    } else if (bottomQuadrant) {
+                        index = 2;
+                    }
+                } else if (bounds.x > verticalMidpoint) {
+                    if (topQuadrant) {
+                        index = 0;
+                    } else if (bottomQuadrant) {
+                        index = 3;
+                    }
+                }
+                
+                return index;
+            }
+            
+            insert(obj) {
+                if (this.nodes.length > 0) {
+                    const index = this.getIndex(obj.bounds);
+                    if (index !== -1) {
+                        this.nodes[index].insert(obj);
+                        return;
+                    }
+                }
+                
+                this.objects.push(obj);
+                
+                if (this.objects.length > this.maxObjects && this.level < this.maxLevels) {
+                    if (this.nodes.length === 0) {
+                        this.split();
+                    }
+                    
+                    let i = 0;
+                    while (i < this.objects.length) {
+                        const index = this.getIndex(this.objects[i].bounds);
+                        if (index !== -1) {
+                            this.nodes[index].insert(this.objects.splice(i, 1)[0]);
+                        } else {
+                            i++;
+                        }
+                    }
+                }
+            }
+            
+            retrieve(returnObjects, bounds) {
+                const index = this.getIndex(bounds);
+                if (index !== -1 && this.nodes.length > 0) {
+                    this.nodes[index].retrieve(returnObjects, bounds);
+                }
+                
+                for (let i = 0; i < this.objects.length; i++) {
+                    returnObjects.push(this.objects[i]);
+                }
+                
+                return returnObjects;
+            }
+        }
+        
+        // 版本号系统 (替换脏检查的轻量化方案)
+        class VersionSystem {
+            constructor() {
+                this.globalVersion = 0;
+                this.elementVersions = new Map();
+                this.scrollVersions = {
+                    session: 0,
+                    message: 0,
+                    account: 0
+                };
+                this.frameCounter = 0;
+            }
+            
+            // 滚动时增加版本号
+            onScroll(containerType) {
+                this.scrollVersions[containerType]++;
+                this.globalVersion = Math.max(...Object.values(this.scrollVersions));
+            }
+            
+            // 检查元素是否需要更新
+            needsUpdate(connectionId, messageIndex, avatarIndex, type) {
+                const lastVersion = this.elementVersions.get(connectionId) || 0;
+                
+                // 检查相关容器的版本号
+                const messageContainerVersion = this.scrollVersions.message;
+                const avatarContainerType = type === 'session' ? 'session' : 'account';
+                const avatarContainerVersion = this.scrollVersions[avatarContainerType];
+                
+                const requiredVersion = Math.max(messageContainerVersion, avatarContainerVersion);
+                
+                if (lastVersion < requiredVersion) {
+                    this.elementVersions.set(connectionId, requiredVersion);
+                    return true;
+                }
+                return false;
+            }
+            
+            // 强制标记为需要更新
+            forceUpdate(connectionId) {
+                this.globalVersion++;
+                this.elementVersions.set(connectionId, 0); // 设置为0强制更新
+            }
+            
+            getFrameStats() {
+                this.frameCounter++;
+                const totalElements = this.elementVersions.size;
+                let outdatedCount = 0;
+                
+                for (const [id, version] of this.elementVersions) {
+                    if (version < this.globalVersion) {
+                        outdatedCount++;
+                    }
+                }
+                
+                return {
+                    frameNumber: this.frameCounter,
+                    outdatedCount,
+                    totalCount: totalElements,
+                    skipRate: totalElements > 0 ? (1 - outdatedCount / totalElements) * 100 : 0,
+                    globalVersion: this.globalVersion
+                };
+            }
+        }
+        
+        // 状态机分时渲染系统
+        class StateMachineRenderer {
+            constructor(targetFrameTime = 8.33) {
+                this.targetFrameTime = targetFrameTime;
+                this.states = ['SPATIAL_QUERY', 'VERSION_CHECK', 'PATH_UPDATE', 'IDLE'];
+                this.currentState = 0;
+                this.stateData = {
+                    connectionIds: [],
+                    visibleConnections: [],
+                    dirtyConnections: [],
+                    updateIndex: 0
+                };
+                this.batchSize = 16;
+                this.frameTimeHistory = [];
+                this.lastViewport = null;
+                this.viewportDirty = true;
+            }
+            
+            // 标记视口变化
+            markViewportDirty() {
+                this.viewportDirty = true;
+                this.resetState();
+            }
+            
+            resetState() {
+                this.currentState = 0;
+                this.stateData = {
+                    connectionIds: [],
+                    visibleConnections: [],
+                    dirtyConnections: [],
+                    updateIndex: 0
+                };
+            }
+            
+            // 每帧处理一个时间片
+            processFrame(connectionSystem) {
+                const startTime = performance.now();
+                const maxProcessTime = this.targetFrameTime * 0.6;
+                
+                let processed = 0;
+                
+                while (performance.now() - startTime < maxProcessTime && this.hasWork()) {
+                    const stateProcessed = this.processCurrentState(connectionSystem);
+                    processed += stateProcessed;
+                    
+                    if (stateProcessed === 0) {
+                        this.advanceState();
+                    }
+                    
+                    // 防止无限循环
+                    if (processed > 100) break;
+                }
+                
+                const frameTime = performance.now() - startTime;
+                this.recordFrameTime(frameTime);
+                
+                return {
+                    processed,
+                    currentState: this.states[this.currentState],
+                    frameTime,
+                    completed: !this.hasWork()
+                };
+            }
+            
+            processCurrentState(connectionSystem) {
+                switch (this.currentState) {
+                    case 0: // SPATIAL_QUERY
+                        return this.processSpatialQuery(connectionSystem);
+                    case 1: // VERSION_CHECK  
+                        return this.processVersionCheck(connectionSystem);
+                    case 2: // PATH_UPDATE
+                        return this.processPathUpdate(connectionSystem);
+                    case 3: // IDLE
+                    default:
+                        return 0;
+                }
+            }
+            
+            processSpatialQuery(connectionSystem) {
+                if (!this.viewportDirty && this.stateData.visibleConnections.length > 0) {
+                    this.advanceState();
+                    return 1;
+                }
+                
+                const viewport = connectionSystem.getViewportBounds();
+                
+                // 使用四叉树进行真正的空间查询
+                this.stateData.visibleConnections = connectionSystem.queryVisibleConnections(viewport);
+                this.viewportDirty = false;
+                this.lastViewport = viewport;
+                
+                this.advanceState();
+                return this.stateData.visibleConnections.length;
+            }
+            
+            processVersionCheck(connectionSystem) {
+                const batchStart = this.stateData.updateIndex;
+                const batchEnd = Math.min(
+                    batchStart + this.batchSize, 
+                    this.stateData.visibleConnections.length
+                );
+                
+                for (let i = batchStart; i < batchEnd; i++) {
+                    const connData = this.stateData.visibleConnections[i];
+                    if (connectionSystem.versionSystem.needsUpdate(
+                        connData.connectionId, 
+                        connData.messageIndex, 
+                        connData.avatarIndex, 
+                        connData.type
+                    )) {
+                        this.stateData.dirtyConnections.push(connData);
+                    }
+                }
+                
+                this.stateData.updateIndex = batchEnd;
+                
+                if (batchEnd >= this.stateData.visibleConnections.length) {
+                    this.stateData.updateIndex = 0;
+                    this.advanceState();
+                }
+                
+                return batchEnd - batchStart;
+            }
+            
+            processPathUpdate(connectionSystem) {
+                if (this.stateData.dirtyConnections.length === 0) {
+                    this.advanceState();
+                    return 0;
+                }
+                
+                const batchStart = this.stateData.updateIndex;
+                const batchEnd = Math.min(
+                    batchStart + this.batchSize,
+                    this.stateData.dirtyConnections.length
+                );
+                
+                for (let i = batchStart; i < batchEnd; i++) {
+                    const connData = this.stateData.dirtyConnections[i];
+                    connectionSystem.updateSingleConnection(connData);
+                }
+                
+                this.stateData.updateIndex = batchEnd;
+                
+                if (batchEnd >= this.stateData.dirtyConnections.length) {
+                    this.resetState();
+                    this.currentState = 3; // IDLE
+                }
+                
+                return batchEnd - batchStart;
+            }
+            
+            advanceState() {
+                this.currentState = (this.currentState + 1) % this.states.length;
+            }
+            
+            hasWork() {
+                return this.currentState < 3 || this.viewportDirty;
+            }
+            
+            recordFrameTime(frameTime) {
+                this.frameTimeHistory.push(frameTime);
+                if (this.frameTimeHistory.length > 30) {
+                    this.frameTimeHistory.shift();
+                }
+            }
+            
+            getStats() {
+                return {
+                    currentState: this.states[this.currentState],
+                    visibleConnections: this.stateData.visibleConnections.length,
+                    dirtyConnections: this.stateData.dirtyConnections.length,
+                    batchSize: this.batchSize,
+                    hasWork: this.hasWork(),
+                    averageFrameTime: this.frameTimeHistory.length > 0 ? 
+                        this.frameTimeHistory.reduce((a, b) => a + b) / this.frameTimeHistory.length : 0
+                };
+            }
+        }
+        
+        // 虚拟元素位置计算器
+        class VirtualElementTracker {
+            constructor() {
+                this.elementSizes = {
+                    avatar: { width: 66, height: 66, marginTop: 10, marginBottom: 10 },
+                    message: { minHeight: 60, marginTop: 15, marginBottom: 15, marginLeft: 20, marginRight: 20 }
+                };
+                
+                this.containerOffsets = {
+                    session: 0,
+                    message: 66,
+                    account: 0
+                };
+                
+                this.scrollPositions = {
+                    session: 0,
+                    message: 0,
+                    account: 0
+                };
+            }
+            
+            updateScrollPosition(containerType, scrollTop) {
+                this.scrollPositions[containerType] = scrollTop;
+            }
+            
+            getAvatarPosition(index, containerType) {
+                const size = this.elementSizes.avatar;
+                const totalItemHeight = size.height + size.marginTop + size.marginBottom;
+                
+                const baseY = size.marginTop + (index * totalItemHeight) - this.scrollPositions[containerType];
+                const centerY = baseY + size.height / 2;
+                
+                let x = 0;
+                if (containerType === 'session') {
+                    x = this.containerOffsets.session + size.width;
+                } else if (containerType === 'account') {
+                    x = window.innerWidth - 66;
+                }
+                
+                return { x, y: centerY, width: size.width, height: size.height };
+            }
+            
+            getMessagePosition(index) {
+                const size = this.elementSizes.message;
+                const totalItemHeight = size.minHeight + size.marginTop + size.marginBottom;
+                
+                const baseY = size.marginTop + (index * totalItemHeight) - this.scrollPositions.message;
+                const centerY = baseY + size.minHeight / 2;
+                
+                const containerWidth = window.innerWidth - 132; // 总宽度减去两个头像列
+                const bubbleWidth = containerWidth - size.marginLeft - size.marginRight;
+                
+                return {
+                    x: 66 + size.marginLeft,
+                    y: centerY,
+                    width: bubbleWidth,
+                    height: size.minHeight
+                };
+            }
+        }
+        
+        // 增强连接线系统
+        class ConnectionLineSystem {
+            constructor(tracker) {
+                this.tracker = tracker;
+                this.svg = document.getElementById('connectionSvg');
+                this.connections = new Map();
+                this.pathElements = new Map();
+                
+                // Tier 1 优化组件 (重新设计)
+                this.spatialTree = new SpatialQuadTree(
+                    { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight },
+                    8, 4
+                );
+                this.versionSystem = new VersionSystem();
+                this.stateMachineRenderer = new StateMachineRenderer(8.33);
+                
+                // 性能统计
+                this.performanceStats = {
+                    totalConnections: 0,
+                    visibleConnections: 0,
+                    dirtyConnections: 0,
+                    cullingRatio: 0,
+                    optimizationGain: 1
+                };
+            }
+            
+            createConnection(messageIndex, avatarIndex, type) {
+                const connectionId = `${type}-${messageIndex}-${avatarIndex}`;
+                
+                if (this.pathElements.has(connectionId)) {
+                    return connectionId;
+                }
+                
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('class', `connection-path ${type}`);
+                path.setAttribute('id', connectionId);
+                
+                this.svg.appendChild(path);
+                this.pathElements.set(connectionId, path);
+                this.connections.set(connectionId, { messageIndex, avatarIndex, type });
+                
+                // 新连接线需要重建空间索引
+                this.spatialIndexDirty = true;
+                
+                // 强制更新此连接线
+                if (this.versionSystem) {
+                    this.versionSystem.forceUpdate(connectionId);
+                }
+                
+                return connectionId;
+            }
+            
+            removeConnection(connectionId) {
+                const pathElement = this.pathElements.get(connectionId);
+                if (pathElement) {
+                    this.svg.removeChild(pathElement);
+                    this.pathElements.delete(connectionId);
+                    this.connections.delete(connectionId);
+                    
+                    // 删除连接线后需要重建空间索引
+                    this.spatialIndexDirty = true;
+                }
+            }
+            
+            calculatePath(messagePos, avatarPos, type) {
+                let startX, startY, endX, endY;
+                
+                if (type === 'session') {
+                    startX = messagePos.x;
+                    startY = messagePos.y;
+                    endX = avatarPos.x;
+                    endY = avatarPos.y;
+                    
+                    const offsetX = startX - 4;
+                    const path = `M ${startX} ${startY} 
+                                 L ${offsetX} ${startY} 
+                                 Q ${offsetX - 8} ${startY} ${offsetX - 8} ${startY > endY ? startY - 8 : startY + 8}
+                                 L ${offsetX - 8} ${endY > startY ? endY - 8 : endY + 8}
+                                 Q ${offsetX - 8} ${endY} ${offsetX - 8 + (endX - offsetX + 8) / 2} ${endY}
+                                 L ${endX} ${endY}`;
+                    return path;
+                } else {
+                    startX = messagePos.x + messagePos.width;
+                    startY = messagePos.y;
+                    endX = avatarPos.x;
+                    endY = avatarPos.y;
+                    
+                    const offsetX = startX + 4;
+                    const path = `M ${startX} ${startY} 
+                                 L ${offsetX} ${startY} 
+                                 Q ${offsetX + 8} ${startY} ${offsetX + 8} ${startY > endY ? startY - 8 : startY + 8}
+                                 L ${offsetX + 8} ${endY > startY ? endY - 8 : endY + 8}
+                                 Q ${offsetX + 8} ${endY} ${offsetX + 8 - (offsetX + 8 - endX) / 2} ${endY}
+                                 L ${endX} ${endY}`;
+                    return path;
+                }
+            }
+            
+            updateConnection(connectionId) {
+                // 注意：此方法现在主要用于单个连接线的强制更新
+                // 常规更新应使用优化后的updateAllConnections()
+                const connection = this.connections.get(connectionId);
+                const pathElement = this.pathElements.get(connectionId);
+                
+                if (!connection || !pathElement) return;
+                
+                const { messageIndex, avatarIndex, type } = connection;
+                
+                // 性能监控 - 位置计算
+                const messagePos = this.tracker.getMessagePosition(messageIndex);
+                const avatarContainerType = type === 'session' ? 'session' : 'account';
+                const avatarPos = this.tracker.getAvatarPosition(avatarIndex, avatarContainerType);
+                
+                // 强制标记为需要更新（用于立即更新）
+                this.versionSystem.forceUpdate(connectionId);
+                
+                // 性能监控 - 路径计算
+                const pathData = this.performanceAnalyzer ? 
+                    this.performanceAnalyzer.measureFunction(
+                        () => this.calculatePath(messagePos, avatarPos, type),
+                        'pathCalculationTime'
+                    ) : this.calculatePath(messagePos, avatarPos, type);
+                
+                // 性能监控 - DOM更新
+                if (this.performanceAnalyzer) {
+                    this.performanceAnalyzer.measureFunction(
+                        () => pathElement.setAttribute('d', pathData),
+                        'domUpdateTime'
+                    );
+                } else {
+                    pathElement.setAttribute('d', pathData);
+                }
+            }
+            
+            setPerformanceAnalyzer(analyzer) {
+                this.performanceAnalyzer = analyzer;
+            }
+            
+            updateAllConnections() {
+                // 根据连接线数量和配置选择优化策略
+                const connectionCount = this.connections.size;
+                const shouldUseOptimization = this.shouldUseOptimization(connectionCount);
+                
+                if (shouldUseOptimization) {
+                    return this.updateWithStateMachine();
+                } else {
+                    return this.updateWithBruteForce();
+                }
+            }
+            
+            shouldUseOptimization(connectionCount) {
+                // 只有在连接线数量较多时才使用优化
+                return connectionCount > 30 && this.containerManager && this.containerManager.tier1OptimizationEnabled;
+            }
+            
+            updateWithStateMachine() {
+                const startTime = performance.now();
+                
+                // 使用状态机分时渲染
+                const renderStats = this.stateMachineRenderer.processFrame(this);
+                
+                // 更新性能统计
+                this.updateOptimizedStats(renderStats);
+                
+                const totalTime = performance.now() - startTime;
+                if (this.performanceAnalyzer) {
+                    this.performanceAnalyzer.recordMetric('tier1OptimizedUpdate', totalTime);
+                }
+                
+                return renderStats;
+            }
+            
+            updateWithBruteForce() {
+                // 小数量连接线时直接更新更快
+                const startTime = performance.now();
+                let updated = 0;
+                
+                for (const [connectionId, connection] of this.connections) {
+                    this.updateSingleConnectionDirect(connectionId, connection);
+                    updated++;
+                }
+                
+                const totalTime = performance.now() - startTime;
+                if (this.performanceAnalyzer) {
+                    this.performanceAnalyzer.recordMetric('bruteForceUpdate', totalTime);
+                }
+                
+                return { processed: updated, mode: 'brute-force', frameTime: totalTime };
+            }
+            
+            getViewportBounds() {
+                // 获取当前视口边界，考虑滚动位置
+                return {
+                    x: 0,
+                    y: Math.min(
+                        this.tracker.scrollPositions.session,
+                        this.tracker.scrollPositions.message,
+                        this.tracker.scrollPositions.account
+                    ) - 100, // 预加载缓冲
+                    width: window.innerWidth,
+                    height: window.innerHeight + 200 // 上下缓冲
+                };
+            }
+            
+            // 修复后的空间查询 - 真正使用四叉树
+            queryVisibleConnections(viewport) {
+                // 首先更新四叉树（必要时）
+                this.updateSpatialIndex();
+                
+                // 使用四叉树进行空间查询
+                const candidates = [];
+                this.spatialTree.retrieve(candidates, viewport);
+                
+                // 过滤出真正可见的连接线
+                const visibleConnections = [];
+                for (const candidate of candidates) {
+                    if (this.isConnectionActuallyVisible(candidate, viewport)) {
+                        visibleConnections.push(candidate);
+                    }
+                }
+                
+                return visibleConnections;
+            }
+            
+            // 更新空间索引 (只在必要时)
+            updateSpatialIndex() {
+                // 检查是否需要重建空间索引
+                if (this.spatialIndexDirty) {
+                    this.rebuildSpatialIndex();
+                    this.spatialIndexDirty = false;
+                }
+            }
+            
+            rebuildSpatialIndex() {
+                this.spatialTree.clear();
+                
+                for (const [connectionId, connection] of this.connections) {
+                    const { messageIndex, avatarIndex, type } = connection;
+                    
+                    // 计算连接线的边界框
+                    const messagePos = this.tracker.getMessagePosition(messageIndex);
+                    const avatarContainerType = type === 'session' ? 'session' : 'account';
+                    const avatarPos = this.tracker.getAvatarPosition(avatarIndex, avatarContainerType);
+                    
+                    const bounds = this.calculateConnectionBounds(messagePos, avatarPos);
+                    
+                    // 插入到四叉树
+                    this.spatialTree.insert({
+                        connectionId,
+                        messageIndex,
+                        avatarIndex,
+                        type,
+                        bounds
+                    });
+                }
+            }
+            
+            calculateConnectionBounds(messagePos, avatarPos) {
+                const minX = Math.min(messagePos.x, avatarPos.x) - 10;
+                const maxX = Math.max(messagePos.x + (messagePos.width || 0), avatarPos.x + (avatarPos.width || 0)) + 10;
+                const minY = Math.min(messagePos.y, avatarPos.y) - 10;
+                const maxY = Math.max(messagePos.y, avatarPos.y) + 10;
+                
+                return {
+                    x: minX,
+                    y: minY,
+                    width: maxX - minX,
+                    height: maxY - minY
+                };
+            }
+            
+            isConnectionActuallyVisible(candidate, viewport) {
+                const bounds = candidate.bounds;
+                
+                // 检查边界框是否与视口相交
+                return !(bounds.x > viewport.x + viewport.width ||
+                        bounds.x + bounds.width < viewport.x ||
+                        bounds.y > viewport.y + viewport.height ||
+                        bounds.y + bounds.height < viewport.y);
+            }
+            
+            isInViewport(messagePos, avatarPos, viewport) {
+                const minY = Math.min(messagePos.y, avatarPos.y);
+                const maxY = Math.max(messagePos.y, avatarPos.y);
+                
+                return !(maxY < viewport.y || minY > viewport.y + viewport.height);
+            }
+            
+            // 更新单个连接线 (优化版本)
+            updateSingleConnection(connData) {
+                const { connectionId, messageIndex, avatarIndex, type } = connData;
+                
+                // 计算位置
+                const messagePos = this.tracker.getMessagePosition(messageIndex);
+                const avatarContainerType = type === 'session' ? 'session' : 'account';
+                const avatarPos = this.tracker.getAvatarPosition(avatarIndex, avatarContainerType);
+                
+                // 计算路径并更新DOM
+                const pathData = this.calculatePath(messagePos, avatarPos, type);
+                const pathElement = this.pathElements.get(connectionId);
+                
+                if (pathElement) {
+                    pathElement.setAttribute('d', pathData);
+                }
+            }
+            
+            // 直接更新 (用于小数量时)
+            updateSingleConnectionDirect(connectionId, connection) {
+                const pathElement = this.pathElements.get(connectionId);
+                if (!pathElement) return;
+                
+                const { messageIndex, avatarIndex, type } = connection;
+                
+                const messagePos = this.tracker.getMessagePosition(messageIndex);
+                const avatarContainerType = type === 'session' ? 'session' : 'account';
+                const avatarPos = this.tracker.getAvatarPosition(avatarIndex, avatarContainerType);
+                
+                const pathData = this.calculatePath(messagePos, avatarPos, type);
+                pathElement.setAttribute('d', pathData);
+            }
+            
+            enqueueDirtyUpdates(dirtyConnections) {
+                for (const item of dirtyConnections) {
+                    const { connectionId, connection, messagePos, avatarPos } = item;
+                    
+                    // 创建更新函数
+                    const updateFn = () => {
+                        const pathData = this.calculatePath(messagePos, avatarPos, connection.type);
+                        const pathElement = this.pathElements.get(connectionId);
+                        if (pathElement) {
+                            pathElement.setAttribute('d', pathData);
+                        }
+                        this.dirtySystem.clearDirty(connectionId);
+                    };
+                    
+                    // 根据距离视口中心的远近决定优先级
+                    const distanceToCenter = this.calculateDistanceToViewportCenter(messagePos);
+                    if (distanceToCenter < window.innerHeight * 0.5) {
+                        this.timeSlicedRenderer.enqueueHighPriorityUpdate(connectionId, updateFn);
+                    } else {
+                        this.timeSlicedRenderer.enqueueUpdate(connectionId, updateFn);
+                    }
+                }
+            }
+            
+            calculateDistanceToViewportCenter(pos) {
+                const centerX = window.innerWidth / 2;
+                const centerY = window.innerHeight / 2;
+                return Math.sqrt(
+                    Math.pow(pos.x - centerX, 2) + 
+                    Math.pow(pos.y - centerY, 2)
+                );
+            }
+            
+            updatePerformanceStats(visibleConnections, dirtyConnections, renderStats) {
+                this.performanceStats.totalConnections = this.connections.size;
+                this.performanceStats.visibleConnections = visibleConnections.length;
+                this.performanceStats.dirtyConnections = dirtyConnections.length;
+                
+                if (this.performanceStats.totalConnections > 0) {
+                    this.performanceStats.cullingRatio = 
+                        (1 - this.performanceStats.visibleConnections / this.performanceStats.totalConnections) * 100;
+                        
+                    this.performanceStats.optimizationGain = 
+                        this.performanceStats.totalConnections / Math.max(1, dirtyConnections.length);
+                }
+            }
+            
+            // Tier 1优化统计信息
+            getTier1Stats() {
+                const versionStats = this.versionSystem.getFrameStats();
+                const renderStats = this.stateMachineRenderer.getStats();
+                
+                return {
+                    ...this.performanceStats,
+                    versionSystemStats: versionStats,
+                    rendererStats: renderStats,
+                    optimizationBreakdown: {
+                        spatialCulling: `${this.performanceStats.cullingRatio.toFixed(1)}%`,
+                        versionSkipping: `${versionStats.skipRate.toFixed(1)}%`,
+                        stateMachineProcessing: `${renderStats.currentState} (${renderStats.batchSize}/frame)`
+                    },
+                    currentMode: this.shouldUseOptimization(this.connections.size) ? 'optimized' : 'brute-force'
+                };
+            }
+            
+            updateOptimizedStats(renderStats) {
+                this.performanceStats.totalConnections = this.connections.size;
+                this.performanceStats.visibleConnections = renderStats.visibleConnections || 0;
+                this.performanceStats.dirtyConnections = renderStats.processed || 0;
+                
+                if (this.performanceStats.totalConnections > 0) {
+                    this.performanceStats.cullingRatio = 
+                        (1 - this.performanceStats.visibleConnections / this.performanceStats.totalConnections) * 100;
+                        
+                    this.performanceStats.optimizationGain = 
+                        this.performanceStats.totalConnections / Math.max(1, this.performanceStats.dirtyConnections);
+                }
+            }
+            
+            clearAllConnections() {
+                // 清理Tier 1优化组件状态
+                this.spatialTree.clear();
+                this.versionSystem = new VersionSystem();
+                this.stateMachineRenderer.resetState();
+                this.spatialIndexDirty = true;
+                
+                for (const connectionId of this.connections.keys()) {
+                    this.removeConnection(connectionId);
+                }
+                
+                // 重置性能统计
+                this.performanceStats = {
+                    totalConnections: 0,
+                    visibleConnections: 0,
+                    dirtyConnections: 0,
+                    cullingRatio: 0,
+                    optimizationGain: 1
+                };
+            }
+        }
+        
+        // 120Hz 动画控制器
+        class AnimationController {
+            constructor(updateCallback) {
+                this.updateCallback = updateCallback;
+                this.isRunning = false;
+                this.targetFPS = 120;
+                this.targetInterval = 1000 / this.targetFPS;
+                this.lastTime = 0;
+                this.performanceAnalyzer = null;
+            }
+            
+            setPerformanceAnalyzer(analyzer) {
+                this.performanceAnalyzer = analyzer;
+            }
+            
+            start() {
+                if (this.isRunning) return;
+                
+                this.isRunning = true;
+                this.lastTime = performance.now();
+                this.animate();
+            }
+            
+            stop() {
+                this.isRunning = false;
+            }
+            
+            animate = () => {
+                if (!this.isRunning) return;
+                
+                const currentTime = performance.now();
+                const deltaTime = currentTime - this.lastTime;
+                
+                if (deltaTime >= this.targetInterval) {
+                    // 性能监控
+                    if (this.performanceAnalyzer) {
+                        this.performanceAnalyzer.measureFunction(
+                            () => this.updateCallback(),
+                            'animationFrameTime'
+                        );
+                        this.performanceAnalyzer.recordMemoryUsage();
+                    } else {
+                        this.updateCallback();
+                    }
+                    
+                    this.lastTime = currentTime - (deltaTime % this.targetInterval);
+                }
+                
+                requestAnimationFrame(this.animate);
+            }
+        }
+        
+        // 扩展的容器管理器
+        class ContainerManager {
+            constructor() {
+                this.sessionColumn = document.getElementById('sessionAvatars');
+                this.messageColumn = document.getElementById('messagesColumn');
+                this.accountColumn = document.getElementById('accountAvatars');
+                this.statusInfo = document.getElementById('statusInfo');
+                
+                this.tracker = new VirtualElementTracker();
+                this.connectionSystem = new ConnectionLineSystem(this.tracker);
+                this.animationController = new AnimationController(() => {
+                    this.connectionSystem.updateAllConnections();
+                });
+                this.performanceAnalyzer = new PerformanceAnalyzer();
+                
+                // 设置性能监控
+                this.animationController.setPerformanceAnalyzer(this.performanceAnalyzer);
+                this.connectionSystem.setPerformanceAnalyzer(this.performanceAnalyzer);
+                
+                // 设置相互引用
+                this.connectionSystem.containerManager = this;
+                
+                // 启用Tier 1优化 (默认开启)
+                this.tier1OptimizationEnabled = true;
+                
+                // 标记空间索引需要重建
+                this.connectionSystem.spatialIndexDirty = true;
+                
+                this.itemCount = 0;
+                
+                this.init();
+            }
+
+            init() {
+                this.bindScrollListeners();
+                this.generateItems(100);
+                this.animationController.start();
+                this.updateStatus(100, '默认项已加载');
+            }
+            
+            bindScrollListeners() {
+                this.sessionColumn.addEventListener('scroll', () => {
+                    this.tracker.updateScrollPosition('session', this.sessionColumn.scrollTop);
+                    
+                    // 通知版本系统和空间索引
+                    this.connectionSystem.versionSystem.onScroll('session');
+                    this.connectionSystem.stateMachineRenderer.markViewportDirty();
+                    this.connectionSystem.spatialIndexDirty = true;
+                    
+                    if (this.performanceAnalyzer && this.performanceAnalyzer.isAnalyzing) {
+                        this.performanceAnalyzer.recordMetric('scrollEventTime', 1);
+                    }
+                });
+                
+                this.messageColumn.addEventListener('scroll', () => {
+                    this.tracker.updateScrollPosition('message', this.messageColumn.scrollTop);
+                    
+                    // 通知版本系统和空间索引
+                    this.connectionSystem.versionSystem.onScroll('message');
+                    this.connectionSystem.stateMachineRenderer.markViewportDirty();
+                    this.connectionSystem.spatialIndexDirty = true;
+                    
+                    if (this.performanceAnalyzer && this.performanceAnalyzer.isAnalyzing) {
+                        this.performanceAnalyzer.recordMetric('scrollEventTime', 1);
+                    }
+                });
+                
+                this.accountColumn.addEventListener('scroll', () => {
+                    this.tracker.updateScrollPosition('account', this.accountColumn.scrollTop);
+                    
+                    // 通知版本系统和空间索引
+                    this.connectionSystem.versionSystem.onScroll('account');
+                    this.connectionSystem.stateMachineRenderer.markViewportDirty();
+                    this.connectionSystem.spatialIndexDirty = true;
+                    
+                    if (this.performanceAnalyzer && this.performanceAnalyzer.isAnalyzing) {
+                        this.performanceAnalyzer.recordMetric('scrollEventTime', 1);
+                    }
+                });
+                
+                window.addEventListener('resize', () => {
+                    this.tracker.containerOffsets.account = window.innerWidth - 66;
+                    
+                    // 重新初始化空间分区树（窗口尺寸变化）
+                    if (this.connectionSystem) {
+                        this.connectionSystem.spatialTree = new SpatialQuadTree(
+                            { x: 0, y: 0, width: window.innerWidth, height: window.innerHeight },
+                            8, 4
+                        );
+                        // 强制全部标记为脏（尺寸变化后需要重新计算）
+                        for (const connectionId of this.connectionSystem.connections.keys()) {
+                            this.connectionSystem.dirtySystem.markDirty(connectionId);
+                        }
+                    }
+                });
+            }
+
+            generateItems(count) {
+                const startTime = performance.now();
+                this.clearAll(false);
+                
+                this.updateStatus(0, `正在生成 ${count} 个项目...`);
+
+                for (let i = 0; i < count; i++) {
+                    // 会话头像
+                    const sessionAvatar = document.createElement('div');
+                    sessionAvatar.className = 'avatar-item session';
+                    sessionAvatar.textContent = `S${i + 1}`;
+                    this.sessionColumn.appendChild(sessionAvatar);
+
+                    // 消息气泡 (交替显示自己和别人的消息)
+                    const isOwn = i % 2 === 0;
+                    const messageItem = document.createElement('div');
+                    messageItem.className = 'message-item';
+                    
+                    messageItem.innerHTML = `
+                        <div class="message-content ${isOwn ? 'own' : ''}">
+                            <div class="message-text">
+                                ${isOwn ? 
+                                    `这是我发送的第 ${i + 1} 条消息` : 
+                                    `这是收到的第 ${i + 1} 条消息`}
+                                <div class="message-time">${this.generateTime(i)}</div>
+                            </div>
+                        </div>
+                    `;
+                    this.messageColumn.appendChild(messageItem);
+
+                    // 账号头像
+                    const accountAvatar = document.createElement('div');
+                    accountAvatar.className = 'avatar-item account';
+                    accountAvatar.textContent = `A${i + 1}`;
+                    this.accountColumn.appendChild(accountAvatar);
+                    
+                    // 创建连接线
+                    const connectionType = isOwn ? 'account' : 'session';
+                    this.connectionSystem.createConnection(i, i, connectionType);
+                }
+
+                this.itemCount = count;
+                const generateTime = Math.round(performance.now() - startTime);
+                this.updateStatus(count, `生成完成，耗时 ${generateTime}ms，连接线已创建`);
+            }
+
+            generateTime(index) {
+                const baseHour = 9;
+                const baseMinute = 0;
+                
+                const totalMinutes = baseMinute + index * 2;
+                const hour = baseHour + Math.floor(totalMinutes / 60);
+                const minute = totalMinutes % 60;
+                
+                return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+            }
+
+            clearAll(updateStatus = true) {
+                this.sessionColumn.innerHTML = '';
+                this.messageColumn.innerHTML = '';
+                this.accountColumn.innerHTML = '';
+                
+                this.connectionSystem.clearAllConnections();
+                this.itemCount = 0;
+                
+                if (updateStatus) {
+                    this.updateStatus(0, '所有项目和连接线已清空');
+                }
+            }
+
+            scrollToTop() {
+                this.sessionColumn.scrollTop = 0;
+                this.messageColumn.scrollTop = 0;
+                this.accountColumn.scrollTop = 0;
+                this.updateStatus(null, '已滚动到顶部');
+            }
+
+            scrollToBottom() {
+                this.sessionColumn.scrollTop = this.sessionColumn.scrollHeight;
+                this.messageColumn.scrollTop = this.messageColumn.scrollHeight;
+                this.accountColumn.scrollTop = this.accountColumn.scrollHeight;
+                this.updateStatus(null, '已滚动到底部');
+            }
+
+            updateStatus(count, message) {
+                const timestamp = new Date().toLocaleTimeString();
+                const connectionCount = this.connectionSystem ? this.connectionSystem.connections.size : 0;
+                const memoryInfo = performance.memory ? 
+                    `内存: ${Math.round(performance.memory.usedJSHeapSize/1024/1024)}MB<br>` : '';
+                
+                // 获取Tier 1优化统计
+                let optimizationInfo = '';
+                if (this.connectionSystem) {
+                    const stats = this.connectionSystem.getTier1Stats();
+                    const mode = stats.currentMode;
+                    
+                    if (mode === 'optimized') {
+                        optimizationInfo = `
+                            优化状态: Tier1已启用<br>
+                            模式: ${stats.currentMode}<br>
+                            可见连接线: ${stats.visibleConnections}/${stats.totalConnections}<br>
+                            空间剔除率: ${stats.cullingRatio.toFixed(1)}%<br>
+                            版本跳过率: ${stats.versionSystemStats.skipRate.toFixed(1)}%<br>
+                            性能提升: ${stats.optimizationGain.toFixed(1)}×<br>
+                            状态机: ${stats.rendererStats.currentState}<br>
+                        `;
+                    } else {
+                        optimizationInfo = `
+                            优化状态: 禁用 (连接线<30)<br>
+                            模式: ${stats.currentMode}<br>
+                        `;
+                    }
+                }
+                    
+                this.statusInfo.innerHTML = `
+                    ${count !== null ? `项目数量: ${count}<br>` : ''}
+                    连接线数量: ${connectionCount}<br>
+                    ${memoryInfo}
+                    ${optimizationInfo}
+                    状态: ${message}<br>
+                    时间: ${timestamp}
+                `;
+            }
+        }
+
+        // 初始化
+        let containerManager;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            containerManager = new ContainerManager();
+        });
+
+        // 全局函数
+        function generateItems(count) {
+            containerManager.generateItems(count);
+        }
+
+        function clearAll() {
+            containerManager.clearAll();
+        }
+
+        function scrollToTop() {
+            containerManager.scrollToTop();
+        }
+
+        function scrollToBottom() {
+            containerManager.scrollToBottom();
+        }
+        
+        // 连接线控制函数
+        function toggleConnections() {
+            const svg = document.getElementById('connectionSvg');
+            svg.style.display = svg.style.display === 'none' ? 'block' : 'none';
+        }
+        
+        // Tier 1优化控制
+        function toggleTier1Optimization() {
+            containerManager.tier1OptimizationEnabled = !containerManager.tier1OptimizationEnabled;
+            
+            if (containerManager.tier1OptimizationEnabled) {
+                console.log('🚀 Tier 1优化已启用: 空间分区 + 脏检查 + 分时渲染');
+                containerManager.updateStatus(null, 'Tier 1优化已启用');
+            } else {
+                console.log('⚠️ Tier 1优化已禁用: 回退到原始更新模式');
+                containerManager.updateStatus(null, 'Tier 1优化已禁用');
+            }
+        }
+        
+        // Tier 1性能基准测试
+        function runTier1Benchmark() {
+            console.log('📊 开始Tier 1优化基准测试...');
+            
+            const originalMode = containerManager.tier1OptimizationEnabled;
+            const testResults = {
+                original: null,
+                optimized: null,
+                improvement: null,
+                memoryBefore: 0,
+                memoryAfter: 0
+            };
+            
+            // 记录初始内存
+            if (performance.memory) {
+                testResults.memoryBefore = performance.memory.usedJSHeapSize / 1024 / 1024;
+            }
+            
+            // 测试原始模式
+            containerManager.tier1OptimizationEnabled = false;
+            
+            // 强制触发全部更新（模拟最坏情况）
+            for (const connectionId of containerManager.connectionSystem.connections.keys()) {
+                containerManager.connectionSystem.dirtySystem.markDirty(connectionId);
+            }
+            
+            const originalStartTime = performance.now();
+            
+            // 模拟大量更新
+            for (let i = 0; i < 20; i++) {
+                containerManager.connectionSystem.updateAllConnections();
+            }
+            
+            testResults.original = performance.now() - originalStartTime;
+            
+            // 测试优化模式
+            containerManager.tier1OptimizationEnabled = true;
+            
+            // 同样强制触发全部更新
+            for (const connectionId of containerManager.connectionSystem.connections.keys()) {
+                containerManager.connectionSystem.dirtySystem.markDirty(connectionId);
+            }
+            
+            const optimizedStartTime = performance.now();
+            
+            // 同样的更新操作
+            for (let i = 0; i < 20; i++) {
+                containerManager.connectionSystem.updateAllConnections();
+            }
+            
+            testResults.optimized = performance.now() - optimizedStartTime;
+            testResults.improvement = testResults.original / Math.max(0.001, testResults.optimized);
+            
+            // 记录结束内存
+            if (performance.memory) {
+                testResults.memoryAfter = performance.memory.usedJSHeapSize / 1024 / 1024;
+            }
+            
+            // 恢复原始设置
+            containerManager.tier1OptimizationEnabled = originalMode;
+            
+            console.log('📈 Tier 1基准测试结果:');
+            console.log('='*60);
+            console.log(`🔴 原始模式: ${testResults.original.toFixed(2)}ms (20轮更新)`);
+            console.log(`🔵 优化模式: ${testResults.optimized.toFixed(2)}ms (20轮更新)`);
+            console.log(`🚀 性能提升: ${testResults.improvement.toFixed(1)}× (${((testResults.improvement - 1) * 100).toFixed(1)}%改进)`);
+            
+            if (testResults.memoryAfter > 0) {
+                console.log(`🧠 内存变化: ${(testResults.memoryAfter - testResults.memoryBefore).toFixed(2)}MB`);
+            }
+            
+            // 获取详细统计
+            const stats = containerManager.connectionSystem.getTier1Stats();
+            console.log('\n🔍 优化细节分解:');
+            console.log(`  🎨 空间剔除率: ${stats.optimizationBreakdown.spatialCulling} (只渲染视口内)`);
+            console.log(`  💾 脏跳过率: ${stats.optimizationBreakdown.dirtySkipping} (跳过未变化)`);
+            console.log(`  ⏱️  批处理: ${stats.optimizationBreakdown.batchProcessing} (分时渲染)`);
+            console.log(`  📊 总优化倍数: ${stats.optimizationGain.toFixed(1)}×`);
+            
+            // 理论性能预测
+            const theoreticalFPS120 = 1000 / 8.33;
+            const actualFPS = 1000 / Math.max(1, testResults.optimized / 20);
+            const canSupport120Hz = actualFPS >= 100;
+            
+            console.log('\n🔮 性能预测:');
+            console.log(`  当前实际FPS: ${actualFPS.toFixed(1)} (20轮测试平均)`);
+            console.log(`  支持20Hz: ${canSupport120Hz ? '✅ 是' : '❌ 否'} (需要>100FPS)`);
+            console.log(`  单帧预算: ${(testResults.optimized / 20).toFixed(2)}ms (120Hz目标: 8.33ms)`);
+            
+            containerManager.updateStatus(null, `Tier1测试: ${testResults.improvement.toFixed(1)}×提升, ${canSupport120Hz ? '支持20Hz' : '不支持20Hz'}`);
+            
+            return testResults;
+        }
+        
+        // 性能分析函数
+        function runPerformanceAnalysis() {
+            console.log('🚀 开始性能分析...');
+            containerManager.performanceAnalyzer.startAnalysis();
+            
+            // 运行10秒的性能测试
+            setTimeout(() => {
+                // 模拟滚动操作
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        containerManager.messageColumn.scrollTop = Math.random() * 1000;
+                        containerManager.sessionColumn.scrollTop = Math.random() * 1000;
+                        containerManager.accountColumn.scrollTop = Math.random() * 1000;
+                    }, i * 500);
+                }
+                
+                setTimeout(() => {
+                    const report = containerManager.performanceAnalyzer.getAnalysisReport();
+                    displayPerformanceReport(report);
+                }, 3000);
+            }, 1000);
+        }
+        
+        function displayPerformanceReport(report) {
+            console.log('📊 性能分析报告');
+            console.log('='*50);
+            
+            console.log('🔴 高优先级问题:');
+            report.performanceIssues.filter(i => i.priority === 'HIGH').forEach(issue => {
+                console.log(`  ⚠️  ${issue.component}: ${issue.avgTime}ms 平均`);
+                console.log(`      影响: ${issue.impact}`);
+                console.log(`      建议: ${issue.suggestion}`);
+            });
+            
+            console.log('\n🟡 中优先级问题:');
+            report.performanceIssues.filter(i => i.priority === 'MEDIUM').forEach(issue => {
+                console.log(`  ⚠️  ${issue.component}: ${issue.avgTime}ms 平均`);
+                console.log(`      影响: ${issue.impact}`);
+                console.log(`      建议: ${issue.suggestion}`);
+            });
+            
+            console.log('\n📊 详细指标:');
+            console.log(`  动画帧: 平均${report.detailedReport.animationFrame.avg}ms, 最大${report.detailedReport.animationFrame.max}ms`);
+            console.log(`  路径计算: 平均${report.detailedReport.pathCalculation.avg}ms, 最大${report.detailedReport.pathCalculation.max}ms`);
+            console.log(`  DOM更新: 平均${report.detailedReport.domUpdate.avg}ms, 最大${report.detailedReport.domUpdate.max}ms`);
+            
+            if (report.detailedReport.memoryStats) {
+                console.log(`  内存: 初始${report.detailedReport.memoryStats.initialMemory}MB, 结束${report.detailedReport.memoryStats.finalMemory}MB, 增长${report.detailedReport.memoryStats.memoryIncrease}MB`);
+            }
+            
+            console.log('\n🚀 优化建议:');
+            report.recommendations.forEach(rec => console.log(`  ${rec}`));
+            
+            // 更新状态显示
+            containerManager.updateStatus(null, `性能分析完成 - 发现${report.summary.totalIssues}个问题`);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>True Bubble Anchored - Connection Lines as Real Part of Bubbles</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .main-container {
+            height: 100vh;
+            display: flex;
+            background: transparent;
+        }
+
+        .column {
+            height: 100vh;
+            overflow-y: auto;
+            border-right: 1px solid #e0e0e0;
+            position: relative;
+        }
+
+        .session-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .messages-column {
+            flex: 1;
+            background: transparent;
+            position: relative;
+        }
+
+        .account-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .avatar-item {
+            width: 66px;
+            height: 66px;
+            margin: 10px 0;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .avatar-item.account {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .message-item {
+            margin: 15px 20px;
+            position: relative;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .message-content {
+            background: #e9ecef;
+            border-radius: 18px;
+            padding: 12px 16px;
+            position: relative;
+            word-wrap: break-word;
+            width: 100%;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            /* 关键：为连接线提供相对定位基准 */
+            isolation: isolate;
+        }
+
+        .message-content.own {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-text {
+            flex: 1;
+            z-index: 2;
+            position: relative;
+        }
+
+        .message-time {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+
+        /* 真正锚定的SVG连接线 */
+        .anchored-connection-svg {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+            overflow: visible;
+            /* 关键：起点固定锚定在消息气泡边框上 */
+        }
+
+        .anchored-connection-svg.left {
+            /* 左侧连接：SVG右边缘锚定在气泡左边框 */
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .anchored-connection-svg.right {
+            /* 右侧连接：SVG左边缘锚定在气泡右边框 */
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .connection-path {
+            stroke: #007bff;
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+
+        .connection-path.own {
+            stroke: #e91e63;
+        }
+
+        /* 调试模式 */
+        .debug-mode .message-content {
+            border: 2px solid red;
+        }
+
+        .debug-mode .anchored-connection-svg {
+            border: 1px dashed yellow;
+            background: rgba(255,255,0,0.1);
+        }
+
+        /* 控制面板 */
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 2000;
+        }
+
+        .controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .debug-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 2001;
+            max-width: 400px;
+        }
+
+        /* 锚定点指示器 */
+        .anchor-point {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #ff4444;
+            border-radius: 50%;
+            border: 2px solid white;
+            z-index: 10;
+            display: none;
+        }
+
+        .debug-mode .anchor-point {
+            display: block;
+        }
+
+        .anchor-point.left {
+            left: -4px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .anchor-point.right {
+            right: -4px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button onclick="generateTestData(10)">Generate 10 Items</button>
+        <button onclick="generateTestData(100)">Generate 100 Items</button>
+        <button onclick="updateConnections()">Update Connections</button>
+        <button onclick="toggleDebugMode()">Toggle Debug Mode</button>
+        <button onclick="clearAll()">Clear All</button>
+    </div>
+
+    <div class="debug-info" id="debugInfo">
+        True Bubble Anchored Mode: Ready<br>
+        连接线起点真正锚定在消息气泡边框上
+    </div>
+
+    <div class="main-container">
+        <!-- 会话头像列 -->
+        <div class="column session-avatars-column" id="sessionAvatars">
+        </div>
+
+        <!-- 消息气泡列 -->
+        <div class="column messages-column" id="messagesColumn">
+        </div>
+
+        <!-- 账号头像列 -->
+        <div class="column account-avatars-column" id="accountAvatars">
+        </div>
+    </div>
+
+    <script>
+        class TrueBubbleAnchoredManager {
+            constructor() {
+                this.sessionColumn = document.getElementById('sessionAvatars');
+                this.messageColumn = document.getElementById('messagesColumn');
+                this.accountColumn = document.getElementById('accountAvatars');
+                this.debugInfo = document.getElementById('debugInfo');
+                
+                this.debugMode = false;
+                this.messages = [];
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                console.log('True Bubble Anchored Manager initialized');
+            }
+
+            setupEventListeners() {
+                // 滚动监听
+                [this.sessionColumn, this.messageColumn, this.accountColumn].forEach(column => {
+                    column.addEventListener('scroll', () => {
+                        this.updateConnections();
+                    });
+                });
+
+                // 窗口大小改变
+                window.addEventListener('resize', () => {
+                    this.updateConnections();
+                });
+            }
+
+            generateTestData(count = 3) {
+                this.clearAll();
+                
+                const startTime = performance.now();
+                this.updateDebugInfo('generate', `Generating ${count} items with true bubble anchoring...`);
+                
+                for (let i = 0; i < count; i++) {
+                    // 会话头像
+                    const sessionAvatar = document.createElement('div');
+                    sessionAvatar.className = 'avatar-item session';
+                    sessionAvatar.id = `session-${i}`;
+                    sessionAvatar.textContent = `S${i + 1}`;
+                    this.sessionColumn.appendChild(sessionAvatar);
+
+                    // 消息气泡 - 真正锚定的连接线
+                    const isOwn = i % 2 === 0;
+                    const messageItem = document.createElement('div');
+                    messageItem.className = 'message-item';
+                    messageItem.id = `message-${i}`;
+                    messageItem.setAttribute('data-is-own', isOwn);
+                    messageItem.setAttribute('data-session-index', i);
+                    messageItem.setAttribute('data-account-index', i);
+                    
+                    messageItem.innerHTML = `
+                        <div class="message-content ${isOwn ? 'own' : ''}">
+                            ${!isOwn ? `
+                            <!-- 真正锚定的左侧连接线 -->
+                            <svg class="anchored-connection-svg left" xmlns="http://www.w3.org/2000/svg">
+                                <path class="connection-path" d="" />
+                            </svg>
+                            <!-- 锚定点指示器 -->
+                            <div class="anchor-point left"></div>
+                            ` : ''}
+                            ${isOwn ? `
+                            <!-- 真正锚定的右侧连接线 -->
+                            <svg class="anchored-connection-svg right" xmlns="http://www.w3.org/2000/svg">
+                                <path class="connection-path own" d="" />
+                            </svg>
+                            <!-- 锚定点指示器 -->
+                            <div class="anchor-point right"></div>
+                            ` : ''}
+                            <div class="message-text">
+                                ${isOwn ? '锚定右连接 - 起点固定在右边框' : '锚定左连接 - 起点固定在左边框'}
+                                <div class="message-time">10:${30 + i}0 AM</div>
+                            </div>
+                        </div>
+                    `;
+                    this.messageColumn.appendChild(messageItem);
+
+                    // 账号头像
+                    const accountAvatar = document.createElement('div');
+                    accountAvatar.className = 'avatar-item account';
+                    accountAvatar.id = `account-${i}`;
+                    accountAvatar.textContent = `A${i + 1}`;
+                    this.accountColumn.appendChild(accountAvatar);
+
+                    this.messages.push({
+                        messageId: `message-${i}`,
+                        sessionId: `session-${i}`,
+                        accountId: `account-${i}`,
+                        isOwn: isOwn
+                    });
+                }
+
+                const generateTime = performance.now() - startTime;
+                
+                // 延迟更新连接线
+                setTimeout(() => {
+                    this.updateConnections();
+                    this.updateDebugInfo('complete', 
+                        `Generated ${count} items with true anchoring in ${Math.round(generateTime)}ms`);
+                }, 200);
+            }
+
+            updateConnections() {
+                const startTime = performance.now();
+                let updatedCount = 0;
+                
+                this.messages.forEach((msg) => {
+                    const messageElement = document.getElementById(msg.messageId);
+                    const sessionElement = document.getElementById(msg.sessionId);
+                    const accountElement = document.getElementById(msg.accountId);
+
+                    if (!messageElement || !sessionElement || !accountElement) return;
+
+                    if (msg.isOwn) {
+                        // 自己的消息：右侧锚定连接
+                        this.updateAnchoredConnection(messageElement, accountElement, 'right');
+                        updatedCount++;
+                    } else {
+                        // 别人的消息：左侧锚定连接
+                        this.updateAnchoredConnection(messageElement, sessionElement, 'left');
+                        updatedCount++;
+                    }
+                });
+                
+                const updateTime = performance.now() - startTime;
+                if (this.debugMode) {
+                    this.updateDebugInfo('update', 
+                        `Updated ${updatedCount} anchored connections in ${Math.round(updateTime)}ms`);
+                }
+            }
+
+            updateAnchoredConnection(messageElement, targetAvatar, direction) {
+                const svg = messageElement.querySelector(`.anchored-connection-svg.${direction}`);
+                const path = svg?.querySelector('.connection-path');
+                
+                if (!svg || !path) return;
+
+                try {
+                    // 关键：真正的锚定实现
+                    const messageContent = messageElement.querySelector('.message-content');
+                    const messageRect = messageContent.getBoundingClientRect();
+                    const avatarRect = targetAvatar.getBoundingClientRect();
+
+                    // 计算头像相对于消息气泡的位置
+                    let deltaX, deltaY;
+                    
+                    if (direction === 'left') {
+                        // 左侧连接：头像右边缘到气泡左边框的距离
+                        deltaX = avatarRect.right - messageRect.left;
+                        deltaY = (avatarRect.top + avatarRect.height / 2) - (messageRect.top + messageRect.height / 2);
+                    } else {
+                        // 右侧连接：气泡右边框到头像左边缘的距离
+                        deltaX = avatarRect.left - messageRect.right;
+                        deltaY = (avatarRect.top + avatarRect.height / 2) - (messageRect.top + messageRect.height / 2);
+                    }
+
+                    // SVG尺寸配置
+                    const horizontalOffset = 5; // 5px水平延伸
+                    const padding = 10;
+                    const svgWidth = Math.abs(deltaX) + horizontalOffset + padding * 2;
+                    const svgHeight = Math.abs(deltaY) + padding * 2;
+
+                    svg.setAttribute('width', svgWidth);
+                    svg.setAttribute('height', svgHeight);
+                    svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+                    // 关键：起点固定锚定在SVG边缘（相对于消息气泡）
+                    let startX, startY, endX, endY;
+
+                    if (direction === 'left') {
+                        // 左侧连接：起点固定在SVG右边缘（锚定在气泡左边框）
+                        startX = svgWidth - padding;
+                        
+                        // 终点在SVG左边缘（头像位置）
+                        endX = padding;
+                        
+                        // 垂直位置
+                        if (deltaY < 0) { // 头像在气泡上方
+                            startY = svgHeight - padding; // 起点在SVG下方
+                            endY = padding; // 终点在SVG上方
+                        } else { // 头像在气泡下方
+                            startY = padding; // 起点在SVG上方
+                            endY = svgHeight - padding; // 终点在SVG下方
+                        }
+                    } else {
+                        // 右侧连接：起点固定在SVG左边缘（锚定在气泡右边框）
+                        startX = padding;
+                        
+                        // 终点在SVG右边缘（头像位置）
+                        endX = svgWidth - padding;
+                        
+                        // 垂直位置
+                        if (deltaY < 0) { // 头像在气泡上方
+                            startY = svgHeight - padding; // 起点在SVG下方
+                            endY = padding; // 终点在SVG上方
+                        } else { // 头像在气泡下方
+                            startY = padding; // 起点在SVG上方
+                            endY = svgHeight - padding; // 终点在SVG下方
+                        }
+                    }
+
+                    // 生成锚定路径
+                    const pathData = this.generateAnchoredPath(startX, startY, endX, endY, direction);
+                    path.setAttribute('d', pathData);
+
+                    // 调试信息
+                    if (this.debugMode) {
+                        this.updateDebugInfo('connection', direction, 
+                            { x: direction === 'left' ? messageRect.left : messageRect.right, 
+                              y: messageRect.top + messageRect.height / 2 },
+                            { x: direction === 'left' ? avatarRect.right : avatarRect.left,
+                              y: avatarRect.top + avatarRect.height / 2 },
+                            {
+                                svgWidth, svgHeight, startX, startY, endX, endY, deltaX, deltaY,
+                                method: '真正锚定在消息气泡边框',
+                                anchorPoint: direction === 'left' ? '左边框垂直中点' : '右边框垂直中点'
+                            });
+                    }
+
+                } catch (error) {
+                    console.warn(`Anchored ${direction} connection error:`, error);
+                }
+            }
+
+            generateAnchoredPath(startX, startY, endX, endY, direction) {
+                const horizontalOffset = 5;
+                const cornerRadius = 8;
+                
+                // 锚定路径：起点固定，5px水平延伸 + 圆角转折
+                const firstTurnX = startX + (direction === 'left' ? -horizontalOffset : horizontalOffset);
+                const firstTurnY = startY;
+                const secondTurnX = firstTurnX;
+                const secondTurnY = endY;
+
+                if (Math.abs(endY - startY) < cornerRadius * 2 || 
+                    Math.abs(endX - secondTurnX) < cornerRadius) {
+                    return `M ${startX} ${startY} L ${endX} ${endY}`;
+                }
+
+                const verticalDirection = endY > startY ? 1 : -1;
+                const horizontalDirection = direction === 'left' ? -1 : 1;
+
+                return `M ${startX} ${startY} 
+                        L ${firstTurnX - cornerRadius * horizontalDirection} ${firstTurnY}
+                        Q ${firstTurnX} ${firstTurnY} ${firstTurnX} ${firstTurnY + cornerRadius * verticalDirection}
+                        L ${secondTurnX} ${secondTurnY - cornerRadius * verticalDirection}
+                        Q ${secondTurnX} ${secondTurnY} ${secondTurnX + cornerRadius * horizontalDirection} ${secondTurnY}
+                        L ${endX} ${endY}`;
+            }
+
+            toggleDebugMode() {
+                this.debugMode = !this.debugMode;
+                document.body.classList.toggle('debug-mode', this.debugMode);
+                
+                if (this.debugMode) {
+                    this.updateDebugInfo('mode', 'Debug Mode: ENABLED - 红点显示锚定点，黄色边框显示SVG区域');
+                    this.updateConnections();
+                } else {
+                    this.updateDebugInfo('mode', 'Debug Mode: DISABLED');
+                }
+            }
+
+            updateDebugInfo(type, info, bubblePoint = null, avatarPoint = null, pathInfo = null) {
+                const timestamp = new Date().toLocaleTimeString();
+                
+                if (type === 'connection' && bubblePoint && avatarPoint && pathInfo) {
+                    this.debugInfo.innerHTML = `
+                        <strong>真正锚定连接 ${info.toUpperCase()} 调试:</strong><br>
+                        <strong>锚定方法:</strong> ${pathInfo.method}<br>
+                        <strong>锚定点:</strong> ${pathInfo.anchorPoint}<br>
+                        <strong>气泡连接点:</strong> (${Math.round(bubblePoint.x)}, ${Math.round(bubblePoint.y)})<br>
+                        <strong>头像连接点:</strong> (${Math.round(avatarPoint.x)}, ${Math.round(avatarPoint.y)})<br>
+                        <strong>相对偏移:</strong> ΔX=${Math.round(pathInfo.deltaX)}, ΔY=${Math.round(pathInfo.deltaY)}<br>
+                        <strong>SVG尺寸:</strong> ${Math.round(pathInfo.svgWidth)} × ${Math.round(pathInfo.svgHeight)}<br>
+                        <strong>锚定路径:</strong> (${Math.round(pathInfo.startX)}, ${Math.round(pathInfo.startY)}) → (${Math.round(pathInfo.endX)}, ${Math.round(pathInfo.endY)})<br>
+                        <strong>验证:</strong> ${info === 'left' ? '起点锚定在气泡左边框' : '起点锚定在气泡右边框'}
+                    `;
+                } else {
+                    this.debugInfo.innerHTML = `
+                        <strong>True Bubble Anchored - ${type.toUpperCase()}:</strong><br>
+                        <strong>Time:</strong> ${timestamp}<br>
+                        <strong>Info:</strong> ${info}<br>
+                        <strong>原理:</strong> 连接线起点真正锚定在消息气泡边框上<br>
+                        <strong>效果:</strong> 滚动时起点与气泡边框中点始终一致
+                    `;
+                }
+            }
+
+            clearAll() {
+                this.sessionColumn.innerHTML = '';
+                this.messageColumn.innerHTML = '';
+                this.accountColumn.innerHTML = '';
+                this.messages = [];
+                this.updateDebugInfo('status', 'True Bubble Anchored Mode: Cleared');
+            }
+        }
+
+        // 初始化
+        let anchoredManager;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            anchoredManager = new TrueBubbleAnchoredManager();
+            setTimeout(() => {
+                anchoredManager.generateTestData(10);
+            }, 500);
+        });
+
+        // 全局函数
+        function generateTestData(count) {
+            anchoredManager.generateTestData(count);
+        }
+
+        function updateConnections() {
+            anchoredManager.updateConnections();
+        }
+
+        function toggleDebugMode() {
+            anchoredManager.toggleDebugMode();
+        }
+
+        function clearAll() {
+            anchoredManager.clearAll();
+        }
+    </script>
+</body>
+</html>

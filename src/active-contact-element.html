@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Active Contact Element - Connection Lines System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            overflow: hidden;
+        }
+
+        .main-container {
+            height: 100vh;
+            display: flex;
+            background: transparent;
+        }
+
+        .column {
+            height: 100vh;
+            overflow-y: auto;
+            border-right: 1px solid #e0e0e0;
+            position: relative;
+        }
+
+        .session-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .messages-column {
+            flex: 1;
+            background: transparent;
+            position: relative;
+        }
+
+        .account-avatars-column {
+            width: 66px;
+            background: transparent;
+        }
+
+        .avatar-item {
+            width: 66px;
+            height: 66px;
+            margin: 10px 0;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            position: relative;
+            transition: all 0.2s ease;
+        }
+
+        .avatar-item.account {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .avatar-item.active-contact {
+            transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(0,123,255,0.3);
+            border: 2px solid #007bff;
+        }
+
+        .message-item {
+            margin: 15px 20px;
+            position: relative;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .message-content {
+            background: #e9ecef;
+            border-radius: 18px;
+            padding: 12px 16px;
+            position: relative;
+            word-wrap: break-word;
+            width: 100%;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+        }
+
+        .message-content.own {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-content.active-connection {
+            box-shadow: 0 2px 10px rgba(0,123,255,0.2);
+        }
+
+        .message-text {
+            flex: 1;
+            z-index: 2;
+            position: relative;
+        }
+
+        .message-time {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+
+        /* activeContactElement SVG连接线 */
+        .active-contact-svg {
+            position: absolute;
+            pointer-events: none;
+            z-index: 1;
+            overflow: visible;
+        }
+
+        .active-contact-svg.left {
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .active-contact-svg.right {
+            left: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .connection-path {
+            stroke: #007bff;
+            stroke-width: 3;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+        }
+
+        .connection-path.own {
+            stroke: #e91e63;
+        }
+
+        .connection-path.active {
+            opacity: 1;
+            stroke-width: 4;
+            filter: drop-shadow(0 0 8px currentColor);
+        }
+
+        /* 控制面板 */
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 2000;
+        }
+
+        .controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .debug-info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 2001;
+            max-width: 400px;
+        }
+
+        /* activeContactElement 指示器 */
+        .active-contact-indicator {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            width: 20px;
+            height: 20px;
+            background: #007bff;
+            border-radius: 50%;
+            border: 2px solid white;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button onclick="generateTestData(10)">Generate 10 Items</button>
+        <button onclick="generateTestData(100)">Generate 100 Items</button>
+        <button onclick="generateTestData(1000)">Generate 1000 Items</button>
+        <button onclick="updateConnections()">Update Connections</button>
+        <button onclick="toggleActiveContactMode()">Toggle Active Contact</button>
+        <button onclick="toggleDebugMode()">Toggle Debug Mode</button>
+        <button onclick="highlightActiveContacts()">Highlight Active</button>
+        <button onclick="clearAll()">Clear All</button>
+    </div>
+
+    <div class="debug-info" id="debugInfo">
+        Active Contact Element Mode: Ready
+    </div>
+
+    <div class="main-container">
+        <!-- 会话头像列 -->
+        <div class="column session-avatars-column" id="sessionAvatars">
+        </div>
+
+        <!-- 消息气泡列 -->
+        <div class="column messages-column" id="messagesColumn">
+        </div>
+
+        <!-- 账号头像列 -->
+        <div class="column account-avatars-column" id="accountAvatars">
+        </div>
+    </div>
+
+    <script>
+        class ActiveContactElementManager {
+            constructor() {
+                this.sessionColumn = document.getElementById('sessionAvatars');
+                this.messageColumn = document.getElementById('messagesColumn');
+                this.accountColumn = document.getElementById('accountAvatars');
+                this.debugInfo = document.getElementById('debugInfo');
+                
+                this.activeContactMode = true;
+                this.debugMode = false;
+                this.messages = [];
+                this.activeContacts = new Map(); // 活跃联系人映射
+                this.contactObserver = null; // activeContactElement观察器
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.setupActiveContactObserver();
+                console.log('Active Contact Element Manager initialized');
+            }
+
+            // 设置activeContactElement观察器
+            setupActiveContactObserver() {
+                const options = {
+                    root: null,
+                    rootMargin: '0px',
+                    threshold: [0, 0.1, 0.5, 1.0]
+                };
+
+                this.contactObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const element = entry.target;
+                        const messageId = element.dataset.messageId;
+                        
+                        if (entry.isIntersecting && entry.intersectionRatio > 0.5) {
+                            // 元素进入活跃状态
+                            this.setActiveContact(messageId, element);
+                        } else if (entry.intersectionRatio < 0.1) {
+                            // 元素离开活跃状态
+                            this.removeActiveContact(messageId);
+                        }
+                    });
+                }, options);
+            }
+
+            setupEventListeners() {
+                // activeContactElement滚动监听
+                [this.sessionColumn, this.messageColumn, this.accountColumn].forEach(column => {
+                    column.addEventListener('scroll', () => {
+                        this.updateActiveContactConnections();
+                    });
+                });
+
+                // 窗口大小改变
+                window.addEventListener('resize', () => {
+                    this.updateActiveContactConnections();
+                });
+            }
+
+            generateTestData(count = 3) {
+                this.clearAll();
+                
+                const startTime = performance.now();
+                this.updateDebugInfo('generate', `Generating ${count} items with activeContactElement...`);
+                
+                for (let i = 0; i < count; i++) {
+                    // 会话头像
+                    const sessionAvatar = document.createElement('div');
+                    sessionAvatar.className = 'avatar-item session';
+                    sessionAvatar.id = `session-${i}`;
+                    sessionAvatar.textContent = `S${i + 1}`;
+                    sessionAvatar.dataset.messageId = `message-${i}`;
+                    this.sessionColumn.appendChild(sessionAvatar);
+
+                    // 消息气泡 - activeContactElement集成
+                    const isOwn = i % 2 === 0;
+                    const messageItem = document.createElement('div');
+                    messageItem.className = 'message-item';
+                    messageItem.id = `message-${i}`;
+                    messageItem.dataset.messageId = `message-${i}`;
+                    messageItem.setAttribute('data-is-own', isOwn);
+                    messageItem.setAttribute('data-session-index', i);
+                    messageItem.setAttribute('data-account-index', i);
+                    
+                    messageItem.innerHTML = `
+                        <div class="message-content ${isOwn ? 'own' : ''}">
+                            ${!isOwn ? `
+                            <!-- activeContactElement左侧连接线 -->
+                            <svg class="active-contact-svg left" xmlns="http://www.w3.org/2000/svg" width="200" height="100">
+                                <path class="connection-path" d="" />
+                            </svg>
+                            ` : ''}
+                            ${isOwn ? `
+                            <!-- activeContactElement右侧连接线 -->
+                            <svg class="active-contact-svg right" xmlns="http://www.w3.org/2000/svg" width="200" height="100">
+                                <path class="connection-path own" d="" />
+                            </svg>
+                            ` : ''}
+                            <div class="message-text">
+                                ${isOwn ? 'activeContactElement右连接' : 'activeContactElement左连接'}
+                                <div class="message-time">10:${30 + i}0 AM</div>
+                            </div>
+                        </div>
+                    `;
+                    this.messageColumn.appendChild(messageItem);
+
+                    // 账号头像
+                    const accountAvatar = document.createElement('div');
+                    accountAvatar.className = 'avatar-item account';
+                    accountAvatar.id = `account-${i}`;
+                    accountAvatar.textContent = `A${i + 1}`;
+                    accountAvatar.dataset.messageId = `message-${i}`;
+                    this.accountColumn.appendChild(accountAvatar);
+
+                    this.messages.push({
+                        messageId: `message-${i}`,
+                        sessionId: `session-${i}`,
+                        accountId: `account-${i}`,
+                        isOwn: isOwn
+                    });
+
+                    // 将消息元素加入activeContactElement观察
+                    this.contactObserver.observe(messageItem);
+                }
+
+                const generateTime = performance.now() - startTime;
+                
+                // 延迟更新连接线
+                setTimeout(() => {
+                    this.updateActiveContactConnections();
+                    this.updateDebugInfo('complete', 
+                        `Generated ${count} items with activeContactElement in ${Math.round(generateTime)}ms. Active contacts: ${this.activeContacts.size}`);
+                }, 200);
+            }
+
+            // 设置活跃联系人
+            setActiveContact(messageId, targetElement) {
+                const msg = this.messages.find(m => m.messageId === messageId);
+                if (!msg) return;
+
+                const targetAvatarId = msg.isOwn ? msg.accountId : msg.sessionId;
+                const targetAvatar = document.getElementById(targetAvatarId);
+                
+                if (targetAvatar) {
+                    // 标记为活跃联系人
+                    targetAvatar.classList.add('active-contact');
+                    
+                    // 添加活跃指示器
+                    if (!targetAvatar.querySelector('.active-contact-indicator')) {
+                        const indicator = document.createElement('div');
+                        indicator.className = 'active-contact-indicator';
+                        targetAvatar.appendChild(indicator);
+                    }
+
+                    // 标记消息为活跃连接
+                    const messageElement = document.getElementById(messageId);
+                    if (messageElement) {
+                        messageElement.querySelector('.message-content').classList.add('active-connection');
+                        const path = messageElement.querySelector('.connection-path');
+                        if (path) path.classList.add('active');
+                    }
+
+                    this.activeContacts.set(messageId, {
+                        avatarElement: targetAvatar,
+                        messageElement: targetElement,
+                        isOwn: msg.isOwn
+                    });
+
+                    this.updateDebugInfo('active', `Active contact set: ${messageId} → ${targetAvatarId}`);
+                }
+            }
+
+            // 移除活跃联系人
+            removeActiveContact(messageId) {
+                const activeContact = this.activeContacts.get(messageId);
+                if (activeContact) {
+                    // 移除活跃状态
+                    activeContact.avatarElement.classList.remove('active-contact');
+                    
+                    // 移除活跃指示器
+                    const indicator = activeContact.avatarElement.querySelector('.active-contact-indicator');
+                    if (indicator) indicator.remove();
+
+                    // 移除消息活跃状态
+                    const messageElement = document.getElementById(messageId);
+                    if (messageElement) {
+                        messageElement.querySelector('.message-content').classList.remove('active-connection');
+                        const path = messageElement.querySelector('.connection-path');
+                        if (path) path.classList.remove('active');
+                    }
+
+                    this.activeContacts.delete(messageId);
+                    this.updateDebugInfo('inactive', `Active contact removed: ${messageId}`);
+                }
+            }
+
+            updateActiveContactConnections() {
+                if (!this.activeContactMode) return;
+
+                const startTime = performance.now();
+                let updatedCount = 0;
+                
+                // 只更新活跃联系人的连接线
+                this.activeContacts.forEach((contact, messageId) => {
+                    const msg = this.messages.find(m => m.messageId === messageId);
+                    if (!msg) return;
+
+                    const messageElement = document.getElementById(messageId);
+                    const targetAvatar = contact.avatarElement;
+
+                    if (messageElement && targetAvatar) {
+                        this.updateActiveContactConnection(messageElement, targetAvatar, msg.isOwn ? 'right' : 'left');
+                        updatedCount++;
+                    }
+                });
+                
+                const updateTime = performance.now() - startTime;
+                if (updatedCount > 0) {
+                    this.updateDebugInfo('update', 
+                        `Updated ${updatedCount} active contact connections in ${Math.round(updateTime)}ms`);
+                }
+            }
+
+            updateActiveContactConnection(messageElement, targetAvatar, direction) {
+                const svg = messageElement.querySelector(`.active-contact-svg.${direction}`);
+                const path = svg?.querySelector('.connection-path');
+                
+                if (!svg || !path) return;
+
+                try {
+                    // activeContactElement精确定位
+                    const messageContent = messageElement.querySelector('.message-content');
+                    const messageRect = messageContent.getBoundingClientRect();
+                    const avatarRect = targetAvatar.getBoundingClientRect();
+
+                    // 严格按照需求计算连接点
+                    let bubbleConnectionPoint, avatarConnectionPoint;
+
+                    if (direction === 'left') {
+                        // 会话头像：气泡左侧边框垂直线中点 → 会话头像最右侧边缘中点
+                        bubbleConnectionPoint = {
+                            x: messageRect.left,
+                            y: messageRect.top + messageRect.height / 2
+                        };
+                        avatarConnectionPoint = {
+                            x: avatarRect.right,
+                            y: avatarRect.top + avatarRect.height / 2
+                        };
+                    } else {
+                        // 账号头像：气泡右侧边框垂直线中点 → 账号头像最左侧边缘中点
+                        bubbleConnectionPoint = {
+                            x: messageRect.right,
+                            y: messageRect.top + messageRect.height / 2
+                        };
+                        avatarConnectionPoint = {
+                            x: avatarRect.left,
+                            y: avatarRect.top + avatarRect.height / 2
+                        };
+                    }
+
+                    // 计算真实的偏移量
+                    const deltaX = avatarConnectionPoint.x - bubbleConnectionPoint.x;
+                    const deltaY = avatarConnectionPoint.y - bubbleConnectionPoint.y;
+                    
+                    // SVG 配置
+                    const horizontalOffset = 5; // 5px水平延伸
+                    const padding = 10;
+                    
+                    const svgWidth = Math.abs(deltaX) + horizontalOffset + padding * 2;
+                    const svgHeight = Math.abs(deltaY) + padding * 2;
+
+                    svg.setAttribute('width', svgWidth);
+                    svg.setAttribute('height', svgHeight);
+                    svg.setAttribute('viewBox', `0 0 ${svgWidth} ${svgHeight}`);
+
+                    // 修正：在SVG坐标系统中的正确起点和终点
+                    let startX, startY, endX, endY;
+
+                    if (direction === 'left') {
+                        // 左侧连接：从SVG右边开始（气泡位置），到SVG左边结束（头像位置）
+                        if (deltaX < 0) { // 头像在气泡左侧
+                            startX = svgWidth - padding; // SVG右边缘（气泡连接点）
+                            endX = padding; // SVG左边缘（头像连接点）
+                        } else { // 异常情况处理
+                            startX = padding;
+                            endX = svgWidth - padding;
+                        }
+                        
+                        if (deltaY < 0) { // 头像在气泡上方
+                            startY = svgHeight - padding; // SVG下方（气泡位置）
+                            endY = padding; // SVG上方（头像位置）
+                        } else { // 头像在气泡下方
+                            startY = padding; // SVG上方（气泡位置）
+                            endY = svgHeight - padding; // SVG下方（头像位置）
+                        }
+                    } else {
+                        // 右侧连接：从SVG左边开始（气泡位置），到SVG右边结束（头像位置）
+                        if (deltaX > 0) { // 头像在气泡右侧
+                            startX = padding; // SVG左边缘（气泡连接点）
+                            endX = svgWidth - padding; // SVG右边缘（头像连接点）
+                        } else { // 异常情况处理
+                            startX = svgWidth - padding;
+                            endX = padding;
+                        }
+                        
+                        if (deltaY < 0) { // 头像在气泡上方
+                            startY = svgHeight - padding; // SVG下方（气泡位置）
+                            endY = padding; // SVG上方（头像位置）
+                        } else { // 头像在气泡下方
+                            startY = padding; // SVG上方（气泡位置）
+                            endY = svgHeight - padding; // SVG下方（头像位置）
+                        }
+                    }
+
+                    // 生成符合需求的路径
+                    const pathData = this.generateActiveContactPath(startX, startY, endX, endY, direction);
+                    path.setAttribute('d', pathData);
+
+                    // 调试信息
+                    if (this.debugMode) {
+                        this.updateDebugInfo('connection', direction, bubbleConnectionPoint, avatarConnectionPoint, {
+                            svgWidth, svgHeight, startX, startY, endX, endY, deltaX, deltaY,
+                            avatarSize: '66×66px 圆角正方形',
+                            method: 'activeContactElement精确定位'
+                        });
+                    }
+
+                } catch (error) {
+                    console.warn(`Active contact ${direction} connection error:`, error);
+                }
+            }
+
+            generateActiveContactPath(startX, startY, endX, endY, direction) {
+                const horizontalOffset = 5;
+                const cornerRadius = 8;
+                
+                // activeContactElement路径：5px水平延伸 + 圆角转折
+                const firstTurnX = startX + (direction === 'left' ? -horizontalOffset : horizontalOffset);
+                const firstTurnY = startY;
+                const secondTurnX = firstTurnX;
+                const secondTurnY = endY;
+
+                if (Math.abs(endY - startY) < cornerRadius * 2 || 
+                    Math.abs(endX - secondTurnX) < cornerRadius) {
+                    return `M ${startX} ${startY} L ${endX} ${endY}`;
+                }
+
+                const verticalDirection = endY > startY ? 1 : -1;
+                const horizontalDirection = direction === 'left' ? -1 : 1;
+
+                return `M ${startX} ${startY} 
+                        L ${firstTurnX - cornerRadius * horizontalDirection} ${firstTurnY}
+                        Q ${firstTurnX} ${firstTurnY} ${firstTurnX} ${firstTurnY + cornerRadius * verticalDirection}
+                        L ${secondTurnX} ${secondTurnY - cornerRadius * verticalDirection}
+                        Q ${secondTurnX} ${secondTurnY} ${secondTurnX + cornerRadius * horizontalDirection} ${secondTurnY}
+                        L ${endX} ${endY}`;
+            }
+
+            updateConnections() {
+                // 传统全量更新（用于对比）
+                const startTime = performance.now();
+                let updatedCount = 0;
+                
+                this.messages.forEach((msg) => {
+                    const messageElement = document.getElementById(msg.messageId);
+                    const sessionElement = document.getElementById(msg.sessionId);
+                    const accountElement = document.getElementById(msg.accountId);
+
+                    if (!messageElement || !sessionElement || !accountElement) return;
+
+                    if (msg.isOwn) {
+                        this.updateActiveContactConnection(messageElement, accountElement, 'right');
+                        updatedCount++;
+                    } else {
+                        this.updateActiveContactConnection(messageElement, sessionElement, 'left');
+                        updatedCount++;
+                    }
+                });
+                
+                const updateTime = performance.now() - startTime;
+                this.updateDebugInfo('update', 
+                    `Full update: ${updatedCount} connections in ${Math.round(updateTime)}ms`);
+            }
+
+            toggleActiveContactMode() {
+                this.activeContactMode = !this.activeContactMode;
+                
+                if (this.activeContactMode) {
+                    this.updateDebugInfo('mode', 'Active Contact Element Mode: ENABLED');
+                    this.updateActiveContactConnections();
+                } else {
+                    this.updateDebugInfo('mode', 'Active Contact Element Mode: DISABLED');
+                    this.updateConnections();
+                }
+            }
+
+            highlightActiveContacts() {
+                const activeCount = this.activeContacts.size;
+                this.updateDebugInfo('highlight', 
+                    `Active contacts highlighted: ${activeCount} contacts. Check avatar borders and indicators.`);
+                
+                // 临时高亮所有活跃联系人
+                this.activeContacts.forEach((contact, messageId) => {
+                    contact.avatarElement.style.border = '3px solid #ff6b35';
+                    setTimeout(() => {
+                        contact.avatarElement.style.border = '2px solid #007bff';
+                    }, 2000);
+                });
+            }
+
+            updateDebugInfo(type, info, bubblePoint = null, avatarPoint = null, pathInfo = null) {
+                const timestamp = new Date().toLocaleTimeString();
+                
+                if (type === 'connection' && bubblePoint && avatarPoint && pathInfo) {
+                    this.debugInfo.innerHTML = `
+                        <strong>activeContactElement ${info.toUpperCase()} 连接调试:</strong><br>
+                        <strong>连接规则:</strong> ${info === 'left' ? 
+                            '气泡左侧边框垂直线中点 → 左延伸5px → 圆角转折 → 垂直延伸 → 圆角转折 → 会话头像右边缘中点' : 
+                            '气泡右侧边框垂直线中点 → 右延伸5px → 圆角转折 → 垂直延伸 → 圆角转折 → 账号头像左边缘中点'}<br>
+                        <strong>定位方法:</strong> ${pathInfo.method || 'activeContactElement精确定位'}<br>
+                        <strong>头像规格:</strong> ${pathInfo.avatarSize || '66×66px 圆角正方形'}<br>
+                        <strong>气泡连接点:</strong> (${Math.round(bubblePoint.x)}, ${Math.round(bubblePoint.y)})<br>
+                        <strong>头像连接点:</strong> (${Math.round(avatarPoint.x)}, ${Math.round(avatarPoint.y)})<br>
+                        <strong>SVG尺寸:</strong> ${Math.round(pathInfo.svgWidth)} × ${Math.round(pathInfo.svgHeight)}<br>
+                        <strong>SVG路径:</strong> (${Math.round(pathInfo.startX)}, ${Math.round(pathInfo.startY)}) → (${Math.round(pathInfo.endX)}, ${Math.round(pathInfo.endY)})<br>
+                        <strong>偏移量:</strong> ΔX=${Math.round(pathInfo.deltaX)}, ΔY=${Math.round(pathInfo.deltaY)}<br>
+                        <strong>Active Contacts:</strong> ${this.activeContacts.size}
+                    `;
+                } else {
+                    this.debugInfo.innerHTML = `
+                        <strong>Active Contact Element - ${type.toUpperCase()}:</strong><br>
+                        <strong>Time:</strong> ${timestamp}<br>
+                        <strong>Info:</strong> ${info}<br>
+                        <strong>Active Contacts:</strong> ${this.activeContacts.size}<br>
+                        <strong>Mode:</strong> ${this.activeContactMode ? 'ENABLED' : 'DISABLED'}
+                    `;
+                }
+            }
+
+            toggleDebugMode() {
+                this.debugMode = !this.debugMode;
+                
+                if (this.debugMode) {
+                    this.updateDebugInfo('mode', 'Debug Mode: ENABLED - Will show detailed connection info');
+                    this.updateActiveContactConnections();
+                } else {
+                    this.updateDebugInfo('mode', 'Debug Mode: DISABLED');
+                }
+            }
+
+            clearAll() {
+                this.sessionColumn.innerHTML = '';
+                this.messageColumn.innerHTML = '';
+                this.accountColumn.innerHTML = '';
+                this.messages = [];
+                this.activeContacts.clear();
+                this.updateDebugInfo('status', 'Active Contact Element Mode: Cleared');
+            }
+        }
+
+        // 初始化
+        let contactManager;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            contactManager = new ActiveContactElementManager();
+            setTimeout(() => {
+                contactManager.generateTestData(10);
+            }, 500);
+        });
+
+        // 全局函数
+        function generateTestData(count) {
+            contactManager.generateTestData(count);
+        }
+
+        function updateConnections() {
+            contactManager.updateConnections();
+        }
+
+        function toggleActiveContactMode() {
+            contactManager.toggleActiveContactMode();
+        }
+
+        function toggleDebugMode() {
+            contactManager.toggleDebugMode();
+        }
+
+        function highlightActiveContacts() {
+            contactManager.highlightActiveContacts();
+        }
+
+        function clearAll() {
+            contactManager.clearAll();
+        }
+    </script>
+</body>
+</html>

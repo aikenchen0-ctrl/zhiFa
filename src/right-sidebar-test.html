@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Right Sidebar Component Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1a1a1a;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        #container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: flex-end;
+            align-items: stretch;
+        }
+        
+        .info-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 300px;
+            z-index: 1000;
+        }
+        
+        .info-panel h3 {
+            margin: 0 0 10px 0;
+            color: #4CAF50;
+        }
+        
+        .info-panel ul {
+            margin: 5px 0;
+            padding-left: 15px;
+        }
+        
+        .info-panel li {
+            margin: 3px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-panel">
+        <h3>🎯 Right Sidebar Test</h3>
+        <p><strong>Test Features:</strong></p>
+        <ul>
+            <li>✅ 圆角正方形头像滚动</li>
+            <li>✅ 智囊团图标居中显示</li>
+            <li>✅ 17个工作流图标网格</li>
+            <li>✅ Aiff流程特殊滚动文字</li>
+            <li>✅ 点击滑动扩展动画</li>
+            <li>✅ 2秒后自动复原</li>
+        </ul>
+        <p><strong>操作指引:</strong></p>
+        <ul>
+            <li>点击头像区域 → 区域扩展</li>
+            <li>点击工作流图标 → 区域扩展</li>
+            <li>滚动鼠标滚轮 → 内容滚动</li>
+            <li>观察Aiff流程文字滚动</li>
+        </ul>
+    </div>
+    
+    <div id="container"></div>
+
+    <script type="module">
+        import * as PIXI from 'https://cdn.skypack.dev/pixi.js@8.0.0';
+        import { RightSidebar } from './components/RightSidebar.js';
+
+        console.log('🚀 Starting Right Sidebar Test');
+
+        // Application setup
+        const app = new PIXI.Application();
+        
+        await app.init({
+            width: window.innerWidth,
+            height: window.innerHeight,
+            backgroundColor: 0x1a1a1a,
+            antialias: true,
+            resolution: window.devicePixelRatio || 1,
+            autoDensity: true
+        });
+
+        // Add to DOM
+        document.getElementById('container').appendChild(app.canvas);
+
+        // Calculate sidebar dimensions
+        const sidebarWidth = 120;
+        const sidebarHeight = window.innerHeight;
+        const sidebarX = window.innerWidth - sidebarWidth;
+        const sidebarY = 0;
+
+        console.log('📐 Sidebar dimensions:', {
+            width: sidebarWidth,
+            height: sidebarHeight,
+            x: sidebarX,
+            y: sidebarY
+        });
+
+        // Create and add right sidebar
+        try {
+            const rightSidebar = new RightSidebar(app, {
+                width: sidebarWidth,
+                height: sidebarHeight
+            });
+
+            rightSidebar.setPosition(sidebarX, sidebarY);
+            app.stage.addChild(rightSidebar);
+
+            console.log('✅ Right Sidebar created and added to stage');
+
+            // Add event listeners for debugging
+            rightSidebar.on('accountSelected', (account) => {
+                console.log('🔔 Account selected:', account);
+            });
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                const newWidth = window.innerWidth;
+                const newHeight = window.innerHeight;
+                
+                app.renderer.resize(newWidth, newHeight);
+                
+                const newSidebarX = newWidth - sidebarWidth;
+                rightSidebar.setPosition(newSidebarX, 0);
+                rightSidebar.resize(sidebarWidth, newHeight);
+                
+                console.log('🔄 Window resized, sidebar updated');
+            });
+
+            // Debug ticker for monitoring
+            let frameCount = 0;
+            app.ticker.add(() => {
+                frameCount++;
+                if (frameCount % 300 === 0) { // Every 5 seconds at 60fps
+                    console.log(`🔄 Frame ${frameCount}: Sidebar running smoothly`);
+                }
+            });
+
+            // Test expansion programmatically after 3 seconds
+            setTimeout(() => {
+                console.log('🧪 Testing programmatic expansion...');
+                rightSidebar.handleAreaExpansion('avatar');
+            }, 3000);
+
+        } catch (error) {
+            console.error('❌ Error creating RightSidebar:', error);
+            
+            // Show error on screen
+            const errorText = new PIXI.Text({
+                text: `Error: ${error.message}`,
+                style: {
+                    fontFamily: 'Arial',
+                    fontSize: 16,
+                    fill: 0xFF0000,
+                    align: 'center'
+                }
+            });
+            errorText.anchor.set(0.5);
+            errorText.x = app.screen.width / 2;
+            errorText.y = app.screen.height / 2;
+            app.stage.addChild(errorText);
+        }
+
+        // Debug info
+        console.log('🎮 PIXI Application:', app);
+        console.log('📱 Canvas size:', app.screen.width, 'x', app.screen.height);
+        console.log('💾 Device pixel ratio:', window.devicePixelRatio);
+        
+        // Test completion
+        console.log('🎯 Right Sidebar Test initialized successfully!');
+
+    </script>
+</body>
+</html>

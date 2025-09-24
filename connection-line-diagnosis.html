@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接线系统诊断工具</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+        
+        .diagnostic-panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .diagnostic-panel h2 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .test-button {
+            margin: 5px;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .test-button:hover {
+            background: #0056b3;
+        }
+        
+        .results {
+            background: #f8f9fa;
+            border-radius: 5px;
+            padding: 15px;
+            margin-top: 15px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .error { color: #dc3545; }
+        .success { color: #28a745; }
+        .warning { color: #ffc107; }
+        .info { color: #17a2b8; }
+        
+        .test-iframe {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="diagnostic-panel">
+        <h2>🔍 连接线系统诊断工具</h2>
+        <p>这个工具用于诊断各个连接线系统实现的问题。</p>
+        
+        <div>
+            <button class="test-button" onclick="testPerfectCSS()">测试 Perfect CSS 系统</button>
+            <button class="test-button" onclick="testPixiJS()">测试 PixiJS 系统</button>
+            <button class="test-button" onclick="testCSSAnchor()">测试 CSS Anchor 系统</button>
+            <button class="test-button" onclick="testConnectionJS()">测试 ConnectionLineSystem.js</button>
+            <button class="test-button" onclick="runAllTests()">运行所有测试</button>
+        </div>
+        
+        <div id="testResults" class="results">等待测试开始...</div>
+    </div>
+    
+    <div class="diagnostic-panel">
+        <h2>📊 当前测试页面</h2>
+        <iframe id="testIframe" class="test-iframe" src="about:blank"></iframe>
+    </div>
+
+    <script>
+        const results = document.getElementById('testResults');
+        const testIframe = document.getElementById('testIframe');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type;
+            results.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        function clear() {
+            results.innerHTML = '';
+        }
+        
+        async function testPerfectCSS() {
+            clear();
+            log('🎯 开始测试 Perfect CSS 连接线系统', 'info');
+            
+            try {
+                // 加载测试页面
+                testIframe.src = 'src/perfect-css-connection-system.html';
+                
+                // 等待页面加载
+                await new Promise(resolve => {
+                    testIframe.onload = resolve;
+                    setTimeout(resolve, 5000); // 超时保护
+                });
+                
+                log('✅ Perfect CSS 页面加载完成', 'success');
+                
+                // 检查页面内容
+                const iframeDoc = testIframe.contentDocument;
+                if (!iframeDoc) {
+                    log('❌ 无法访问 iframe 文档', 'error');
+                    return;
+                }
+                
+                // 检查关键元素
+                const messageElements = iframeDoc.querySelectorAll('.message-element');
+                const connectionLines = iframeDoc.querySelectorAll('.connection-lines');
+                const connectionSegments = iframeDoc.querySelectorAll('.connection-segment');
+                
+                log(`📊 检测到 ${messageElements.length} 个消息元素`, 'info');
+                log(`📊 检测到 ${connectionLines.length} 个连接线容器`, 'info');
+                log(`📊 检测到 ${connectionSegments.length} 个连接线段`, 'info');
+                
+                // 检查CSS样式应用
+                if (connectionSegments.length > 0) {
+                    const firstSegment = connectionSegments[0];
+                    const styles = iframeDoc.defaultView.getComputedStyle(firstSegment);
+                    log(`🎨 第一个连接线段样式: background=${styles.backgroundColor}, position=${styles.position}`, 'info');
+                    
+                    const rect = firstSegment.getBoundingClientRect();
+                    log(`📐 第一个连接线段位置: (${rect.left}, ${rect.top}), 尺寸: ${rect.width}x${rect.height}`, 'info');
+                    
+                    if (rect.width > 0 && rect.height > 0) {
+                        log('✅ 连接线段有可见尺寸', 'success');
+                    } else {
+                        log('❌ 连接线段尺寸为0，可能不可见', 'error');
+                    }
+                }
+                
+                // 尝试触发测试数据生成
+                if (iframeDoc.defaultView.generateTestData) {
+                    log('🔄 触发测试数据生成...', 'info');
+                    iframeDoc.defaultView.generateTestData(5);
+                    
+                    // 等待生成完成
+                    setTimeout(() => {
+                        const newSegments = iframeDoc.querySelectorAll('.connection-segment');
+                        log(`📊 生成后检测到 ${newSegments.length} 个连接线段`, 'info');
+                    }, 1000);
+                }
+                
+            } catch (error) {
+                log(`❌ Perfect CSS 测试出错: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testPixiJS() {
+            clear();
+            log('🚀 开始测试 PixiJS 连接线系统', 'info');
+            
+            try {
+                testIframe.src = 'src/pixi-connection-system.html';
+                
+                await new Promise(resolve => {
+                    testIframe.onload = resolve;
+                    setTimeout(resolve, 5000);
+                });
+                
+                log('✅ PixiJS 页面加载完成', 'success');
+                
+                const iframeDoc = testIframe.contentDocument;
+                const iframeWindow = testIframe.contentWindow;
+                
+                // 检查 PixiJS 是否已加载
+                if (iframeWindow.PIXI) {
+                    log('✅ PixiJS 库已加载', 'success');
+                    log(`📊 PixiJS 版本: ${iframeWindow.PIXI.VERSION}`, 'info');
+                } else {
+                    log('❌ PixiJS 库未加载', 'error');
+                }
+                
+                // 检查 Canvas 元素
+                const canvas = iframeDoc.querySelector('#pixiCanvas');
+                if (canvas) {
+                    log('✅ PixiJS Canvas 已创建', 'success');
+                    log(`📊 Canvas 尺寸: ${canvas.width}x${canvas.height}`, 'info');
+                } else {
+                    log('❌ PixiJS Canvas 未找到', 'error');
+                }
+                
+                // 检查系统状态
+                if (iframeWindow.systemState) {
+                    const state = iframeWindow.systemState;
+                    log(`📊 系统初始化状态: ${state.initialized}`, 'info');
+                    log(`📊 应用实例: ${state.app ? '已创建' : '未创建'}`, 'info');
+                    log(`📊 连接线数量: ${state.elements.connections.length}`, 'info');
+                }
+                
+                // 尝试初始化系统
+                if (iframeWindow.initSystem) {
+                    log('🔄 触发系统初始化...', 'info');
+                    iframeWindow.initSystem();
+                }
+                
+            } catch (error) {
+                log(`❌ PixiJS 测试出错: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testCSSAnchor() {
+            clear();
+            log('⚓ 开始测试 CSS Anchor Positioning 系统', 'info');
+            
+            try {
+                testIframe.src = 'connection-line-refactor.html';
+                
+                await new Promise(resolve => {
+                    testIframe.onload = resolve;
+                    setTimeout(resolve, 5000);
+                });
+                
+                log('✅ CSS Anchor 页面加载完成', 'success');
+                
+                const iframeDoc = testIframe.contentDocument;
+                const iframeWindow = testIframe.contentWindow;
+                
+                // 检查CSS Anchor支持
+                if (iframeWindow.CSS && iframeWindow.CSS.supports) {
+                    const anchorSupport = iframeWindow.CSS.supports('anchor-name', '--test');
+                    log(`📊 原生 CSS Anchor 支持: ${anchorSupport}`, anchorSupport ? 'success' : 'warning');
+                }
+                
+                // 检查polyfill状态
+                if (iframeWindow.polyfillReady !== undefined) {
+                    log(`📊 Polyfill 状态: ${iframeWindow.polyfillReady}`, 'info');
+                }
+                
+                // 检查系统状态
+                if (iframeWindow.SystemState) {
+                    const state = iframeWindow.SystemState;
+                    log(`📊 系统初始化: ${state.initialized}`, 'info');
+                    log(`📊 元素数量: ${state.elementCount}`, 'info');
+                }
+                
+                // 检查连接线元素
+                const connectionLines = iframeDoc.querySelectorAll('.connection-line');
+                log(`📊 检测到 ${connectionLines.length} 个连接线元素`, 'info');
+                
+                if (connectionLines.length > 0) {
+                    const firstLine = connectionLines[0];
+                    const styles = iframeDoc.defaultView.getComputedStyle(firstLine);
+                    const rect = firstLine.getBoundingClientRect();
+                    
+                    log(`🎨 第一个连接线样式: position=${styles.position}, left=${styles.left}`, 'info');
+                    log(`📐 第一个连接线位置: (${rect.left}, ${rect.top}), 尺寸: ${rect.width}x${rect.height}`, 'info');
+                }
+                
+                // 尝试初始化系统
+                if (iframeWindow.initializeSystem) {
+                    log('🔄 触发系统初始化...', 'info');
+                    iframeWindow.initializeSystem();
+                }
+                
+            } catch (error) {
+                log(`❌ CSS Anchor 测试出错: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testConnectionJS() {
+            clear();
+            log('🔗 开始测试 ConnectionLineSystem.js 组件', 'info');
+            
+            try {
+                // 检查组件是否可用
+                if (window.ConnectionLineSystem) {
+                    log('✅ ConnectionLineSystem 类已可用', 'success');
+                } else {
+                    log('❌ ConnectionLineSystem 类未找到', 'error');
+                    return;
+                }
+                
+                // 创建测试容器
+                const testContainer = document.createElement('div');
+                testContainer.style.width = '800px';
+                testContainer.style.height = '600px';
+                testContainer.style.position = 'relative';
+                testContainer.style.background = '#f0f0f0';
+                document.body.appendChild(testContainer);
+                
+                // 创建测试元素
+                const bubble = document.createElement('div');
+                bubble.style.width = '200px';
+                bubble.style.height = '40px';
+                bubble.style.background = '#007bff';
+                bubble.style.position = 'absolute';
+                bubble.style.left = '100px';
+                bubble.style.top = '100px';
+                bubble.style.borderRadius = '20px';
+                testContainer.appendChild(bubble);
+                
+                const avatar = document.createElement('div');
+                avatar.style.width = '40px';
+                avatar.style.height = '40px';
+                avatar.style.background = '#28a745';
+                avatar.style.position = 'absolute';
+                avatar.style.left = '500px';
+                avatar.style.top = '200px';
+                avatar.style.borderRadius = '50%';
+                testContainer.appendChild(avatar);
+                
+                log('✅ 测试元素已创建', 'success');
+                
+                // 初始化连接线系统
+                const connectionSystem = new ConnectionLineSystem({
+                    containerSelector: testContainer,
+                    enablePerformanceLogging: true
+                });
+                
+                // 等待初始化
+                setTimeout(() => {
+                    // 添加连接
+                    const connectionId = connectionSystem.addConnection(bubble, avatar, 'other');
+                    log(`✅ 连接已添加: ${connectionId}`, 'success');
+                    
+                    // 检查性能指标
+                    const metrics = connectionSystem.getPerformanceMetrics();
+                    log(`📊 性能指标: 连接数=${metrics.connectionCount}, 内存=${metrics.memoryUsageMB}MB`, 'info');
+                    
+                    // 清理
+                    setTimeout(() => {
+                        connectionSystem.destroy();
+                        testContainer.remove();
+                        log('🧹 测试环境已清理', 'info');
+                    }, 3000);
+                    
+                }, 1000);
+                
+            } catch (error) {
+                log(`❌ ConnectionLineSystem.js 测试出错: ${error.message}`, 'error');
+            }
+        }
+        
+        async function runAllTests() {
+            log('🔄 开始运行所有测试...', 'info');
+            
+            await testPerfectCSS();
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            await testPixiJS();
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            await testCSSAnchor();
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            await testConnectionJS();
+            
+            log('✅ 所有测试完成', 'success');
+        }
+        
+        // 页面加载完成后运行初始诊断
+        document.addEventListener('DOMContentLoaded', () => {
+            log('📋 连接线系统诊断工具已就绪', 'success');
+            log('💡 请点击上方按钮开始测试各个系统', 'info');
+        });
+    </script>
+</body>
+</html>

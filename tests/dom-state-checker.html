@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接线系统 DOM 状态检查器</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .checker-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .control-panel {
+            grid-column: 1 / -1;
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .panel {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .panel h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 18px;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 5px;
+        }
+
+        .status-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+            background: #f8f9fa;
+        }
+
+        .status-item.error {
+            border-left-color: #e74c3c;
+            background: #fdf2f2;
+        }
+
+        .status-item.warning {
+            border-left-color: #f39c12;
+            background: #fef9e7;
+        }
+
+        .status-item.success {
+            border-left-color: #27ae60;
+            background: #f0f8f4;
+        }
+
+        .status-label {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .status-value {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            background: #ecf0f1;
+            padding: 5px 8px;
+            border-radius: 3px;
+            word-break: break-all;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .btn.danger {
+            background: #e74c3c;
+        }
+
+        .btn.danger:hover {
+            background: #c0392b;
+        }
+
+        .input-group {
+            display: inline-block;
+            margin-right: 15px;
+            margin-bottom: 10px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 3px;
+        }
+
+        .input-group input, .input-group select {
+            padding: 5px 8px;
+            border: 1px solid #bdc3c7;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+
+        .element-tree {
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .element-node {
+            margin-left: 20px;
+            border-left: 1px solid #ecf0f1;
+            padding-left: 10px;
+            margin-bottom: 5px;
+        }
+
+        .element-info {
+            background: #f8f9fa;
+            padding: 5px;
+            border-radius: 3px;
+            margin-bottom: 3px;
+        }
+
+        .highlight {
+            background: #fff3cd !important;
+            border: 2px solid #ffc107 !important;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .metric-card {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #e9ecef;
+        }
+
+        .metric-label {
+            font-size: 12px;
+            color: #6c757d;
+            font-weight: bold;
+        }
+
+        .metric-value {
+            font-size: 14px;
+            color: #495057;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="checker-container">
+        <div class="control-panel">
+            <h1>连接线系统 DOM 状态检查器</h1>
+            
+            <div class="input-group">
+                <label>检查目标</label>
+                <select id="targetSelect">
+                    <option value="all">全部检查</option>
+                    <option value="selectors">选择器有效性</option>
+                    <option value="structure">HTML结构</option>
+                    <option value="styles">CSS规则应用</option>
+                    <option value="layout">布局计算</option>
+                    <option value="scroll">滚动容器</option>
+                    <option value="responsive">响应式布局</option>
+                </select>
+            </div>
+
+            <div class="input-group">
+                <label>自定义选择器</label>
+                <input type="text" id="customSelector" placeholder=".chat-message, .connection-line">
+            </div>
+
+            <div class="input-group">
+                <label>检查频率 (ms)</label>
+                <input type="number" id="checkInterval" value="1000" min="100" max="10000">
+            </div>
+
+            <button class="btn" onclick="startRealTimeCheck()">开始实时检查</button>
+            <button class="btn danger" onclick="stopRealTimeCheck()">停止检查</button>
+            <button class="btn" onclick="runSingleCheck()">单次检查</button>
+            <button class="btn" onclick="highlightElements()">高亮元素</button>
+            <button class="btn" onclick="clearHighlights()">清除高亮</button>
+            <button class="btn" onclick="exportReport()">导出报告</button>
+        </div>
+
+        <div class="panel">
+            <h2>DOM 状态分析</h2>
+            <div id="domStatus"></div>
+        </div>
+
+        <div class="panel">
+            <h2>CSS 和布局状态</h2>
+            <div id="cssStatus"></div>
+        </div>
+    </div>
+
+    <script>
+        class DOMStateChecker {
+            constructor() {
+                this.checkInterval = null;
+                this.highlightedElements = [];
+                this.commonSelectors = [
+                    '.chat-message',
+                    '.message-bubble',
+                    '.connection-line',
+                    '.popup-layer',
+                    '.chat-container',
+                    '[data-connection]',
+                    '.anchor-element',
+                    '.floating-element',
+                    '.scroll-container',
+                    '.conversation-item'
+                ];
+                this.lastCheckResults = {};
+            }
+
+            // 检查选择器有效性
+            checkSelectors() {
+                const results = [];
+                const selectors = [...this.commonSelectors];
+                
+                const customSelector = document.getElementById('customSelector').value;
+                if (customSelector) {
+                    selectors.push(...customSelector.split(',').map(s => s.trim()));
+                }
+
+                selectors.forEach(selector => {
+                    try {
+                        const elements = document.querySelectorAll(selector);
+                        results.push({
+                            selector,
+                            count: elements.length,
+                            valid: true,
+                            elements: Array.from(elements),
+                            status: elements.length > 0 ? 'success' : 'warning'
+                        });
+                    } catch (error) {
+                        results.push({
+                            selector,
+                            valid: false,
+                            error: error.message,
+                            status: 'error'
+                        });
+                    }
+                });
+
+                return results;
+            }
+
+            // 检查HTML结构完整性
+            checkHTMLStructure() {
+                const results = [];
+                
+                // 检查必要的容器元素
+                const requiredContainers = [
+                    { selector: 'body', name: 'Body容器' },
+                    { selector: 'head', name: 'Head标签' },
+                    { selector: '[data-chat]', name: '聊天容器' },
+                    { selector: '.main-container, #app, .app', name: '主容器' }
+                ];
+
+                requiredContainers.forEach(container => {
+                    const element = document.querySelector(container.selector);
+                    results.push({
+                        name: container.name,
+                        selector: container.selector,
+                        exists: !!element,
+                        element: element,
+                        status: element ? 'success' : 'error'
+                    });
+                });
+
+                // 检查文档状态
+                results.push({
+                    name: '文档加载状态',
+                    value: document.readyState,
+                    status: document.readyState === 'complete' ? 'success' : 'warning'
+                });
+
+                // 检查视口设置
+                const viewport = document.querySelector('meta[name="viewport"]');
+                results.push({
+                    name: '视口设置',
+                    exists: !!viewport,
+                    content: viewport ? viewport.getAttribute('content') : null,
+                    status: viewport ? 'success' : 'warning'
+                });
+
+                return results;
+            }
+
+            // 检查CSS规则应用状态
+            checkCSSRules() {
+                const results = [];
+                const elements = document.querySelectorAll('*');
+                
+                let totalElements = elements.length;
+                let styledElements = 0;
+                let elementsWithClasses = 0;
+                let elementsWithInlineStyles = 0;
+
+                elements.forEach(element => {
+                    const computedStyle = window.getComputedStyle(element);
+                    
+                    if (element.className) elementsWithClasses++;
+                    if (element.style.length > 0) elementsWithInlineStyles++;
+                    
+                    // 检查是否有自定义样式（非默认值）
+                    const hasCustomStyles = 
+                        computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)' ||
+                        computedStyle.color !== 'rgb(0, 0, 0)' ||
+                        computedStyle.fontSize !== '16px' ||
+                        computedStyle.fontFamily !== 'Times' ||
+                        computedStyle.padding !== '0px' ||
+                        computedStyle.margin !== '0px';
+                    
+                    if (hasCustomStyles) styledElements++;
+                });
+
+                results.push(
+                    {
+                        name: '总元素数量',
+                        value: totalElements,
+                        status: 'success'
+                    },
+                    {
+                        name: '有样式的元素',
+                        value: `${styledElements} (${(styledElements/totalElements*100).toFixed(1)}%)`,
+                        status: styledElements > 0 ? 'success' : 'warning'
+                    },
+                    {
+                        name: '有CSS类的元素',
+                        value: `${elementsWithClasses} (${(elementsWithClasses/totalElements*100).toFixed(1)}%)`,
+                        status: elementsWithClasses > 0 ? 'success' : 'warning'
+                    },
+                    {
+                        name: '有内联样式的元素',
+                        value: `${elementsWithInlineStyles} (${(elementsWithInlineStyles/totalElements*100).toFixed(1)}%)`,
+                        status: 'success'
+                    }
+                );
+
+                // 检查CSS文件加载
+                const styleSheets = document.styleSheets;
+                results.push({
+                    name: 'CSS样式表数量',
+                    value: styleSheets.length,
+                    status: styleSheets.length > 0 ? 'success' : 'warning'
+                });
+
+                return results;
+            }
+
+            // 检查布局计算问题
+            checkLayoutCalculation() {
+                const results = [];
+                const selectors = this.commonSelectors;
+
+                selectors.forEach(selector => {
+                    const elements = document.querySelectorAll(selector);
+                    
+                    elements.forEach((element, index) => {
+                        const rect = element.getBoundingClientRect();
+                        const computedStyle = window.getComputedStyle(element);
+                        
+                        const layoutInfo = {
+                            selector: `${selector}[${index}]`,
+                            rect: {
+                                width: Math.round(rect.width * 100) / 100,
+                                height: Math.round(rect.height * 100) / 100,
+                                x: Math.round(rect.x * 100) / 100,
+                                y: Math.round(rect.y * 100) / 100
+                            },
+                            display: computedStyle.display,
+                            position: computedStyle.position,
+                            visibility: computedStyle.visibility,
+                            opacity: computedStyle.opacity,
+                            zIndex: computedStyle.zIndex,
+                            overflow: computedStyle.overflow
+                        };
+
+                        // 检查潜在问题
+                        let issues = [];
+                        if (rect.width === 0 || rect.height === 0) {
+                            issues.push('元素尺寸为0');
+                        }
+                        if (computedStyle.display === 'none') {
+                            issues.push('元素被隐藏');
+                        }
+                        if (computedStyle.visibility === 'hidden') {
+                            issues.push('元素不可见');
+                        }
+                        if (parseFloat(computedStyle.opacity) === 0) {
+                            issues.push('元素透明');
+                        }
+
+                        results.push({
+                            ...layoutInfo,
+                            issues,
+                            status: issues.length > 0 ? 'warning' : 'success'
+                        });
+                    });
+                });
+
+                return results;
+            }
+
+            // 检查滚动容器设置
+            checkScrollContainers() {
+                const results = [];
+                const elements = document.querySelectorAll('*');
+
+                let scrollableElements = [];
+                
+                elements.forEach(element => {
+                    const computedStyle = window.getComputedStyle(element);
+                    const isScrollable = 
+                        computedStyle.overflow === 'scroll' ||
+                        computedStyle.overflow === 'auto' ||
+                        computedStyle.overflowX === 'scroll' ||
+                        computedStyle.overflowX === 'auto' ||
+                        computedStyle.overflowY === 'scroll' ||
+                        computedStyle.overflowY === 'auto';
+
+                    if (isScrollable) {
+                        const hasScrollContent = 
+                            element.scrollHeight > element.clientHeight ||
+                            element.scrollWidth > element.clientWidth;
+
+                        scrollableElements.push({
+                            element,
+                            tagName: element.tagName.toLowerCase(),
+                            className: element.className,
+                            overflow: computedStyle.overflow,
+                            overflowX: computedStyle.overflowX,
+                            overflowY: computedStyle.overflowY,
+                            scrollHeight: element.scrollHeight,
+                            clientHeight: element.clientHeight,
+                            scrollWidth: element.scrollWidth,
+                            clientWidth: element.clientWidth,
+                            hasScrollContent,
+                            hasScrollEvents: this.hasScrollEventListeners(element)
+                        });
+                    }
+                });
+
+                results.push({
+                    name: '可滚动元素数量',
+                    value: scrollableElements.length,
+                    status: 'success'
+                });
+
+                scrollableElements.forEach((item, index) => {
+                    results.push({
+                        name: `滚动容器 ${index + 1}`,
+                        element: item.element,
+                        details: item,
+                        status: item.hasScrollContent ? 'success' : 'warning'
+                    });
+                });
+
+                // 检查body和html的滚动设置
+                const bodyOverflow = window.getComputedStyle(document.body).overflow;
+                const htmlOverflow = window.getComputedStyle(document.documentElement).overflow;
+                
+                results.push(
+                    {
+                        name: 'Body滚动设置',
+                        value: bodyOverflow,
+                        status: 'success'
+                    },
+                    {
+                        name: 'HTML滚动设置',
+                        value: htmlOverflow,
+                        status: 'success'
+                    }
+                );
+
+                return results;
+            }
+
+            // 检查响应式布局
+            checkResponsiveLayout() {
+                const results = [];
+                
+                // 获取当前视口信息
+                const viewport = {
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    devicePixelRatio: window.devicePixelRatio,
+                    orientation: screen.orientation ? screen.orientation.type : 'unknown'
+                };
+
+                results.push({
+                    name: '当前视口',
+                    value: `${viewport.width}x${viewport.height}`,
+                    status: 'success'
+                });
+
+                results.push({
+                    name: '设备像素比',
+                    value: viewport.devicePixelRatio,
+                    status: 'success'
+                });
+
+                results.push({
+                    name: '屏幕方向',
+                    value: viewport.orientation,
+                    status: 'success'
+                });
+
+                // 检查媒体查询
+                const mediaQueries = [
+                    '(max-width: 768px)',
+                    '(max-width: 1024px)',
+                    '(min-width: 1200px)',
+                    '(orientation: portrait)',
+                    '(orientation: landscape)',
+                    '(prefers-color-scheme: dark)'
+                ];
+
+                mediaQueries.forEach(query => {
+                    const matches = window.matchMedia(query).matches;
+                    results.push({
+                        name: `媒体查询: ${query}`,
+                        value: matches ? '匹配' : '不匹配',
+                        status: 'success'
+                    });
+                });
+
+                // 检查触摸支持
+                const touchSupport = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+                results.push({
+                    name: '触摸支持',
+                    value: touchSupport ? '支持' : '不支持',
+                    status: 'success'
+                });
+
+                return results;
+            }
+
+            // 检查元素是否有滚动事件监听器
+            hasScrollEventListeners(element) {
+                // 这是一个简化版本，实际检测事件监听器比较复杂
+                return element.onscroll !== null || element.getAttribute('onscroll');
+            }
+
+            // 运行完整检查
+            runFullCheck() {
+                const target = document.getElementById('targetSelect').value;
+                let results = {};
+
+                if (target === 'all' || target === 'selectors') {
+                    results.selectors = this.checkSelectors();
+                }
+                if (target === 'all' || target === 'structure') {
+                    results.structure = this.checkHTMLStructure();
+                }
+                if (target === 'all' || target === 'styles') {
+                    results.styles = this.checkCSSRules();
+                }
+                if (target === 'all' || target === 'layout') {
+                    results.layout = this.checkLayoutCalculation();
+                }
+                if (target === 'all' || target === 'scroll') {
+                    results.scroll = this.checkScrollContainers();
+                }
+                if (target === 'all' || target === 'responsive') {
+                    results.responsive = this.checkResponsiveLayout();
+                }
+
+                this.lastCheckResults = results;
+                this.renderResults(results);
+                return results;
+            }
+
+            // 渲染检查结果
+            renderResults(results) {
+                const domPanel = document.getElementById('domStatus');
+                const cssPanel = document.getElementById('cssStatus');
+
+                // 清空面板
+                domPanel.innerHTML = '';
+                cssPanel.innerHTML = '';
+
+                // DOM相关结果
+                if (results.selectors) {
+                    this.renderSection(domPanel, '选择器有效性检查', results.selectors);
+                }
+                if (results.structure) {
+                    this.renderSection(domPanel, 'HTML结构检查', results.structure);
+                }
+
+                // CSS和布局相关结果
+                if (results.styles) {
+                    this.renderSection(cssPanel, 'CSS规则应用检查', results.styles);
+                }
+                if (results.layout) {
+                    this.renderSection(cssPanel, '布局计算检查', results.layout);
+                }
+                if (results.scroll) {
+                    this.renderSection(cssPanel, '滚动容器检查', results.scroll);
+                }
+                if (results.responsive) {
+                    this.renderSection(cssPanel, '响应式布局检查', results.responsive);
+                }
+            }
+
+            // 渲染单个检查部分
+            renderSection(container, title, items) {
+                const section = document.createElement('div');
+                section.innerHTML = `<h3 style="color: #34495e; margin: 20px 0 10px 0;">${title}</h3>`;
+                
+                items.forEach(item => {
+                    const statusDiv = document.createElement('div');
+                    statusDiv.className = `status-item ${item.status || 'success'}`;
+                    
+                    let content = '';
+                    if (item.selector) {
+                        content += `<div class="status-label">选择器: ${item.selector}</div>`;
+                    }
+                    if (item.name) {
+                        content += `<div class="status-label">${item.name}</div>`;
+                    }
+                    if (item.value !== undefined) {
+                        content += `<div class="status-value">${item.value}</div>`;
+                    }
+                    if (item.count !== undefined) {
+                        content += `<div class="status-value">找到 ${item.count} 个元素</div>`;
+                    }
+                    if (item.error) {
+                        content += `<div class="status-value" style="color: #e74c3c;">错误: ${item.error}</div>`;
+                    }
+                    if (item.issues && item.issues.length > 0) {
+                        content += `<div class="status-value" style="color: #f39c12;">问题: ${item.issues.join(', ')}</div>`;
+                    }
+                    if (item.rect) {
+                        content += `<div class="status-value">位置: x=${item.rect.x}, y=${item.rect.y}, w=${item.rect.width}, h=${item.rect.height}</div>`;
+                    }
+                    if (item.details) {
+                        content += `<div class="status-value">${JSON.stringify(item.details, null, 2)}</div>`;
+                    }
+                    
+                    statusDiv.innerHTML = content;
+                    section.appendChild(statusDiv);
+                });
+                
+                container.appendChild(section);
+            }
+
+            // 高亮显示元素
+            highlightElements() {
+                this.clearHighlights();
+                
+                const selectors = [...this.commonSelectors];
+                const customSelector = document.getElementById('customSelector').value;
+                if (customSelector) {
+                    selectors.push(...customSelector.split(',').map(s => s.trim()));
+                }
+
+                selectors.forEach(selector => {
+                    try {
+                        const elements = document.querySelectorAll(selector);
+                        elements.forEach(element => {
+                            element.classList.add('highlight');
+                            this.highlightedElements.push(element);
+                        });
+                    } catch (error) {
+                        console.warn(`无法高亮选择器 ${selector}:`, error);
+                    }
+                });
+            }
+
+            // 清除高亮
+            clearHighlights() {
+                this.highlightedElements.forEach(element => {
+                    element.classList.remove('highlight');
+                });
+                this.highlightedElements = [];
+            }
+
+            // 导出报告
+            exportReport() {
+                const report = {
+                    timestamp: new Date().toISOString(),
+                    url: window.location.href,
+                    userAgent: navigator.userAgent,
+                    viewport: {
+                        width: window.innerWidth,
+                        height: window.innerHeight
+                    },
+                    results: this.lastCheckResults
+                };
+
+                const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `dom-check-report-${Date.now()}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        }
+
+        // 全局实例
+        const checker = new DOMStateChecker();
+
+        // 控制函数
+        function startRealTimeCheck() {
+            const interval = parseInt(document.getElementById('checkInterval').value);
+            
+            if (checker.checkInterval) {
+                clearInterval(checker.checkInterval);
+            }
+            
+            checker.checkInterval = setInterval(() => {
+                checker.runFullCheck();
+            }, interval);
+            
+            // 立即运行一次
+            checker.runFullCheck();
+        }
+
+        function stopRealTimeCheck() {
+            if (checker.checkInterval) {
+                clearInterval(checker.checkInterval);
+                checker.checkInterval = null;
+            }
+        }
+
+        function runSingleCheck() {
+            checker.runFullCheck();
+        }
+
+        function highlightElements() {
+            checker.highlightElements();
+        }
+
+        function clearHighlights() {
+            checker.clearHighlights();
+        }
+
+        function exportReport() {
+            checker.exportReport();
+        }
+
+        // 页面加载完成后自动运行一次检查
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(() => {
+                checker.runFullCheck();
+            }, 500);
+        });
+
+        // 监听窗口大小变化
+        window.addEventListener('resize', () => {
+            if (checker.checkInterval) {
+                checker.runFullCheck();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>引用消息结构对比测试</title>
+  <style>
+    /* 复制相关CSS样式 */
+    :root {
+      --message-border-radius: 6px;
+      --message-padding: 8px 8px;
+      --message-gap: 12px;
+      --avatar-size: 37px;
+      --bubble-height: 37px;
+      --quote-bar-width: 3px;
+      --quote-bar-color: rgba(255, 255, 255, 0.6);
+      --glass-blur: 20px;
+      --text-shadow-enhanced: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 0, 0, 0.25), 0 1px 1px rgba(0, 0, 0, 0.5);
+      --sender-name-shadow: 0 2px 6px rgba(0, 0, 0, 1), 0 0 16px rgba(255, 255, 255, 0.9), 0 0 8px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 0.8), 0 0 20px rgba(255, 255, 255, 0.6);
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      margin: 0;
+      padding: 20px;
+      color: white;
+    }
+
+    .comparison-container {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+    }
+
+    .comparison-section {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: bold;
+      margin-bottom: 20px;
+      text-align: center;
+      color: white;
+      text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    /* 消息样式 */
+    .message {
+      width: 100%;
+      margin-bottom: var(--message-gap);
+    }
+
+    .message__container {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--message-gap);
+      max-width: 100%;
+    }
+
+    .message__avatar {
+      flex-shrink: 0;
+      width: var(--avatar-size);
+      height: var(--avatar-size);
+      border-radius: var(--message-border-radius);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 500;
+      font-size: 0.875rem;
+      box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
+    }
+
+    .message__content {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+      position: relative;
+    }
+
+    .message__bubble {
+      position: relative;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(156, 163, 175, 0.4);
+      border-radius: var(--message-border-radius);
+      padding: var(--message-padding);
+      backdrop-filter: blur(var(--glass-blur));
+      cursor: pointer;
+      width: fit-content;
+      max-width: 100%;
+      box-shadow: 0 0 4px rgba(0, 0, 0, 0.15);
+    }
+
+    .message__text {
+      color: white;
+      text-shadow: var(--text-shadow-enhanced);
+      word-wrap: break-word;
+      line-height: 1.2;
+    }
+
+    .message__sender {
+      position: absolute;
+      left: 8px;
+      top: 0;
+      transform: translateY(-50%);
+      z-index: 30;
+      font-size: 0.75rem;
+      color: white;
+      text-shadow: var(--sender-name-shadow);
+      white-space: nowrap;
+    }
+
+    /* 引用样式 */
+    .message__quote {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 8px;
+      padding: 8px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      border-left: var(--quote-bar-width) solid var(--quote-bar-color);
+    }
+
+    .message__quote-content {
+      flex: 1;
+    }
+
+    .message__quote-author {
+      font-size: 0.75rem;
+      color: rgba(255, 255, 255, 0.8);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .message__quote-text {
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.9);
+      opacity: 0.8;
+      line-height: 1.4;
+    }
+
+    /* Tailwind背景样式 */
+    .bg-gradient-to-br.from-indigo-500.to-purple-500 {
+      background: linear-gradient(to bottom right, #6366f1, #a855f7);
+    }
+
+    .text-white { color: white; }
+    .text-sm { font-size: 0.875rem; }
+    .font-medium { font-weight: 500; }
+  </style>
+</head>
+<body>
+  <h1 style="text-align: center; font-size: 2rem; margin-bottom: 30px; text-shadow: 0 4px 8px rgba(0,0,0,0.5);">
+    引用消息结构对比测试
+  </h1>
+
+  <div class="comparison-container">
+    <!-- 模板中的正确结构 -->
+    <div class="comparison-section">
+      <h2 class="section-title">✅ 模板中的正确结构</h2>
+      
+      <div class="message message--type8 message--other message--has-quote">
+        <div class="message__container">
+          <div class="message__avatar bg-gradient-to-br from-indigo-500 to-purple-500">
+            <span class="text-white text-sm font-medium">周</span>
+          </div>
+          <div class="message__content">
+            <div class="relative">
+              <div class="message__sender">周九</div>
+              <div class="message__bubble">
+                <div class="message__quote">
+                  <div class="message__quote-content">
+                    <div class="message__quote-author">张三</div>
+                    <div class="message__quote-text">这是有头像含名的消息气泡，适合个人聊天场景。</div>
+                  </div>
+                </div>
+                <div class="message__text">
+                  完全同意！这种设计确实很适合个人聊天场景。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 当前实现的结构 -->
+    <div class="comparison-section">
+      <h2 class="section-title">❌ 当前实现的结构</h2>
+      
+      <div class="message message--type8 message--other message--has-quote">
+        <div class="message__container">
+          <div class="message__avatar" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);">
+            <span>刘</span>
+          </div>
+          <div class="message__content">
+            <div class="relative">
+              <div class="message__sender">刘志强</div>
+              <div class="message__bubble">
+                <div class="message__quote">
+                  <div class="message__quote-content">
+                    <div class="message__quote-author">张小明</div>
+                    <div class="message__quote-text">这是被引用的第 3 条消息内容</div>
+                  </div>
+                </div>
+                <div class="message__text">
+                  回复引用消息 - 第 5 条
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align: center; margin-top: 30px; font-size: 0.875rem; opacity: 0.8;">
+    对比两个结构，找出引用块位置的具体差异
+  </div>
+</body>
+</html>

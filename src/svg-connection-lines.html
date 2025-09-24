@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Dynamic Connection Lines - Chat Interface</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .chat-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .chat-body {
+            height: 500px;
+            overflow-y: auto;
+            padding: 20px;
+            position: relative;
+        }
+
+        .connection-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .message-group {
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .message-group.own {
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .avatar.own {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .message-bubble {
+            max-width: 60%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            background: #e9ecef;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message-bubble.own {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .message-time {
+            font-size: 12px;
+            opacity: 0.6;
+            margin-top: 4px;
+        }
+
+        .connection-line {
+            stroke: #007bff;
+            stroke-width: 2;
+            fill: none;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .connection-line.own {
+            stroke: #e91e63;
+        }
+
+        .message-group:hover .connection-line {
+            opacity: 1;
+            stroke-width: 3;
+        }
+
+        .demo-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .demo-controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            cursor: pointer;
+        }
+
+        .demo-controls button:hover {
+            background: #0056b3;
+        }
+
+        .scroll-area {
+            height: 800px;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-controls">
+        <button onclick="addMessage(false)">Add Other Message</button>
+        <button onclick="addMessage(true)">Add Own Message</button>
+        <button onclick="toggleConnections()">Toggle Lines</button>
+        <button onclick="scrollToBottom()">Scroll Bottom</button>
+    </div>
+
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>SVG Dynamic Connection Lines Demo</h2>
+            <p>Scroll to see connection lines follow message bubbles</p>
+        </div>
+        
+        <div class="chat-body" id="chatBody">
+            <svg class="connection-overlay" id="connectionOverlay">
+                <!-- Dynamic SVG paths will be inserted here -->
+            </svg>
+            
+            <div class="message-group" data-connection="true">
+                <div class="avatar">A</div>
+                <div class="message-bubble">
+                    Hello! This is a test message to demonstrate the SVG connection lines.
+                    <div class="message-time">10:30 AM</div>
+                </div>
+            </div>
+
+            <div class="message-group own" data-connection="true">
+                <div class="avatar own">M</div>
+                <div class="message-bubble own">
+                    Great! I can see the connection line following the message.
+                    <div class="message-time">10:32 AM</div>
+                </div>
+            </div>
+
+            <div class="message-group" data-connection="true">
+                <div class="avatar">A</div>
+                <div class="message-bubble">
+                    The lines should update in real-time as we scroll and resize the window.
+                    <div class="message-time">10:33 AM</div>
+                </div>
+            </div>
+
+            <div class="message-group own" data-connection="true">
+                <div class="avatar own">M</div>
+                <div class="message-bubble own">
+                    Perfect! The SVG paths are calculated dynamically with smooth rounded corners.
+                    <div class="message-time">10:35 AM</div>
+                </div>
+            </div>
+
+            <!-- Add more content for scrolling -->
+            <div class="scroll-area">
+                <div class="message-group" data-connection="true">
+                    <div class="avatar">A</div>
+                    <div class="message-bubble">
+                        This is a longer conversation to test scrolling behavior. The connection lines should remain stable and follow the elements correctly even when scrolling through a long chat history.
+                        <div class="message-time">10:40 AM</div>
+                    </div>
+                </div>
+
+                <div class="message-group own" data-connection="true">
+                    <div class="avatar own">M</div>
+                    <div class="message-bubble own">
+                        Absolutely! The SVG overlay technique ensures that the lines are always positioned correctly relative to the viewport, regardless of scroll position.
+                        <div class="message-time">10:42 AM</div>
+                    </div>
+                </div>
+
+                <div class="message-group" data-connection="true">
+                    <div class="avatar">A</div>
+                    <div class="message-bubble">
+                        The rounded corners and smooth transitions make it look very professional. This could be a great addition to any chat interface.
+                        <div class="message-time">10:45 AM</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class SVGConnectionLineManager {
+            constructor(containerSelector, overlaySelector) {
+                this.container = document.querySelector(containerSelector);
+                this.overlay = document.querySelector(overlaySelector);
+                this.connections = new Map();
+                this.isEnabled = true;
+                
+                this.init();
+            }
+
+            init() {
+                this.updateAllConnections();
+                this.setupEventListeners();
+            }
+
+            setupEventListeners() {
+                // Throttled scroll listener for performance
+                let scrollTimeout;
+                this.container.addEventListener('scroll', () => {
+                    if (scrollTimeout) return;
+                    scrollTimeout = setTimeout(() => {
+                        if (this.isEnabled) {
+                            this.updateAllConnections();
+                        }
+                        scrollTimeout = null;
+                    }, 16); // ~60fps
+                });
+
+                // Window resize listener
+                let resizeTimeout;
+                window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        if (this.isEnabled) {
+                            this.updateAllConnections();
+                        }
+                    }, 100);
+                });
+
+                // Intersection Observer for performance optimization
+                this.setupIntersectionObserver();
+            }
+
+            setupIntersectionObserver() {
+                const observer = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const messageGroup = entry.target;
+                        const connectionId = this.getConnectionId(messageGroup);
+                        
+                        if (entry.isIntersecting) {
+                            this.updateConnection(messageGroup);
+                        } else {
+                            this.hideConnection(connectionId);
+                        }
+                    });
+                }, {
+                    root: this.container,
+                    rootMargin: '50px',
+                    threshold: 0.1
+                });
+
+                this.observeMessageGroups(observer);
+            }
+
+            observeMessageGroups(observer) {
+                const messageGroups = this.container.querySelectorAll('.message-group[data-connection="true"]');
+                messageGroups.forEach(group => observer.observe(group));
+            }
+
+            updateAllConnections() {
+                const messageGroups = this.container.querySelectorAll('.message-group[data-connection="true"]');
+                messageGroups.forEach(group => this.updateConnection(group));
+            }
+
+            updateConnection(messageGroup) {
+                const avatar = messageGroup.querySelector('.avatar');
+                const bubble = messageGroup.querySelector('.message-bubble');
+                const isOwnMessage = messageGroup.classList.contains('own');
+                
+                if (!avatar || !bubble) return;
+
+                const containerRect = this.container.getBoundingClientRect();
+                const avatarRect = avatar.getBoundingClientRect();
+                const bubbleRect = bubble.getBoundingClientRect();
+
+                // Calculate relative positions within the container
+                const avatarCenter = {
+                    x: avatarRect.left - containerRect.left + avatarRect.width / 2,
+                    y: avatarRect.top - containerRect.top + avatarRect.height / 2
+                };
+
+                const bubbleConnection = {
+                    x: isOwnMessage 
+                        ? bubbleRect.right - containerRect.left 
+                        : bubbleRect.left - containerRect.left,
+                    y: bubbleRect.top - containerRect.top + bubbleRect.height / 2
+                };
+
+                const path = this.calculateConnectionPath(avatarCenter, bubbleConnection, isOwnMessage);
+                const connectionId = this.getConnectionId(messageGroup);
+                
+                this.drawConnection(connectionId, path, isOwnMessage);
+            }
+
+            calculateConnectionPath(avatarCenter, bubbleConnection, isOwnMessage) {
+                const horizontalOffset = 5;
+                const cornerRadius = 8;
+                
+                let path;
+                
+                if (isOwnMessage) {
+                    // Right side connection: bubble -> avatar (right to left)
+                    const startPoint = {
+                        x: bubbleConnection.x,
+                        y: bubbleConnection.y
+                    };
+                    
+                    const firstCorner = {
+                        x: startPoint.x + horizontalOffset,
+                        y: startPoint.y
+                    };
+                    
+                    const secondCorner = {
+                        x: firstCorner.x,
+                        y: avatarCenter.y
+                    };
+                    
+                    const endPoint = {
+                        x: avatarCenter.x + 20, // Avatar left edge
+                        y: avatarCenter.y
+                    };
+
+                    // SVG path with rounded corners
+                    path = `M ${startPoint.x} ${startPoint.y} 
+                            L ${firstCorner.x - cornerRadius} ${firstCorner.y}
+                            Q ${firstCorner.x} ${firstCorner.y} ${firstCorner.x} ${firstCorner.y > secondCorner.y ? firstCorner.y - cornerRadius : firstCorner.y + cornerRadius}
+                            L ${secondCorner.x} ${secondCorner.y > firstCorner.y ? secondCorner.y - cornerRadius : secondCorner.y + cornerRadius}
+                            Q ${secondCorner.x} ${secondCorner.y} ${secondCorner.x - cornerRadius} ${secondCorner.y}
+                            L ${endPoint.x} ${endPoint.y}`;
+                } else {
+                    // Left side connection: bubble -> avatar (left to right)
+                    const startPoint = {
+                        x: bubbleConnection.x,
+                        y: bubbleConnection.y
+                    };
+                    
+                    const firstCorner = {
+                        x: startPoint.x - horizontalOffset,
+                        y: startPoint.y
+                    };
+                    
+                    const secondCorner = {
+                        x: firstCorner.x,
+                        y: avatarCenter.y
+                    };
+                    
+                    const endPoint = {
+                        x: avatarCenter.x - 20, // Avatar right edge
+                        y: avatarCenter.y
+                    };
+
+                    // SVG path with rounded corners
+                    path = `M ${startPoint.x} ${startPoint.y} 
+                            L ${firstCorner.x + cornerRadius} ${firstCorner.y}
+                            Q ${firstCorner.x} ${firstCorner.y} ${firstCorner.x} ${firstCorner.y > secondCorner.y ? firstCorner.y - cornerRadius : firstCorner.y + cornerRadius}
+                            L ${secondCorner.x} ${secondCorner.y > firstCorner.y ? secondCorner.y - cornerRadius : secondCorner.y + cornerRadius}
+                            Q ${secondCorner.x} ${secondCorner.y} ${secondCorner.x + cornerRadius} ${secondCorner.y}
+                            L ${endPoint.x} ${endPoint.y}`;
+                }
+
+                return path;
+            }
+
+            drawConnection(connectionId, pathData, isOwnMessage) {
+                let pathElement = this.overlay.querySelector(`#${connectionId}`);
+                
+                if (!pathElement) {
+                    pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    pathElement.id = connectionId;
+                    pathElement.classList.add('connection-line');
+                    if (isOwnMessage) {
+                        pathElement.classList.add('own');
+                    }
+                    this.overlay.appendChild(pathElement);
+                }
+                
+                pathElement.setAttribute('d', pathData);
+                this.connections.set(connectionId, pathElement);
+            }
+
+            hideConnection(connectionId) {
+                const pathElement = this.overlay.querySelector(`#${connectionId}`);
+                if (pathElement) {
+                    pathElement.style.opacity = '0';
+                }
+            }
+
+            getConnectionId(messageGroup) {
+                return `connection-${Array.from(this.container.children).indexOf(messageGroup)}`;
+            }
+
+            toggle() {
+                this.isEnabled = !this.isEnabled;
+                if (this.isEnabled) {
+                    this.updateAllConnections();
+                    this.overlay.style.display = 'block';
+                } else {
+                    this.overlay.style.display = 'none';
+                }
+            }
+
+            addMessage(isOwn = false) {
+                const messageGroup = document.createElement('div');
+                messageGroup.className = `message-group ${isOwn ? 'own' : ''}`;
+                messageGroup.setAttribute('data-connection', 'true');
+                
+                const time = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                const messages = [
+                    "This is a dynamically added message!",
+                    "The connection line should appear automatically.",
+                    "SVG paths are calculated in real-time.",
+                    "Smooth animations and rounded corners look great!",
+                    "Perfect for modern chat interfaces."
+                ];
+                const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+                
+                messageGroup.innerHTML = `
+                    <div class="avatar ${isOwn ? 'own' : ''}">${isOwn ? 'M' : 'A'}</div>
+                    <div class="message-bubble ${isOwn ? 'own' : ''}">
+                        ${randomMessage}
+                        <div class="message-time">${time}</div>
+                    </div>
+                `;
+                
+                this.container.appendChild(messageGroup);
+                
+                // Update connections after DOM insertion
+                setTimeout(() => {
+                    this.updateConnection(messageGroup);
+                    // Re-setup intersection observer for new element
+                    const observer = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            const messageGroup = entry.target;
+                            const connectionId = this.getConnectionId(messageGroup);
+                            
+                            if (entry.isIntersecting) {
+                                this.updateConnection(messageGroup);
+                            } else {
+                                this.hideConnection(connectionId);
+                            }
+                        });
+                    }, {
+                        root: this.container,
+                        rootMargin: '50px',
+                        threshold: 0.1
+                    });
+                    observer.observe(messageGroup);
+                }, 100);
+            }
+        }
+
+        // Initialize the connection line manager
+        let connectionManager;
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            connectionManager = new SVGConnectionLineManager('#chatBody', '#connectionOverlay');
+        });
+
+        // Demo functions
+        function addMessage(isOwn) {
+            connectionManager.addMessage(isOwn);
+        }
+
+        function toggleConnections() {
+            connectionManager.toggle();
+        }
+
+        function scrollToBottom() {
+            const chatBody = document.getElementById('chatBody');
+            chatBody.scrollTo({
+                top: chatBody.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+    </script>
+</body>
+</html>

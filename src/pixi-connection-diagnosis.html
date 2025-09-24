@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PixiJS Connection Diagnosis - 问题诊断版</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        
+        body {
+            font-family: monospace;
+            background: #000;
+            color: #00ff00;
+            overflow: hidden;
+            height: 100vh;
+            padding: 10px;
+        }
+        
+        .diagnostic-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            padding: 10px;
+            border: 1px solid #00ff00;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .controls button {
+            margin: 2px;
+            padding: 5px 10px;
+            background: #003300;
+            color: #00ff00;
+            border: 1px solid #00ff00;
+            cursor: pointer;
+            font-family: monospace;
+        }
+        
+        .controls button:hover {
+            background: #006600;
+        }
+        
+        .debug-output {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 400px;
+            height: 80vh;
+            background: rgba(0, 0, 0, 0.9);
+            color: #00ff00;
+            padding: 10px;
+            border: 1px solid #00ff00;
+            font-size: 10px;
+            font-family: monospace;
+            overflow-y: auto;
+            z-index: 1001;
+        }
+        
+        .step-indicator {
+            position: fixed;
+            top: 200px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.9);
+            color: #ffff00;
+            padding: 10px;
+            border: 1px solid #ffff00;
+            font-size: 11px;
+            font-family: monospace;
+            z-index: 1002;
+            max-width: 300px;
+        }
+    </style>
+</head>
+<body>
+    <div class="diagnostic-container">
+        <div class="controls">
+            <div>🔬 PixiJS连接线诊断系统</div><br>
+            <button onclick="step1_InitPixi()">Step 1: 初始化PixiJS</button><br>
+            <button onclick="step2_CreateContainers()">Step 2: 创建容器</button><br>
+            <button onclick="step3_CreateElements()">Step 3: 创建元素</button><br>
+            <button onclick="step4_TestDirectDraw()">Step 4: 直接绘制测试</button><br>
+            <button onclick="step5_TestConnections()">Step 5: 连接线测试</button><br>
+            <button onclick="runFullDiagnostic()">🚀 完整诊断</button><br>
+            <button onclick="clearLogs()">清除日志</button>
+        </div>
+        
+        <div class="step-indicator" id="stepIndicator">
+            当前步骤: 等待开始<br>
+            状态: 未初始化
+        </div>
+        
+        <div class="debug-output" id="debugOutput">
+            === PixiJS连接线诊断系统 ===<br>
+            开始诊断...<br><br>
+        </div>
+    </div>
+
+    <script>
+        // ========== 诊断状态系统 ==========
+        const DiagnosticState = {
+            app: null,
+            containers: {},
+            elements: {
+                convs: [],
+                msgs: [],
+                accs: [],
+                connections: []
+            },
+            currentStep: 0,
+            errors: [],
+            logs: []
+        };
+        
+        // ========== 增强日志系统 ==========
+        function log(message, level = 'INFO', data = null) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] [${level}] ${message}`;
+            
+            DiagnosticState.logs.push(logEntry);
+            console.log(logEntry, data || '');
+            
+            const debugDiv = document.getElementById('debugOutput');
+            debugDiv.innerHTML += logEntry + '<br>';
+            debugDiv.scrollTop = debugDiv.scrollHeight;
+            
+            if (data) {
+                debugDiv.innerHTML += `    数据: ${JSON.stringify(data, null, 2)}<br>`;
+            }
+        }
+        
+        function updateStep(step, status) {
+            DiagnosticState.currentStep = step;
+            const indicator = document.getElementById('stepIndicator');
+            indicator.innerHTML = `
+                当前步骤: ${step}<br>
+                状态: ${status}<br>
+                错误数: ${DiagnosticState.errors.length}
+            `;
+        }
+        
+        function logError(message, error) {
+            DiagnosticState.errors.push({message, error});
+            log(`❌ ERROR: ${message}`, 'ERROR', error);
+        }
+        
+        function clearLogs() {
+            DiagnosticState.logs = [];
+            document.getElementById('debugOutput').innerHTML = '=== 日志已清除 ===<br>';
+        }
+
+        // ========== Step 1: PixiJS初始化诊断 ==========
+        async function step1_InitPixi() {
+            updateStep('Step 1', '正在初始化PixiJS...');
+            log('🚀 开始Step 1: PixiJS初始化诊断');
+            
+            try {
+                // 检查PixiJS是否可用
+                if (typeof PIXI === 'undefined') {
+                    throw new Error('PIXI未定义，可能CDN加载失败');
+                }
+                log('✅ PIXI对象检查通过', 'SUCCESS');
+                log(`PIXI版本: ${PIXI.VERSION || 'Unknown'}`);
+                
+                // 创建应用
+                DiagnosticState.app = new PIXI.Application();
+                await DiagnosticState.app.init({
+                    width: 800,
+                    height: 600,
+                    backgroundColor: 0x1a1a1a,
+                    antialias: true
+                });
+                
+                log('✅ PixiJS应用创建成功');
+                log(`Canvas尺寸: ${DiagnosticState.app.canvas.width}x${DiagnosticState.app.canvas.height}`);
+                
+                // 添加到DOM
+                const container = document.querySelector('.diagnostic-container');
+                container.appendChild(DiagnosticState.app.canvas);
+                DiagnosticState.app.canvas.style.position = 'absolute';
+                DiagnosticState.app.canvas.style.top = '50px';
+                DiagnosticState.app.canvas.style.left = '50px';
+                DiagnosticState.app.canvas.style.border = '2px solid #00ff00';
+                
+                log('✅ Canvas已添加到DOM');
+                updateStep('Step 1', '✅ PixiJS初始化完成');
+                
+            } catch (error) {
+                logError('PixiJS初始化失败', error);
+                updateStep('Step 1', '❌ 初始化失败');
+            }
+        }
+
+        // ========== Step 2: 容器创建诊断 ==========
+        async function step2_CreateContainers() {
+            updateStep('Step 2', '创建容器结构...');
+            log('🏗️ 开始Step 2: 容器创建诊断');
+            
+            if (!DiagnosticState.app) {
+                logError('PixiJS应用未初始化', null);
+                return;
+            }
+            
+            try {
+                const stage = DiagnosticState.app.stage;
+                log(`Stage子元素数量: ${stage.children.length}`);
+                
+                // 创建主容器
+                const mainContainer = new PIXI.Container();
+                mainContainer.name = 'mainContainer';
+                stage.addChild(mainContainer);
+                log('✅ 主容器已创建并添加到stage');
+                
+                // 创建三个区域容器
+                const convContainer = new PIXI.Container();
+                convContainer.x = 10;
+                convContainer.y = 10;
+                convContainer.name = 'conversations';
+                mainContainer.addChild(convContainer);
+                DiagnosticState.containers.conv = convContainer;
+                
+                const msgContainer = new PIXI.Container();
+                msgContainer.x = 90;
+                msgContainer.y = 10;
+                msgContainer.name = 'messages';
+                mainContainer.addChild(msgContainer);
+                DiagnosticState.containers.msg = msgContainer;
+                
+                const accContainer = new PIXI.Container();
+                accContainer.x = 600;
+                accContainer.y = 10;
+                accContainer.name = 'accounts';
+                mainContainer.addChild(accContainer);
+                DiagnosticState.containers.acc = accContainer;
+                
+                // 连接线容器 - 关键测试点
+                const linesContainer = new PIXI.Container();
+                linesContainer.name = 'connectionLines';
+                linesContainer.zIndex = 1000;
+                mainContainer.addChild(linesContainer);
+                DiagnosticState.containers.lines = linesContainer;
+                
+                log('✅ 所有容器创建完成');
+                log(`容器位置 - Conv:(${convContainer.x},${convContainer.y}) Msg:(${msgContainer.x},${msgContainer.y}) Acc:(${accContainer.x},${accContainer.y})`);
+                log(`连接线容器zIndex: ${linesContainer.zIndex}`);
+                
+                // 验证容器层次结构
+                log(`MainContainer子元素: ${mainContainer.children.length}`);
+                log(`Stage总子元素: ${stage.children.length}`);
+                
+                updateStep('Step 2', '✅ 容器创建完成');
+                
+            } catch (error) {
+                logError('容器创建失败', error);
+                updateStep('Step 2', '❌ 容器创建失败');
+            }
+        }
+
+        // ========== Step 3: 元素创建诊断 ==========
+        async function step3_CreateElements() {
+            updateStep('Step 3', '创建测试元素...');
+            log('🎨 开始Step 3: 元素创建诊断');
+            
+            if (!DiagnosticState.containers.conv) {
+                logError('容器未创建', null);
+                return;
+            }
+            
+            try {
+                const testCount = 3;
+                
+                for (let i = 0; i < testCount; i++) {
+                    // 会话头像
+                    const conv = new PIXI.Graphics();
+                    conv.circle(25, 25, 20);
+                    conv.fill(0x4CAF50);
+                    conv.y = i * 80;
+                    conv.name = `conv_${i}`;
+                    DiagnosticState.containers.conv.addChild(conv);
+                    DiagnosticState.elements.convs.push(conv);
+                    
+                    // 消息气泡
+                    const msg = new PIXI.Graphics();
+                    msg.roundRect(0, 0, 200, 40, 10);
+                    msg.fill(i % 2 === 0 ? 0x2196F3 : 0xE0E0E0);
+                    msg.y = i * 80;
+                    msg.name = `msg_${i}`;
+                    DiagnosticState.containers.msg.addChild(msg);
+                    DiagnosticState.elements.msgs.push(msg);
+                    
+                    // 账号头像
+                    const acc = new PIXI.Graphics();
+                    acc.circle(25, 25, 20);
+                    acc.fill(0xFF9800);
+                    acc.y = i * 80;
+                    acc.name = `acc_${i}`;
+                    DiagnosticState.containers.acc.addChild(acc);
+                    DiagnosticState.elements.accs.push(acc);
+                    
+                    log(`✅ 元素${i}创建完成 - Conv:(${conv.x},${conv.y}) Msg:(${msg.x},${msg.y}) Acc:(${acc.x},${acc.y})`);
+                }
+                
+                log(`✅ 所有测试元素创建完成 - 总数: Conv:${DiagnosticState.elements.convs.length} Msg:${DiagnosticState.elements.msgs.length} Acc:${DiagnosticState.elements.accs.length}`);
+                updateStep('Step 3', '✅ 元素创建完成');
+                
+            } catch (error) {
+                logError('元素创建失败', error);
+                updateStep('Step 3', '❌ 元素创建失败');
+            }
+        }
+
+        // ========== Step 4: 直接绘制测试 ==========
+        async function step4_TestDirectDraw() {
+            updateStep('Step 4', '直接绘制测试...');
+            log('✏️ 开始Step 4: 直接绘制测试');
+            
+            if (!DiagnosticState.containers.lines) {
+                logError('连接线容器不存在', null);
+                return;
+            }
+            
+            try {
+                const linesContainer = DiagnosticState.containers.lines;
+                
+                // 清除旧的测试线
+                linesContainer.removeChildren();
+                
+                // 测试1: 简单直线
+                const testLine1 = new PIXI.Graphics();
+                testLine1.lineStyle({width: 4, color: 0xFF0000, alpha: 1});
+                testLine1.moveTo(100, 50);
+                testLine1.lineTo(300, 50);
+                testLine1.name = 'testLine1';
+                linesContainer.addChild(testLine1);
+                
+                log('✅ 测试线1: 红色直线 (100,50) -> (300,50)');
+                
+                // 测试2: L型线
+                const testLine2 = new PIXI.Graphics();
+                testLine2.lineStyle({width: 4, color: 0x00FF00, alpha: 1});
+                testLine2.moveTo(100, 150);
+                testLine2.lineTo(150, 150);
+                testLine2.lineTo(150, 200);
+                testLine2.lineTo(300, 200);
+                testLine2.name = 'testLine2';
+                linesContainer.addChild(testLine2);
+                
+                log('✅ 测试线2: 绿色L型线');
+                
+                // 测试3: 圆角L型线
+                const testLine3 = new PIXI.Graphics();
+                testLine3.lineStyle({width: 4, color: 0x0000FF, alpha: 1});
+                testLine3.moveTo(100, 300);
+                testLine3.lineTo(140, 300);
+                testLine3.arcTo(150, 300, 150, 310, 10);
+                testLine3.lineTo(150, 340);
+                testLine3.arcTo(150, 350, 160, 350, 10);
+                testLine3.lineTo(300, 350);
+                testLine3.name = 'testLine3';
+                linesContainer.addChild(testLine3);
+                
+                log('✅ 测试线3: 蓝色圆角L型线');
+                
+                log(`连接线容器子元素数: ${linesContainer.children.length}`);
+                log(`连接线容器位置: (${linesContainer.x}, ${linesContainer.y})`);
+                log(`连接线容器可见性: ${linesContainer.visible}`);
+                log(`连接线容器透明度: ${linesContainer.alpha}`);
+                
+                updateStep('Step 4', '✅ 直接绘制测试完成');
+                
+            } catch (error) {
+                logError('直接绘制测试失败', error);
+                updateStep('Step 4', '❌ 直接绘制测试失败');
+            }
+        }
+
+        // ========== Step 5: 连接线系统测试 ==========
+        async function step5_TestConnections() {
+            updateStep('Step 5', '连接线系统测试...');
+            log('🔗 开始Step 5: 连接线系统测试');
+            
+            if (DiagnosticState.elements.convs.length === 0) {
+                logError('测试元素不存在，请先运行Step 3', null);
+                return;
+            }
+            
+            try {
+                const linesContainer = DiagnosticState.containers.lines;
+                
+                // 清除测试线，准备绘制真实连接线
+                linesContainer.removeChildren();
+                
+                for (let i = 0; i < DiagnosticState.elements.convs.length; i++) {
+                    const conv = DiagnosticState.elements.convs[i];
+                    const msg = DiagnosticState.elements.msgs[i];
+                    const acc = DiagnosticState.elements.accs[i];
+                    
+                    // 获取实际位置 - 关键修复点
+                    const convGlobal = conv.toGlobal(new PIXI.Point(25, 25)); // 圆心
+                    const msgGlobal = msg.toGlobal(new PIXI.Point(0, 20)); // 左边缘中心
+                    const accGlobal = acc.toGlobal(new PIXI.Point(25, 25)); // 圆心
+                    
+                    log(`元素${i}全局坐标 - Conv:(${convGlobal.x.toFixed(1)},${convGlobal.y.toFixed(1)}) Msg:(${msgGlobal.x.toFixed(1)},${msgGlobal.y.toFixed(1)}) Acc:(${accGlobal.x.toFixed(1)},${accGlobal.y.toFixed(1)})`);
+                    
+                    // 转换为连接线容器的局部坐标 - 关键修复
+                    const convLocal = linesContainer.toLocal(convGlobal);
+                    const msgLocal = linesContainer.toLocal(msgGlobal);
+                    const accLocal = linesContainer.toLocal(accGlobal);
+                    
+                    log(`元素${i}局部坐标 - Conv:(${convLocal.x.toFixed(1)},${convLocal.y.toFixed(1)}) Msg:(${msgLocal.x.toFixed(1)},${msgLocal.y.toFixed(1)}) Acc:(${accLocal.x.toFixed(1)},${accLocal.y.toFixed(1)})`);
+                    
+                    // 绘制连接线: 从会话头像右侧到消息气泡左侧
+                    const connection = new PIXI.Graphics();
+                    const isSelf = i % 2 === 0;
+                    const color = isSelf ? 0xFF6B35 : 0x007AFF;
+                    
+                    connection.lineStyle({width: 3, color: color, alpha: 1});
+                    
+                    if (isSelf) {
+                        // 自己的消息：从消息气泡右侧到账号头像左侧
+                        const startX = msgLocal.x + 200; // 消息气泡右边缘
+                        const startY = msgLocal.y;
+                        const endX = accLocal.x - 25; // 账号头像左边缘
+                        const endY = accLocal.y;
+                        
+                        connection.moveTo(startX, startY);
+                        connection.lineTo(startX + 10, startY);
+                        connection.lineTo(startX + 10, endY);
+                        connection.lineTo(endX, endY);
+                        
+                        log(`自己消息${i}: (${startX.toFixed(1)},${startY.toFixed(1)}) -> (${endX.toFixed(1)},${endY.toFixed(1)})`);
+                    } else {
+                        // 他人消息：从会话头像右侧到消息气泡左侧
+                        const startX = convLocal.x + 25; // 会话头像右边缘
+                        const startY = convLocal.y;
+                        const endX = msgLocal.x; // 消息气泡左边缘
+                        const endY = msgLocal.y;
+                        
+                        connection.moveTo(startX, startY);
+                        connection.lineTo(startX + 10, startY);
+                        connection.lineTo(startX + 10, endY);
+                        connection.lineTo(endX, endY);
+                        
+                        log(`他人消息${i}: (${startX.toFixed(1)},${startY.toFixed(1)}) -> (${endX.toFixed(1)},${endY.toFixed(1)})`);
+                    }
+                    
+                    connection.name = `connection_${i}`;
+                    linesContainer.addChild(connection);
+                    DiagnosticState.elements.connections.push(connection);
+                }
+                
+                log(`✅ 连接线系统测试完成 - 创建了${DiagnosticState.elements.connections.length}条连接线`);
+                updateStep('Step 5', '✅ 连接线测试完成');
+                
+            } catch (error) {
+                logError('连接线系统测试失败', error);
+                updateStep('Step 5', '❌ 连接线测试失败');
+            }
+        }
+
+        // ========== 完整诊断流程 ==========
+        async function runFullDiagnostic() {
+            log('🚀🚀🚀 开始完整诊断流程 🚀🚀🚀');
+            clearLogs();
+            
+            await step1_InitPixi();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await step2_CreateContainers();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await step3_CreateElements();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await step4_TestDirectDraw();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            await step5_TestConnections();
+            
+            log('🎉🎉🎉 完整诊断流程结束 🎉🎉🎉');
+            log(`总错误数: ${DiagnosticState.errors.length}`);
+            
+            if (DiagnosticState.errors.length === 0) {
+                log('🎊 诊断成功！所有系统正常工作！', 'SUCCESS');
+                updateStep('完成', '✅ 诊断成功');
+            } else {
+                log('⚠️ 发现问题，请检查错误日志', 'WARNING');
+                updateStep('完成', '⚠️ 发现问题');
+            }
+        }
+
+        // ========== 页面加载完成后提示 ==========
+        window.addEventListener('DOMContentLoaded', () => {
+            log('📱 PixiJS连接线诊断系统已加载');
+            log('👆 点击"完整诊断"按钮开始分步诊断');
+            updateStep('就绪', '等待开始诊断');
+        });
+    </script>
+</body>
+</html>

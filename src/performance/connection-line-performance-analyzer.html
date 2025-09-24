@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接线渲染性能瓶颈分析器</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+        }
+
+        .analyzer-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+
+        .control-panel h2 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .controls-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .control-button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .control-button.primary {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+        }
+
+        .control-button.primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(52, 152, 219, 0.3);
+        }
+
+        .control-button.success {
+            background: linear-gradient(135deg, #27ae60 0%, #219a52 100%);
+            color: white;
+        }
+
+        .control-button.success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(39, 174, 96, 0.3);
+        }
+
+        .control-button.warning {
+            background: linear-gradient(135deg, #f39c12 0%, #d68910 100%);
+            color: white;
+        }
+
+        .control-button.warning:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(243, 156, 18, 0.3);
+        }
+
+        .control-button.danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+        }
+
+        .control-button.danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(231, 76, 60, 0.3);
+        }
+
+        .analysis-progress {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+            border-left: 4px solid #3498db;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #3498db, #2ecc71);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .dashboard-card {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+
+        .dashboard-card h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .realtime-metrics {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .metric-item {
+            text-align: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .metric-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        .metric-value.warning {
+            color: #f39c12;
+        }
+
+        .metric-value.danger {
+            color: #e74c3c;
+        }
+
+        .metric-value.success {
+            color: #27ae60;
+        }
+
+        .analysis-results {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 25px;
+        }
+
+        .result-section {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+
+        .result-section h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+            border-bottom: 2px solid #ecf0f1;
+            padding-bottom: 10px;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 500;
+            font-size: 0.9rem;
+        }
+
+        .status-indicator.success {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-indicator.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-indicator.error {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .bottleneck-list {
+            margin-top: 15px;
+        }
+
+        .bottleneck-item {
+            background: #f8f9fa;
+            border-left: 4px solid #dc3545;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .bottleneck-item.severity-medium {
+            border-left-color: #ffc107;
+        }
+
+        .bottleneck-item.severity-low {
+            border-left-color: #28a745;
+        }
+
+        .bottleneck-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .bottleneck-description {
+            color: #6c757d;
+            margin-bottom: 5px;
+        }
+
+        .bottleneck-timestamp {
+            font-size: 0.8rem;
+            color: #adb5bd;
+        }
+
+        .recommendations-list {
+            margin-top: 15px;
+        }
+
+        .recommendation-item {
+            background: #f8f9fa;
+            border-left: 4px solid #17a2b8;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .recommendation-item.priority-high {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .recommendation-item.priority-medium {
+            border-left-color: #ffc107;
+            background: #fffdf5;
+        }
+
+        .recommendation-title {
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .recommendation-description {
+            color: #6c757d;
+        }
+
+        .chart-container {
+            margin-top: 20px;
+            height: 300px;
+        }
+
+        .test-area {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 25px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .test-canvas {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 800px;
+            height: 400px;
+        }
+
+        .log-output {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            margin-bottom: 5px;
+            padding: 2px 0;
+        }
+
+        .log-entry.error {
+            color: #e74c3c;
+        }
+
+        .log-entry.warning {
+            color: #f39c12;
+        }
+
+        .log-entry.success {
+            color: #27ae60;
+        }
+
+        .log-entry.info {
+            color: #3498db;
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .controls-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .analyzer-container {
+                padding: 10px;
+            }
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Pulse animation for metrics */
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="analyzer-container">
+        <div class="header">
+            <h1>🔬 连接线渲染性能瓶颈分析器</h1>
+            <div class="subtitle">专业诊断WebGL、Canvas、PixiJS、CSS渲染性能和内存泄漏问题</div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <h2>🎛️ 分析控制面板</h2>
+            <div class="controls-grid">
+                <button class="control-button primary" onclick="analyzer.runCompleteAnalysis()">
+                    🚀 开始完整分析
+                </button>
+                <button class="control-button success" onclick="analyzer.analyzeWebGLSupport()">
+                    🎮 WebGL支持检测
+                </button>
+                <button class="control-button warning" onclick="analyzer.analyzeCanvasLayering()">
+                    🎨 Canvas层级诊断
+                </button>
+                <button class="control-button primary" onclick="analyzer.analyzePixiJSPerformance()">
+                    🎯 PixiJS性能分析
+                </button>
+                <button class="control-button success" onclick="analyzer.analyzeCSSRenderingPerformance()">
+                    💄 CSS渲染分析
+                </button>
+                <button class="control-button warning" onclick="startStressTest()">
+                    ⚡ 压力测试
+                </button>
+                <button class="control-button danger" onclick="generateReport()">
+                    📊 生成报告
+                </button>
+                <button class="control-button primary" onclick="clearResults()">
+                    🧹 清除结果
+                </button>
+            </div>
+
+            <div class="analysis-progress" id="analysisProgress" style="display: none;">
+                <div id="progressText">分析进行中...</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 实时监控仪表板 -->
+        <div class="dashboard">
+            <div class="dashboard-card">
+                <h3>⚡ 实时性能指标</h3>
+                <div class="realtime-metrics">
+                    <div class="metric-item">
+                        <div class="metric-value" id="frameRate">--</div>
+                        <div class="metric-label">帧率 (FPS)</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="memoryUsage">--</div>
+                        <div class="metric-label">内存 (MB)</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="renderTime">--</div>
+                        <div class="metric-label">渲染时间 (ms)</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-value" id="bottleneckCount">0</div>
+                        <div class="metric-label">瓶颈数量</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="dashboard-card">
+                <h3>📊 性能趋势图表</h3>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 分析结果区域 -->
+        <div class="analysis-results" id="analysisResults">
+            <!-- 结果将动态插入这里 -->
+        </div>
+
+        <!-- 测试区域 -->
+        <div class="test-area">
+            <h2>🧪 实时测试区域</h2>
+            <div class="test-controls">
+                <button class="control-button primary" onclick="createTestCanvas()">创建测试Canvas</button>
+                <button class="control-button success" onclick="testPixiRendering()">测试PixiJS渲染</button>
+                <button class="control-button warning" onclick="testCSSAnimations()">测试CSS动画</button>
+                <button class="control-button danger" onclick="simulateMemoryLeak()">模拟内存泄漏</button>
+            </div>
+            <canvas class="test-canvas" id="testCanvas"></canvas>
+            
+            <div class="log-output" id="logOutput">
+                <div class="log-entry info">[INFO] 性能分析器已就绪，等待开始测试...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入分析器模块 -->
+    <script src="ConnectionLinePerformanceAnalyzer.js"></script>
+    <script src="PerformanceReportGenerator.js"></script>
+
+    <script>
+        // 全局变量
+        let analyzer;
+        let reportGenerator;
+        let performanceChart;
+        let currentAnalysisData = null;
+
+        // 初始化分析器
+        document.addEventListener('DOMContentLoaded', function() {
+            analyzer = new ConnectionLinePerformanceAnalyzer();
+            reportGenerator = new PerformanceReportGenerator();
+            
+            // 初始化性能图表
+            initializePerformanceChart();
+            
+            // 开始实时监控
+            startRealtimeMonitoring();
+            
+            log('🚀 连接线渲染性能瓶颈分析器已初始化', 'success');
+        });
+
+        // 初始化性能图表
+        function initializePerformanceChart() {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: '帧率 (FPS)',
+                        data: [],
+                        borderColor: '#3498db',
+                        backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y'
+                    }, {
+                        label: '内存使用 (MB)',
+                        data: [],
+                        borderColor: '#e74c3c',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        tension: 0.4,
+                        yAxisID: 'y1'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: '时间'
+                            }
+                        },
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: '帧率 (FPS)'
+                            },
+                            min: 0,
+                            max: 60
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: '内存 (MB)'
+                            },
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        }
+                    }
+                }
+            });
+        }
+
+        // 开始实时监控
+        function startRealtimeMonitoring() {
+            setInterval(updateRealtimeMetrics, 1000);
+        }
+
+        // 更新实时指标
+        function updateRealtimeMetrics() {
+            const frameRates = analyzer.performanceMetrics.frameRates;
+            const memorySnapshots = analyzer.performanceMetrics.memorySnapshots;
+            const bottlenecks = analyzer.analysisResults.bottlenecks;
+
+            // 更新帧率
+            if (frameRates.length > 0) {
+                const latestFps = frameRates[frameRates.length - 1].fps;
+                updateMetricDisplay('frameRate', latestFps, latestFps < 30 ? 'danger' : latestFps < 45 ? 'warning' : 'success');
+            }
+
+            // 更新内存使用
+            if (performance.memory) {
+                const memoryMB = Math.round(performance.memory.usedJSHeapSize / (1024 * 1024));
+                const memoryPercent = (performance.memory.usedJSHeapSize / performance.memory.jsHeapSizeLimit) * 100;
+                updateMetricDisplay('memoryUsage', memoryMB, memoryPercent > 80 ? 'danger' : memoryPercent > 60 ? 'warning' : 'success');
+                
+                // 更新图表
+                updatePerformanceChart();
+            }
+
+            // 更新瓶颈数量
+            updateMetricDisplay('bottleneckCount', bottlenecks.length, bottlenecks.length > 5 ? 'danger' : bottlenecks.length > 2 ? 'warning' : 'success');
+
+            // 更新渲染时间
+            const renderTimes = analyzer.performanceMetrics.renderTimes;
+            if (renderTimes.length > 0) {
+                const avgRenderTime = renderTimes.reduce((a, b) => a + b, 0) / renderTimes.length;
+                updateMetricDisplay('renderTime', avgRenderTime.toFixed(2), avgRenderTime > 16.67 ? 'danger' : avgRenderTime > 10 ? 'warning' : 'success');
+            }
+        }
+
+        // 更新指标显示
+        function updateMetricDisplay(elementId, value, status) {
+            const element = document.getElementById(elementId);
+            element.textContent = value;
+            element.className = `metric-value ${status}`;
+            
+            if (status === 'danger' || status === 'warning') {
+                element.classList.add('pulse');
+            } else {
+                element.classList.remove('pulse');
+            }
+        }
+
+        // 更新性能图表
+        function updatePerformanceChart() {
+            const frameRates = analyzer.performanceMetrics.frameRates;
+            const memorySnapshots = analyzer.performanceMetrics.memorySnapshots;
+            
+            if (frameRates.length === 0 && memorySnapshots.length === 0) return;
+
+            const currentTime = new Date().toLocaleTimeString();
+            const latestFps = frameRates.length > 0 ? frameRates[frameRates.length - 1].fps : 0;
+            const latestMemory = performance.memory ? Math.round(performance.memory.usedJSHeapSize / (1024 * 1024)) : 0;
+
+            // 限制数据点数量
+            if (performanceChart.data.labels.length > 20) {
+                performanceChart.data.labels.shift();
+                performanceChart.data.datasets[0].data.shift();
+                performanceChart.data.datasets[1].data.shift();
+            }
+
+            performanceChart.data.labels.push(currentTime);
+            performanceChart.data.datasets[0].data.push(latestFps);
+            performanceChart.data.datasets[1].data.push(latestMemory);
+            
+            performanceChart.update('none');
+        }
+
+        // 运行完整分析
+        async function runCompleteAnalysis() {
+            showProgress('开始完整性能分析...', 0);
+            
+            try {
+                currentAnalysisData = await analyzer.runCompleteAnalysis();
+                showProgress('分析完成', 100);
+                displayAnalysisResults(currentAnalysisData);
+                log('✅ 完整分析已完成', 'success');
+            } catch (error) {
+                log(`❌ 分析失败: ${error.message}`, 'error');
+                hideProgress();
+            }
+        }
+
+        // 显示分析结果
+        function displayAnalysisResults(data) {
+            const resultsContainer = document.getElementById('analysisResults');
+            resultsContainer.innerHTML = '';
+
+            // WebGL结果
+            if (data.results.webgl) {
+                resultsContainer.appendChild(createResultSection('WebGL支持分析', data.results.webgl, 'webgl'));
+            }
+
+            // Canvas结果
+            if (data.results.canvas) {
+                resultsContainer.appendChild(createResultSection('Canvas层级分析', data.results.canvas, 'canvas'));
+            }
+
+            // PixiJS结果
+            if (data.results.pixi) {
+                resultsContainer.appendChild(createResultSection('PixiJS性能分析', data.results.pixi, 'pixi'));
+            }
+
+            // CSS结果
+            if (data.results.css) {
+                resultsContainer.appendChild(createResultSection('CSS渲染分析', data.results.css, 'css'));
+            }
+
+            // 瓶颈分析
+            if (data.results.bottlenecks && data.results.bottlenecks.length > 0) {
+                resultsContainer.appendChild(createBottleneckSection(data.results.bottlenecks));
+            }
+
+            // 优化建议
+            if (data.recommendations && data.recommendations.length > 0) {
+                resultsContainer.appendChild(createRecommendationsSection(data.recommendations));
+            }
+        }
+
+        // 创建结果区块
+        function createResultSection(title, data, type) {
+            const section = document.createElement('div');
+            section.className = 'result-section';
+            
+            let content = `<h3>${title}</h3>`;
+            
+            if (type === 'webgl') {
+                content += `
+                    <div class="status-indicator ${data.supported ? 'success' : 'error'}">
+                        ${data.supported ? '✅ WebGL支持正常' : '❌ WebGL不可用'}
+                    </div>
+                    ${data.supported ? `
+                        <p><strong>版本:</strong> ${data.version}</p>
+                        <p><strong>性能等级:</strong> ${data.performance?.rating || '未知'}</p>
+                        <p><strong>扩展数量:</strong> ${data.extensions?.length || 0}</p>
+                    ` : ''}
+                    ${data.issues?.length > 0 ? `
+                        <h4>检测到的问题:</h4>
+                        <ul>${data.issues.map(issue => `<li>${issue}</li>`).join('')}</ul>
+                    ` : ''}
+                `;
+            } else if (type === 'canvas') {
+                content += `
+                    <p><strong>Canvas元素数量:</strong> ${data.canvasElements?.length || 0}</p>
+                    <p><strong>z-index冲突:</strong> ${data.zIndexConflicts?.length || 0}</p>
+                    <p><strong>指针事件问题:</strong> ${data.pointerEventIssues?.length || 0}</p>
+                `;
+            } else if (type === 'pixi') {
+                content += `
+                    <div class="status-indicator ${data.pixiAvailable ? 'success' : 'error'}">
+                        ${data.pixiAvailable ? '✅ PixiJS可用' : '❌ PixiJS不可用'}
+                    </div>
+                    ${data.pixiAvailable ? `
+                        <p><strong>版本:</strong> ${data.version}</p>
+                        <p><strong>应用数量:</strong> ${data.applications?.length || 0}</p>
+                    ` : ''}
+                `;
+            } else if (type === 'css') {
+                content += `
+                    <p><strong>昂贵样式数量:</strong> ${data.expensiveStyles?.length || 0}</p>
+                    <p><strong>布局抖动检测:</strong> ${data.layoutThrashing?.length || 0}</p>
+                `;
+            }
+            
+            section.innerHTML = content;
+            return section;
+        }
+
+        // 创建瓶颈分析区块
+        function createBottleneckSection(bottlenecks) {
+            const section = document.createElement('div');
+            section.className = 'result-section';
+            
+            let content = `<h3>🎯 性能瓶颈分析</h3>`;
+            content += `<div class="bottleneck-list">`;
+            
+            bottlenecks.forEach(bottleneck => {
+                content += `
+                    <div class="bottleneck-item severity-${bottleneck.severity}">
+                        <div class="bottleneck-title">${bottleneck.type}</div>
+                        <div class="bottleneck-description">${bottleneck.description}</div>
+                        <div class="bottleneck-timestamp">${new Date(bottleneck.timestamp).toLocaleString()}</div>
+                    </div>
+                `;
+            });
+            
+            content += `</div>`;
+            section.innerHTML = content;
+            return section;
+        }
+
+        // 创建建议区块
+        function createRecommendationsSection(recommendations) {
+            const section = document.createElement('div');
+            section.className = 'result-section';
+            
+            let content = `<h3>💡 优化建议</h3>`;
+            content += `<div class="recommendations-list">`;
+            
+            recommendations.forEach(rec => {
+                content += `
+                    <div class="recommendation-item priority-${rec.priority}">
+                        <div class="recommendation-title">${rec.title}</div>
+                        <div class="recommendation-description">${rec.description}</div>
+                    </div>
+                `;
+            });
+            
+            content += `</div>`;
+            section.innerHTML = content;
+            return section;
+        }
+
+        // 显示进度
+        function showProgress(text, percent) {
+            const progressDiv = document.getElementById('analysisProgress');
+            const progressText = document.getElementById('progressText');
+            const progressFill = document.getElementById('progressFill');
+            
+            progressDiv.style.display = 'block';
+            progressText.textContent = text;
+            progressFill.style.width = `${percent}%`;
+        }
+
+        // 隐藏进度
+        function hideProgress() {
+            document.getElementById('analysisProgress').style.display = 'none';
+        }
+
+        // 生成报告
+        async function generateReport() {
+            if (!currentAnalysisData) {
+                log('⚠️ 请先运行完整分析', 'warning');
+                return;
+            }
+
+            try {
+                log('📊 正在生成性能分析报告...', 'info');
+                const reportHTML = reportGenerator.generateHTMLReport(currentAnalysisData);
+                
+                // 在新窗口中打开报告
+                const reportWindow = window.open('', '_blank');
+                reportWindow.document.write(reportHTML);
+                reportWindow.document.close();
+                
+                log('✅ 性能报告已生成并在新窗口中打开', 'success');
+            } catch (error) {
+                log(`❌ 报告生成失败: ${error.message}`, 'error');
+            }
+        }
+
+        // 压力测试
+        function startStressTest() {
+            log('⚡ 开始压力测试...', 'info');
+            
+            // 创建大量DOM元素和Canvas操作
+            const stressTestContainer = document.createElement('div');
+            stressTestContainer.style.position = 'absolute';
+            stressTestContainer.style.top = '-9999px';
+            document.body.appendChild(stressTestContainer);
+            
+            for (let i = 0; i < 1000; i++) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 100;
+                canvas.height = 100;
+                const ctx = canvas.getContext('2d');
+                
+                // 绘制复杂图形
+                ctx.beginPath();
+                ctx.arc(50, 50, 30, 0, 2 * Math.PI);
+                ctx.fillStyle = `hsl(${i % 360}, 50%, 50%)`;
+                ctx.fill();
+                
+                stressTestContainer.appendChild(canvas);
+            }
+            
+            // 5秒后清理
+            setTimeout(() => {
+                document.body.removeChild(stressTestContainer);
+                log('✅ 压力测试已完成', 'success');
+            }, 5000);
+        }
+
+        // 测试PixiJS渲染
+        function testPixiRendering() {
+            if (typeof PIXI === 'undefined') {
+                log('❌ PixiJS未加载', 'error');
+                return;
+            }
+
+            log('🎮 开始PixiJS渲染测试...', 'info');
+            
+            const canvas = document.getElementById('testCanvas');
+            const app = new PIXI.Application();
+            
+            app.init({
+                canvas: canvas,
+                width: 800,
+                height: 400,
+                backgroundColor: 0x1a1a1a
+            }).then(() => {
+                // 创建大量图形对象
+                for (let i = 0; i < 100; i++) {
+                    const graphics = new PIXI.Graphics();
+                    graphics.circle(0, 0, 10);
+                    graphics.fill(Math.random() * 0xFFFFFF);
+                    graphics.x = Math.random() * 800;
+                    graphics.y = Math.random() * 400;
+                    app.stage.addChild(graphics);
+                }
+                
+                log('✅ PixiJS测试场景已创建', 'success');
+            }).catch(error => {
+                log(`❌ PixiJS初始化失败: ${error.message}`, 'error');
+            });
+        }
+
+        // 测试CSS动画
+        function testCSSAnimations() {
+            log('💄 开始CSS动画性能测试...', 'info');
+            
+            const style = document.createElement('style');
+            style.textContent = `
+                .test-animation {
+                    width: 50px;
+                    height: 50px;
+                    background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+                    border-radius: 50%;
+                    position: absolute;
+                    animation: testMove 2s infinite;
+                }
+                
+                @keyframes testMove {
+                    0% { transform: translateX(0) rotate(0deg); }
+                    50% { transform: translateX(200px) rotate(180deg); }
+                    100% { transform: translateX(0) rotate(360deg); }
+                }
+            `;
+            document.head.appendChild(style);
+            
+            // 创建多个动画元素
+            for (let i = 0; i < 50; i++) {
+                const element = document.createElement('div');
+                element.className = 'test-animation';
+                element.style.top = `${100 + i * 5}px`;
+                element.style.left = `${100 + i * 3}px`;
+                element.style.animationDelay = `${i * 0.1}s`;
+                document.body.appendChild(element);
+                
+                // 5秒后移除
+                setTimeout(() => {
+                    document.body.removeChild(element);
+                }, 5000);
+            }
+            
+            setTimeout(() => {
+                document.head.removeChild(style);
+                log('✅ CSS动画测试已完成', 'success');
+            }, 5000);
+        }
+
+        // 模拟内存泄漏
+        function simulateMemoryLeak() {
+            log('⚠️ 模拟内存泄漏测试...', 'warning');
+            
+            const leakArray = [];
+            const interval = setInterval(() => {
+                // 创建大量对象但不释放引用
+                for (let i = 0; i < 1000; i++) {
+                    leakArray.push({
+                        data: new Array(1000).fill(Math.random()),
+                        timestamp: Date.now(),
+                        id: Math.random()
+                    });
+                }
+            }, 100);
+            
+            // 10秒后停止
+            setTimeout(() => {
+                clearInterval(interval);
+                log('✅ 内存泄漏模拟已停止', 'success');
+            }, 10000);
+        }
+
+        // 创建测试Canvas
+        function createTestCanvas() {
+            log('🎨 创建测试Canvas...', 'info');
+            
+            const canvas = document.getElementById('testCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            canvas.width = 800;
+            canvas.height = 400;
+            
+            // 绘制测试图案
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(0, 0, 800, 400);
+            
+            // 绘制连接线测试
+            for (let i = 0; i < 10; i++) {
+                ctx.beginPath();
+                ctx.moveTo(50, 50 + i * 30);
+                ctx.lineTo(150, 50 + i * 30);
+                ctx.lineTo(150, 80 + i * 30);
+                ctx.lineTo(250, 80 + i * 30);
+                ctx.strokeStyle = `hsl(${i * 36}, 70%, 50%)`;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            }
+            
+            log('✅ 测试Canvas已创建', 'success');
+        }
+
+        // 清除结果
+        function clearResults() {
+            document.getElementById('analysisResults').innerHTML = '';
+            currentAnalysisData = null;
+            log('🧹 分析结果已清除', 'info');
+        }
+
+        // 日志函数
+        function log(message, level = 'info') {
+            const logOutput = document.getElementById('logOutput');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${level}`;
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            
+            logOutput.appendChild(logEntry);
+            logOutput.scrollTop = logOutput.scrollHeight;
+            
+            console.log(`[${level.toUpperCase()}] ${message}`);
+        }
+    </script>
+</body>
+</html>

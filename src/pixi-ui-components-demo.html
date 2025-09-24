@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIXI.js v8 UI Components Demo - Vision UI Glass Effects</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            overflow: hidden;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            z-index: 100;
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            font-weight: 300;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header p {
+            font-size: 1rem;
+            opacity: 0.9;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        
+        #gameCanvas {
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 12px;
+            padding: 15px;
+            min-width: 200px;
+            color: white;
+        }
+        
+        .controls h3 {
+            margin-bottom: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        
+        .control-item {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        
+        .logs {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            height: 120px;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8rem;
+            color: #00ff00;
+            z-index: 100;
+        }
+        
+        .log-entry {
+            margin-bottom: 2px;
+            opacity: 0.9;
+        }
+        
+        .log-entry.warn {
+            color: #ffaa00;
+        }
+        
+        .log-entry.error {
+            color: #ff4444;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PIXI.js v8 UI Components</h1>
+        <p>Vision UI Glass Material Effects Demo</p>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="controls">
+        <h3>组件演示</h3>
+        <div class="control-item">• 点击按钮测试交互</div>
+        <div class="control-item">• 拖拽头像查看响应</div>
+        <div class="control-item">• 滚动容器查看内容</div>
+        <div class="control-item">• 点击输入框输入文字</div>
+        <div class="control-item">• 观察玻璃材质效果</div>
+    </div>
+    
+    <div class="logs" id="logContainer">
+        <div class="log-entry">[SYSTEM] PIXI.js v8 UI Components Demo Loading...</div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "pixi.js": "https://cdn.jsdelivr.net/npm/pixi.js@8.0.0/dist/pixi.min.mjs"
+        }
+    }
+    </script>
+    
+    <script type="module">
+        import * as PIXI from 'pixi.js';
+        import {
+            Logger,
+            GlassEffects,
+            BaseUIComponent,
+            Button,
+            MessageBubble,
+            Avatar,
+            Icon,
+            TextInput,
+            ScrollContainer,
+            createUIComponent,
+            VERSION,
+            LIBRARY_NAME
+        } from './components/UIComponents.js';
+
+        // 自定义日志输出到页面
+        const logContainer = document.getElementById('logContainer');
+        const originalLog = console.log;
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        function addLogEntry(message, type = 'log') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // 保持日志条目数量在合理范围内
+            if (logContainer.children.length > 100) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+        
+        console.log = (...args) => {
+            originalLog(...args);
+            addLogEntry(args.join(' '), 'log');
+        };
+        
+        console.warn = (...args) => {
+            originalWarn(...args);
+            addLogEntry(args.join(' '), 'warn');
+        };
+        
+        console.error = (...args) => {
+            originalError(...args);
+            addLogEntry(args.join(' '), 'error');
+        };
+
+        class UIComponentsDemo {
+            constructor() {
+                this.app = null;
+                this.components = [];
+                this.init();
+            }
+
+            async init() {
+                console.log(`[DEMO] Initializing ${LIBRARY_NAME} v${VERSION}`);
+                
+                // 创建PIXI应用
+                this.app = new PIXI.Application();
+                await this.app.init({
+                    width: 1000,
+                    height: 700,
+                    backgroundColor: 0x1a1a2e,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true,
+                    canvas: document.getElementById('gameCanvas')
+                });
+
+                console.log('[DEMO] PIXI Application initialized');
+                
+                // 创建背景
+                this.createBackground();
+                
+                // 创建UI组件演示
+                this.createComponentsDemo();
+                
+                // 设置动画循环
+                this.app.ticker.add(() => this.update());
+                
+                console.log('[DEMO] Demo setup complete');
+            }
+
+            createBackground() {
+                // 创建渐变背景
+                const background = new PIXI.Graphics();
+                background.beginFill(0x16213e);
+                background.drawRect(0, 0, this.app.screen.width, this.app.screen.height);
+                background.endFill();
+                
+                // 添加一些装饰性圆形
+                for (let i = 0; i < 20; i++) {
+                    const circle = new PIXI.Graphics();
+                    circle.beginFill(0xffffff, 0.05);
+                    circle.drawCircle(0, 0, Math.random() * 40 + 10);
+                    circle.endFill();
+                    circle.x = Math.random() * this.app.screen.width;
+                    circle.y = Math.random() * this.app.screen.height;
+                    background.addChild(circle);
+                }
+                
+                this.app.stage.addChild(background);
+                console.log('[DEMO] Background created');
+            }
+
+            createComponentsDemo() {
+                // 1. 创建按钮组件
+                this.createButtonDemo();
+                
+                // 2. 创建消息气泡组件
+                this.createMessageBubbleDemo();
+                
+                // 3. 创建头像组件
+                this.createAvatarDemo();
+                
+                // 4. 创建图标组件
+                this.createIconDemo();
+                
+                // 5. 创建输入框组件
+                this.createTextInputDemo();
+                
+                // 6. 创建滚动容器组件
+                this.createScrollContainerDemo();
+            }
+
+            createButtonDemo() {
+                console.log('[DEMO] Creating button components');
+                
+                // 主要按钮
+                const primaryButton = new Button({
+                    width: 140,
+                    height: 48,
+                    text: 'Primary Button',
+                    fontSize: 16,
+                    fontColor: 0xffffff,
+                    fontWeight: 'bold',
+                    glassStyle: 'button'
+                });
+                primaryButton.x = 50;
+                primaryButton.y = 50;
+                
+                primaryButton.addEventListener('tap', () => {
+                    console.log('[BUTTON] Primary button clicked!');
+                    primaryButton.setText(`Clicked! ${Date.now()}`);
+                });
+                
+                this.app.stage.addChild(primaryButton);
+                this.components.push(primaryButton);
+                
+                // 次要按钮
+                const secondaryButton = new Button({
+                    width: 120,
+                    height: 40,
+                    text: 'Secondary',
+                    fontSize: 14,
+                    fontColor: 0x666666,
+                    glassStyle: 'default'
+                });
+                secondaryButton.x = 220;
+                secondaryButton.y = 55;
+                
+                secondaryButton.addEventListener('tap', () => {
+                    console.log('[BUTTON] Secondary button clicked!');
+                    secondaryButton.setTextColor(Math.random() * 0xffffff);
+                });
+                
+                this.app.stage.addChild(secondaryButton);
+                this.components.push(secondaryButton);
+                
+                // 小按钮
+                const smallButton = new Button({
+                    width: 80,
+                    height: 32,
+                    text: 'Small',
+                    fontSize: 12,
+                    fontColor: 0x333333
+                });
+                smallButton.x = 370;
+                smallButton.y = 59;
+                
+                smallButton.addEventListener('tap', () => {
+                    console.log('[BUTTON] Small button clicked!');
+                    const texts = ['OK', 'Yes', 'No', 'Maybe', 'Sure'];
+                    smallButton.setText(texts[Math.floor(Math.random() * texts.length)]);
+                });
+                
+                this.app.stage.addChild(smallButton);
+                this.components.push(smallButton);
+            }
+
+            createMessageBubbleDemo() {
+                console.log('[DEMO] Creating message bubble components');
+                
+                // 左侧气泡
+                const leftBubble = new MessageBubble({
+                    width: 220,
+                    height: 60,
+                    text: 'Hello! This is a left-aligned message bubble with glass effect.',
+                    fontSize: 13,
+                    fontColor: 0x333333,
+                    alignment: 'left',
+                    glassStyle: 'bubble'
+                });
+                leftBubble.x = 50;
+                leftBubble.y = 130;
+                
+                leftBubble.addEventListener('tap', () => {
+                    console.log('[BUBBLE] Left bubble clicked!');
+                    const messages = [
+                        'Hello there!',
+                        'How are you doing?',
+                        'This is a test message.',
+                        'Vision UI looks great!',
+                        'Glass effects are amazing!'
+                    ];
+                    leftBubble.setText(messages[Math.floor(Math.random() * messages.length)]);
+                });
+                
+                this.app.stage.addChild(leftBubble);
+                this.components.push(leftBubble);
+                
+                // 右侧气泡
+                const rightBubble = new MessageBubble({
+                    width: 200,
+                    height: 50,
+                    text: 'Right-aligned bubble!',
+                    fontSize: 13,
+                    fontColor: 0x333333,
+                    alignment: 'right',
+                    glassStyle: 'bubble'
+                });
+                rightBubble.x = 300;
+                rightBubble.y = 140;
+                
+                rightBubble.addEventListener('tap', () => {
+                    console.log('[BUBBLE] Right bubble clicked!');
+                    rightBubble.setAlignment(rightBubble.config.alignment === 'left' ? 'right' : 'left');
+                });
+                
+                this.app.stage.addChild(rightBubble);
+                this.components.push(rightBubble);
+            }
+
+            createAvatarDemo() {
+                console.log('[DEMO] Creating avatar components');
+                
+                // 圆形头像
+                const circleAvatar = new Avatar({
+                    width: 60,
+                    height: 60,
+                    shape: 'circle',
+                    fallbackText: 'JD',
+                    glassStyle: 'default'
+                });
+                circleAvatar.x = 550;
+                circleAvatar.y = 50;
+                
+                circleAvatar.addEventListener('tap', () => {
+                    console.log('[AVATAR] Circle avatar clicked!');
+                    const texts = ['JD', 'AB', 'CD', 'EF', 'GH'];
+                    circleAvatar.setFallbackText(texts[Math.floor(Math.random() * texts.length)]);
+                });
+                
+                this.app.stage.addChild(circleAvatar);
+                this.components.push(circleAvatar);
+                
+                // 圆角矩形头像
+                const roundedAvatar = new Avatar({
+                    width: 50,
+                    height: 50,
+                    shape: 'rounded',
+                    fallbackText: 'UI',
+                    glassStyle: 'default'
+                });
+                roundedAvatar.x = 630;
+                roundedAvatar.y = 55;
+                
+                roundedAvatar.addEventListener('tap', () => {
+                    console.log('[AVATAR] Rounded avatar clicked!');
+                    roundedAvatar.setFallbackText('V' + Math.floor(Math.random() * 9));
+                });
+                
+                this.app.stage.addChild(roundedAvatar);
+                this.components.push(roundedAvatar);
+                
+                // 方形头像
+                const squareAvatar = new Avatar({
+                    width: 45,
+                    height: 45,
+                    shape: 'square',
+                    fallbackText: '8',
+                    glassStyle: 'default'
+                });
+                squareAvatar.x = 700;
+                squareAvatar.y = 57;
+                
+                squareAvatar.addEventListener('tap', () => {
+                    console.log('[AVATAR] Square avatar clicked!');
+                    squareAvatar.setFallbackText(String(Math.floor(Math.random() * 10)));
+                });
+                
+                this.app.stage.addChild(squareAvatar);
+                this.components.push(squareAvatar);
+            }
+
+            createIconDemo() {
+                console.log('[DEMO] Creating icon components');
+                
+                const iconTypes = ['star', 'heart', 'check', 'close', 'arrow'];
+                const iconColors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf9ca24, 0x6c5ce7];
+                
+                iconTypes.forEach((iconType, index) => {
+                    const icon = new Icon({
+                        width: 40,
+                        height: 40,
+                        iconName: iconType,
+                        iconColor: iconColors[index],
+                        iconSize: 24,
+                        glassStyle: 'default'
+                    });
+                    icon.x = 780 + (index * 50);
+                    icon.y = 50;
+                    
+                    icon.addEventListener('tap', () => {
+                        console.log(`[ICON] ${iconType} icon clicked!`);
+                        icon.setColor(Math.random() * 0xffffff);
+                    });
+                    
+                    this.app.stage.addChild(icon);
+                    this.components.push(icon);
+                });
+            }
+
+            createTextInputDemo() {
+                console.log('[DEMO] Creating text input components');
+                
+                // 单行输入框
+                const singleLineInput = new TextInput({
+                    width: 250,
+                    height: 40,
+                    placeholder: 'Enter your name...',
+                    fontSize: 14,
+                    fontColor: 0x333333,
+                    glassStyle: 'default'
+                });
+                singleLineInput.x = 50;
+                singleLineInput.y = 250;
+                
+                singleLineInput.addEventListener('input', (event) => {
+                    console.log(`[INPUT] Text changed: "${event.text}"`);
+                });
+                
+                singleLineInput.addEventListener('submit', (event) => {
+                    console.log(`[INPUT] Text submitted: "${event.text}"`);
+                });
+                
+                this.app.stage.addChild(singleLineInput);
+                this.components.push(singleLineInput);
+                
+                // 多行输入框
+                const multiLineInput = new TextInput({
+                    width: 300,
+                    height: 80,
+                    placeholder: 'Enter multiple lines...',
+                    fontSize: 12,
+                    fontColor: 0x333333,
+                    multiline: true,
+                    glassStyle: 'default'
+                });
+                multiLineInput.x = 320;
+                multiLineInput.y = 240;
+                
+                multiLineInput.addEventListener('input', (event) => {
+                    console.log(`[MULTILINE] Text changed: "${event.text}"`);
+                });
+                
+                this.app.stage.addChild(multiLineInput);
+                this.components.push(multiLineInput);
+            }
+
+            createScrollContainerDemo() {
+                console.log('[DEMO] Creating scroll container component');
+                
+                // 创建滚动容器
+                const scrollContainer = new ScrollContainer({
+                    width: 350,
+                    height: 200,
+                    contentWidth: 350,
+                    contentHeight: 500,
+                    enableVerticalScroll: true,
+                    enableHorizontalScroll: false,
+                    glassStyle: 'default'
+                });
+                scrollContainer.x = 50;
+                scrollContainer.y = 350;
+                
+                // 向滚动容器添加内容
+                for (let i = 0; i < 15; i++) {
+                    const item = new Button({
+                        width: 300,
+                        height: 30,
+                        text: `Scroll Item ${i + 1}`,
+                        fontSize: 12,
+                        fontColor: 0x333333,
+                        glassStyle: 'button'
+                    });
+                    item.x = 10;
+                    item.y = i * 35 + 10;
+                    
+                    item.addEventListener('tap', () => {
+                        console.log(`[SCROLL] Item ${i + 1} clicked!`);
+                        item.setText(`Clicked Item ${i + 1} - ${Date.now()}`);
+                    });
+                    
+                    scrollContainer.addContent(item);
+                }
+                
+                scrollContainer.addEventListener('scroll', (event) => {
+                    console.log(`[SCROLL] Scrolled to: x=${event.x.toFixed(0)}, y=${event.y.toFixed(0)}`);
+                });
+                
+                this.app.stage.addChild(scrollContainer);
+                this.components.push(scrollContainer);
+                
+                // 创建水平滚动容器演示
+                const hScrollContainer = new ScrollContainer({
+                    width: 300,
+                    height: 100,
+                    contentWidth: 800,
+                    contentHeight: 100,
+                    enableVerticalScroll: false,
+                    enableHorizontalScroll: true,
+                    glassStyle: 'default'
+                });
+                hScrollContainer.x = 450;
+                hScrollContainer.y = 400;
+                
+                // 添加水平内容
+                for (let i = 0; i < 8; i++) {
+                    const hItem = new Avatar({
+                        width: 70,
+                        height: 70,
+                        shape: 'circle',
+                        fallbackText: `U${i + 1}`,
+                        glassStyle: 'default'
+                    });
+                    hItem.x = i * 85 + 15;
+                    hItem.y = 15;
+                    
+                    hItem.addEventListener('tap', () => {
+                        console.log(`[H-SCROLL] Avatar ${i + 1} clicked!`);
+                    });
+                    
+                    hScrollContainer.addContent(hItem);
+                }
+                
+                this.app.stage.addChild(hScrollContainer);
+                this.components.push(hScrollContainer);
+            }
+
+            update() {
+                // 简单的动画效果
+                const time = Date.now() * 0.001;
+                
+                // 让一些组件有轻微的浮动动画
+                this.components.forEach((component, index) => {
+                    if (component instanceof Icon) {
+                        component.y += Math.sin(time + index) * 0.5;
+                    }
+                });
+            }
+
+            destroy() {
+                console.log('[DEMO] Destroying demo');
+                this.components.forEach(component => component.destroy());
+                this.components = [];
+                if (this.app) {
+                    this.app.destroy(true);
+                }
+            }
+        }
+
+        // 启动演示
+        let demo;
+        
+        try {
+            demo = new UIComponentsDemo();
+            
+            // 处理页面关闭
+            window.addEventListener('beforeunload', () => {
+                if (demo) {
+                    demo.destroy();
+                }
+            });
+            
+        } catch (error) {
+            console.error('[DEMO] Failed to initialize demo:', error);
+            addLogEntry(`[ERROR] Demo initialization failed: ${error.message}`, 'error');
+        }
+    </script>
+</body>
+</html>

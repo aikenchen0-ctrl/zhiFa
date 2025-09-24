@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>弹出层系统功能测试</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <script src="../src/components/PopupLayerSystem.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        
+        .test-container {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .test-panel {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        
+        .test-results {
+            min-height: 300px;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 4px;
+            padding: 10px;
+            overflow-y: auto;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .canvas-container {
+            flex: 2;
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            min-height: 600px;
+            position: relative;
+        }
+        
+        button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px 12px;
+            background: #333;
+            color: #00ff00;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+        }
+        
+        button:hover {
+            background: #444;
+            border-color: #00ff00;
+        }
+        
+        .pass { color: #00ff00; }
+        .fail { color: #ff4444; }
+        .info { color: #ffaa00; }
+        .debug { color: #888; }
+        
+        h3 {
+            color: #00aaff;
+            margin-top: 0;
+        }
+        
+        .stats {
+            background: #222;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 弹出层系统功能测试</h1>
+    
+    <div class="test-container">
+        <div class="test-panel">
+            <h3>测试控制</h3>
+            <div class="stats" id="stats">
+                状态: 未初始化<br>
+                通过: 0 | 失败: 0 | 总计: 0
+            </div>
+            
+            <button onclick="runAllTests()">🚀 运行所有测试</button>
+            <button onclick="testSystemInit()">1. 系统初始化测试</button>
+            <button onclick="testTriggerRegistration()">2. 触发器注册测试</button>
+            <button onclick="testPopupCreation()">3. 弹出层创建测试</button>
+            <button onclick="testLayoutCalculation()">4. 布局计算测试</button>
+            <button onclick="testConnectionLines()">5. 连接线测试</button>
+            <button onclick="testBubbleHierarchy()">6. 气泡层级测试</button>
+            <button onclick="testInteractionHandling()">7. 交互处理测试</button>
+            <button onclick="testPerformance()">8. 性能测试</button>
+            <button onclick="testMobileAdaptation()">9. 移动端适配测试</button>
+            <button onclick="testErrorHandling()">10. 错误处理测试</button>
+            <button onclick="clearTests()">清除测试</button>
+            
+            <h3>测试结果</h3>
+            <div class="test-results" id="testResults">
+                等待测试开始...
+            </div>
+        </div>
+        
+        <div class="canvas-container">
+            <div id="pixiCanvas"></div>
+        </div>
+    </div>
+
+    <script>
+        // ============ 测试框架 ============
+        class TestFramework {
+            constructor() {
+                this.tests = [];
+                this.passed = 0;
+                this.failed = 0;
+                this.results = [];
+            }
+            
+            test(name, testFunction) {
+                this.tests.push({ name, testFunction });
+            }
+            
+            async runTest(name, testFunction) {
+                this.log(`开始测试: ${name}`, 'info');
+                try {
+                    const result = await testFunction();
+                    if (result === true || result === undefined) {
+                        this.passed++;
+                        this.log(`✅ ${name} - 通过`, 'pass');
+                        return true;
+                    } else {
+                        this.failed++;
+                        this.log(`❌ ${name} - 失败: ${result}`, 'fail');
+                        return false;
+                    }
+                } catch (error) {
+                    this.failed++;
+                    this.log(`❌ ${name} - 错误: ${error.message}`, 'fail');
+                    this.log(`堆栈: ${error.stack}`, 'debug');
+                    return false;
+                }
+            }
+            
+            async runAll() {
+                this.passed = 0;
+                this.failed = 0;
+                this.results = [];
+                
+                this.log('🧪 开始运行所有测试...', 'info');
+                
+                for (const test of this.tests) {
+                    await this.runTest(test.name, test.testFunction);
+                    await this.wait(100); // 小延迟确保异步操作完成
+                }
+                
+                this.log(`\n📊 测试完成: ${this.passed}个通过, ${this.failed}个失败`, 
+                    this.failed === 0 ? 'pass' : 'fail');
+                this.updateStats();
+            }
+            
+            log(message, type = 'info') {
+                const timestamp = new Date().toLocaleTimeString();
+                const resultDiv = document.getElementById('testResults');
+                const logEntry = `<div class="${type}">[${timestamp}] ${message}</div>`;
+                resultDiv.innerHTML += logEntry;
+                resultDiv.scrollTop = resultDiv.scrollHeight;
+                console.log(`[Test] ${message}`);
+            }
+            
+            assert(condition, message) {
+                if (!condition) {
+                    throw new Error(message || '断言失败');
+                }
+            }
+            
+            assertEquals(actual, expected, message) {
+                if (actual !== expected) {
+                    throw new Error(message || `期望: ${expected}, 实际: ${actual}`);
+                }
+            }
+            
+            wait(ms) {
+                return new Promise(resolve => setTimeout(resolve, ms));
+            }
+            
+            updateStats() {
+                const statsDiv = document.getElementById('stats');
+                statsDiv.innerHTML = `
+                    状态: ${this.failed === 0 ? '测试通过' : '测试失败'}<br>
+                    通过: ${this.passed} | 失败: ${this.failed} | 总计: ${this.passed + this.failed}
+                `;
+            }
+            
+            clear() {
+                this.passed = 0;
+                this.failed = 0;
+                this.results = [];
+                document.getElementById('testResults').innerHTML = '测试已清除...';
+                this.updateStats();
+            }
+        }
+        
+        // ============ 全局变量 ============
+        let app = null;
+        let popupSystem = null;
+        let testFramework = new TestFramework();
+        
+        // ============ 测试用例 ============
+        
+        // 1. 系统初始化测试
+        async function testSystemInit() {
+            await testFramework.runTest('系统初始化', async () => {
+                // 清理现有应用
+                if (app) {
+                    app.destroy();
+                    app = null;
+                }
+                
+                // 创建新应用
+                app = new PIXI.Application();
+                await app.init({
+                    width: 800,
+                    height: 600,
+                    backgroundColor: 0x1a1a1a
+                });
+                
+                document.getElementById('pixiCanvas').innerHTML = '';
+                document.getElementById('pixiCanvas').appendChild(app.canvas);
+                
+                testFramework.assert(app, '应用创建失败');
+                testFramework.assert(app.stage, '舞台创建失败');
+                
+                // 创建弹出层系统
+                popupSystem = new PopupLayerSystem(app);
+                
+                testFramework.assert(popupSystem, '弹出层系统创建失败');
+                testFramework.assert(popupSystem.systemContainer, '系统容器创建失败');
+                testFramework.assert(popupSystem.connectionLayer, '连接线层创建失败');
+                testFramework.assert(popupSystem.bubbleLayer, '气泡层创建失败');
+                
+                return true;
+            });
+        }
+        
+        // 2. 触发器注册测试
+        async function testTriggerRegistration() {
+            await testFramework.runTest('触发器注册', async () => {
+                testFramework.assert(popupSystem, '系统未初始化');
+                
+                // 创建测试触发元素
+                const trigger = new PIXI.Graphics()
+                    .circle(0, 0, 20)
+                    .fill(0xFF0000);
+                
+                app.stage.addChild(trigger);
+                
+                const config = {
+                    main: {
+                        text: '测试气泡',
+                        color: 0x0000FF,
+                        size: 'medium'
+                    },
+                    subBubbles: [
+                        { text: '子气泡1', color: 0x00FF00, size: 'small' }
+                    ]
+                };
+                
+                // 注册触发器
+                const triggerId = popupSystem.registerTrigger(trigger, config);
+                
+                testFramework.assert(triggerId, '触发器ID未返回');
+                testFramework.assert(typeof triggerId === 'string', '触发器ID应为字符串');
+                testFramework.assert(trigger.interactive === true, '触发器应为交互式');
+                testFramework.assert(trigger.popupTriggerId === triggerId, '触发器ID未正确设置');
+                
+                // 检查内部存储
+                const triggerInfo = popupSystem.triggerElements.get(triggerId);
+                testFramework.assert(triggerInfo, '触发器信息未存储');
+                testFramework.assert(triggerInfo.element === trigger, '触发器元素引用错误');
+                testFramework.assert(triggerInfo.config === config, '触发器配置引用错误');
+                
+                return true;
+            });
+        }
+        
+        // 3. 弹出层创建测试
+        async function testPopupCreation() {
+            await testFramework.runTest('弹出层创建', async () => {
+                testFramework.assert(popupSystem, '系统未初始化');
+                
+                // 创建触发元素
+                const trigger = new PIXI.Graphics()
+                    .circle(0, 0, 20)
+                    .fill(0xFF0000);
+                trigger.x = 100;
+                trigger.y = 100;
+                app.stage.addChild(trigger);
+                
+                const config = {
+                    main: {
+                        text: '主气泡测试',
+                        color: 0x0000FF,
+                        size: 'large'
+                    },
+                    subBubbles: [
+                        { text: '子气泡1', color: 0x00FF00, size: 'medium' },
+                        { text: '子气泡2', color: 0xFF00FF, size: 'small' }
+                    ],
+                    sideBubbles: [
+                        { text: '副气泡1', color: 0xFFFF00, size: 'small' }
+                    ]
+                };
+                
+                const triggerId = popupSystem.registerTrigger(trigger, config);
+                
+                // 触发弹出层创建
+                trigger.emit('pointerdown', {
+                    data: { global: { x: trigger.x, y: trigger.y } },
+                    stopPropagation: () => {}
+                });
+                
+                await testFramework.wait(100); // 等待动画
+                
+                // 检查弹出层是否创建
+                const popupInfo = popupSystem.activePopups.get(triggerId);
+                testFramework.assert(popupInfo, '弹出层未创建');
+                testFramework.assert(popupInfo.container, '弹出层容器未创建');
+                
+                // 检查主气泡
+                const mainBubble = popupInfo.container.getChildByName('mainBubble');
+                testFramework.assert(mainBubble, '主气泡未创建');
+                
+                // 检查子气泡
+                const subBubbles = popupInfo.container.children.filter(child => 
+                    child.bubbleType === 'sub'
+                );
+                testFramework.assertEquals(subBubbles.length, 2, '子气泡数量错误');
+                
+                // 检查副气泡
+                const sideBubbles = popupInfo.container.children.filter(child => 
+                    child.bubbleType === 'side'
+                );
+                testFramework.assertEquals(sideBubbles.length, 1, '副气泡数量错误');
+                
+                return true;
+            });
+        }
+        
+        // 4. 布局计算测试
+        async function testLayoutCalculation() {
+            await testFramework.runTest('布局计算', async () => {
+                testFramework.assert(popupSystem, '系统未初始化');
+                
+                // 测试左侧触发器 - 应向右扩展
+                const leftTrigger = { x: 100, y: 200 };
+                const leftLayout = popupSystem.calculateLayoutDirection(leftTrigger);
+                testFramework.assertEquals(leftLayout.horizontal, 'right', '左侧触发器应向右扩展');
+                
+                // 测试右侧触发器 - 应向左扩展
+                const rightTrigger = { x: app.screen.width - 100, y: 200 };
+                const rightLayout = popupSystem.calculateLayoutDirection(rightTrigger);
+                testFramework.assertEquals(rightLayout.horizontal, 'left', '右侧触发器应向左扩展');
+                
+                // 测试垂直方向
+                testFramework.assertEquals(leftLayout.vertical, 'down', '默认应向下扩展');
+                testFramework.assertEquals(rightLayout.vertical, 'down', '默认应向下扩展');
+                
+                return true;
+            });
+        }
+        
+        // 5. 连接线测试
+        async function testConnectionLines() {
+            await testFramework.runTest('连接线系统', async () => {
+                testFramework.assert(popupSystem, '系统未初始化');
+                
+                // 创建触发元素并触发弹出层
+                const trigger = new PIXI.Graphics()
+                    .circle(0, 0, 20)
+                    .fill(0xFF0000);
+                trigger.x = 200;
+                trigger.y = 200;
+                app.stage.addChild(trigger);
+                
+                const config = {
+                    main: { text: '连接线测试', color: 0x0000FF, size: 'medium' },
+                    subBubbles: [
+                        { text: '子气泡', color: 0x00FF00, size: 'small' }
+                    ]
+                };
+                
+                const triggerId = popupSystem.registerTrigger(trigger, config);
+                trigger.emit('pointerdown', {
+                    data: { global: { x: trigger.x, y: trigger.y } },
+                    stopPropagation: () => {}
+                });
+                
+                await testFramework.wait(100);
+                
+                // 检查连接线是否创建
+                const connections = popupSystem.connections;
+                testFramework.assert(connections.length > 0, '连接线未创建');
+                
+                // 检查主连接线
+                const mainConnection = connections.find(conn => conn.type === 'main');
+                testFramework.assert(mainConnection, '主连接线未创建');
+                testFramework.assert(mainConnection.line, '连接线图形对象未创建');
+                
+                // 检查连接线在正确的层级
+                testFramework.assert(popupSystem.connectionLayer.children.length > 0, 
+                    '连接线层未包含连接线');
+                
+                return true;
+            });
+        }
+        
+        // 6. 气泡层级测试
+        async function testBubbleHierarchy() {
+            await testFramework.runTest('气泡层级结构', async () => {
+                testFramework.assert(popupSystem, '系统未初始化');
+                
+                // 创建复杂层级结构
+                const trigger = new PIXI.Graphics()
+                    .circle(0, 0, 20)
+                    .fill(0xFF0000);
+                trigger.x = 300;
+                trigger.y = 300;
+                app.stage.addChild(trigger);
+                
+                const config = {
+                    main: { text: '层级测试', color: 0x0000FF, size: 'large' },
+                    subBubbles: [
+                        {
+                            text: '子气泡',
+                            color: 0x00FF00,
+                            size: 'medium',
+                            sideBubbles: [
+                                { text: '孙气泡1', color: 0xFF0000, size: 'small' },
+                                { text: '孙气泡2', color: 0x00FFFF, size: 'small' }
+                            ]
+                        }
+                    ],
+                    sideBubbles: [
+                        { text: '主副气泡', color: 0xFFFF00, size: 'small' }
+                    ]
+                };
+                
+                const triggerId = popupSystem.registerTrigger(trigger, config);
+                trigger.emit('pointerdown', {
+                    data: { global: { x: trigger.x, y: trigger.y } },
+                    stopPropagation: () => {}
+                });
+                
+                await testFramework.wait(100);
+                
+                const popupInfo = popupSystem.activePopups.get(triggerId);
+                testFramework.assert(popupInfo, '弹出层未创建');
+                
+                // 检查主气泡
+                const mainBubble = popupInfo.container.getChildByName('mainBubble');
+                testFramework.assert(mainBubble, '主气泡未创建');
+                
+                // 检查子气泡
+                const subBubble = popupInfo.container.getChildByName('subBubble_0');
+                testFramework.assert(subBubble, '子气泡未创建');
+                
+                // 检查孙气泡（子气泡的副气泡）
+                const grandChildBubbles = subBubble.children.filter(child => 
+                    child.bubbleType === 'side'
+                );
+                testFramework.assertEquals(grandChildBubbles.length, 2, '孙气泡数量错误');
+                
+                return true;
+            });
+        }
+        
+        // 7. 交互处理测试
+        async function testInteractionHandling() {
+            await testFramework.runTest('交互处理', async () => {
+                testFramework.assert(popupSystem, '系统未初始化');
+                
+                // 清除所有现有弹出层
+                popupSystem.closeAllPopups();
+                
+                // 创建测试触发元素
+                const trigger = new PIXI.Graphics()
+                    .circle(0, 0, 20)
+                    .fill(0xFF0000);
+                trigger.x = 150;
+                trigger.y = 150;
+                app.stage.addChild(trigger);
+                
+                const config = {
+                    main: { text: '交互测试', color: 0x0000FF, size: 'medium' }
+                };
+                
+                const triggerId = popupSystem.registerTrigger(trigger, config);
+                
+                // 测试触发弹出层
+                trigger.emit('pointerdown', {
+                    data: { global: { x: trigger.x, y: trigger.y } },
+                    stopPropagation: () => {}
+                });
+                
+                await testFramework.wait(100);
+                
+                // 验证弹出层已创建
+                testFramework.assert(popupSystem.activePopups.has(triggerId), '弹出层未激活');
+                
+                // 测试再次点击关闭
+                trigger.emit('pointerdown', {
+                    data: { global: { x: trigger.x, y: trigger.y } },
+                    stopPropagation: () => {}
+                });
+                
+                await testFramework.wait(400); // 等待关闭动画
+                
+                // 验证弹出层已关闭
+                testFramework.assert(!popupSystem.activePopups.has(triggerId), '弹出层未关闭');
+                
+                // 测试全局点击关闭
+                trigger.emit('pointerdown', {
+                    data: { global: { x: trigger.x, y: trigger.y } },
+                    stopPropagation: () => {}
+                });
+                
+                await testFramework.wait(100);
+                testFramework.assert(popupSystem.activePopups.has(triggerId), '弹出层未重新激活');
+                
+                // 模拟点击空白区域
+                app.stage.emit('pointerdown', {
+                    data: { global: { x: 50, y: 50 } }
+                });
+                
+                await testFramework.wait(400);
+                testFramework.assert(!popupSystem.activePopups.has(triggerId), '全局点击未关闭弹出层');
+                
+                return true;
+            });
+        }
+        
+        // 8. 性能测试
+        async function testPerformance() {
+            await testFramework.runTest('性能测试', async () => {
+                testFramework.assert(popupSystem, '系统未初始化');
+                
+                const startTime = performance.now();
+                
+                // 创建多个触发元素
+                const triggerCount = 20;
+                const triggers = [];
+                
+                for (let i = 0; i < triggerCount; i++) {
+                    const trigger = new PIXI.Graphics()
+                        .circle(0, 0, 10)
+                        .fill(0xFF0000);
+                    
+                    trigger.x = 50 + (i % 10) * 60;
+                    trigger.y = 50 + Math.floor(i / 10) * 60;
+                    app.stage.addChild(trigger);
+                    
+                    const config = {
+                        main: { text: `性能测试${i}`, color: 0x0000FF, size: 'small' },
+                        subBubbles: [
+                            { text: 'A', color: 0x00FF00, size: 'small' },
+                            { text: 'B', color: 0xFF00FF, size: 'small' }
+                        ]
+                    };
+                    
+                    popupSystem.registerTrigger(trigger, config);
+                    triggers.push(trigger);
+                }
+                
+                const registrationTime = performance.now() - startTime;
+                testFramework.assert(registrationTime < 1000, `注册时间过长: ${registrationTime}ms`);
+                
+                // 测试快速触发和关闭
+                const triggerStartTime = performance.now();
+                
+                for (const trigger of triggers) {
+                    trigger.emit('pointerdown', {
+                        data: { global: { x: trigger.x, y: trigger.y } },
+                        stopPropagation: () => {}
+                    });
+                }
+                
+                await testFramework.wait(100);
+                
+                // 关闭所有
+                popupSystem.closeAllPopups();
+                
+                const triggerTime = performance.now() - triggerStartTime;
+                testFramework.assert(triggerTime < 2000, `批量触发时间过长: ${triggerTime}ms`);
+                
+                // 清理
+                triggers.forEach(trigger => {
+                    app.stage.removeChild(trigger);
+                    trigger.destroy();
+                });
+                
+                return true;
+            });
+        }
+        
+        // 9. 移动端适配测试
+        async function testMobileAdaptation() {
+            await testFramework.runTest('移动端适配', async () => {
+                testFramework.assert(popupSystem, '系统未初始化');
+                
+                // 模拟移动端屏幕尺寸
+                const originalWidth = app.screen.width;
+                const originalHeight = app.screen.height;
+                
+                // 测试小屏幕边界处理
+                const edgeTrigger = new PIXI.Graphics()
+                    .circle(0, 0, 20)
+                    .fill(0xFF0000);
+                
+                // 放在右边缘
+                edgeTrigger.x = app.screen.width - 20;
+                edgeTrigger.y = 100;
+                app.stage.addChild(edgeTrigger);
+                
+                const config = {
+                    main: { text: '边缘测试', color: 0x0000FF, size: 'large' },
+                    subBubbles: [
+                        { text: '子气泡1', color: 0x00FF00, size: 'medium' },
+                        { text: '子气泡2', color: 0xFF00FF, size: 'medium' }
+                    ]
+                };
+                
+                const triggerId = popupSystem.registerTrigger(edgeTrigger, config);
+                
+                // 触发弹出层
+                edgeTrigger.emit('pointerdown', {
+                    data: { global: { x: edgeTrigger.x, y: edgeTrigger.y } },
+                    stopPropagation: () => {}
+                });
+                
+                await testFramework.wait(100);
+                
+                const popupInfo = popupSystem.activePopups.get(triggerId);
+                testFramework.assert(popupInfo, '边缘弹出层未创建');
+                
+                // 检查弹出层是否在屏幕范围内
+                const bounds = popupInfo.container.getBounds();
+                testFramework.assert(bounds.x >= 0, '弹出层超出左边界');
+                testFramework.assert(bounds.x + bounds.width <= app.screen.width + 50, '弹出层超出右边界');
+                testFramework.assert(bounds.y >= 0, '弹出层超出上边界');
+                testFramework.assert(bounds.y + bounds.height <= app.screen.height + 50, '弹出层超出下边界');
+                
+                // 清理
+                popupSystem.closeAllPopups();
+                app.stage.removeChild(edgeTrigger);
+                edgeTrigger.destroy();
+                
+                return true;
+            });
+        }
+        
+        // 10. 错误处理测试
+        async function testErrorHandling() {
+            await testFramework.runTest('错误处理', async () => {
+                testFramework.assert(popupSystem, '系统未初始化');
+                
+                // 测试无效参数
+                try {
+                    popupSystem.registerTrigger(null, {});
+                    return '应该抛出错误但没有';
+                } catch (error) {
+                    // 预期的错误
+                }
+                
+                try {
+                    popupSystem.registerTrigger({}, null);
+                    return '应该抛出错误但没有';
+                } catch (error) {
+                    // 预期的错误
+                }
+                
+                // 测试不存在的触发器ID
+                popupSystem.closePopup('nonexistent_id'); // 不应该抛出错误
+                
+                // 测试重复关闭
+                const trigger = new PIXI.Graphics()
+                    .circle(0, 0, 20)
+                    .fill(0xFF0000);
+                app.stage.addChild(trigger);
+                
+                const config = {
+                    main: { text: '错误测试', color: 0x0000FF, size: 'medium' }
+                };
+                
+                const triggerId = popupSystem.registerTrigger(trigger, config);
+                
+                // 触发并立即关闭多次
+                trigger.emit('pointerdown', {
+                    data: { global: { x: 100, y: 100 } },
+                    stopPropagation: () => {}
+                });
+                
+                await testFramework.wait(50);
+                
+                popupSystem.closePopup(triggerId);
+                popupSystem.closePopup(triggerId); // 重复关闭，不应出错
+                
+                // 清理
+                app.stage.removeChild(trigger);
+                trigger.destroy();
+                
+                return true;
+            });
+        }
+        
+        // ============ 测试控制函数 ============
+        async function runAllTests() {
+            testFramework.clear();
+            
+            // 按顺序运行所有测试
+            await testSystemInit();
+            await testTriggerRegistration();
+            await testPopupCreation();
+            await testLayoutCalculation();
+            await testConnectionLines();
+            await testBubbleHierarchy();
+            await testInteractionHandling();
+            await testPerformance();
+            await testMobileAdaptation();
+            await testErrorHandling();
+            
+            testFramework.log('\n🎯 所有测试完成！', 'info');
+        }
+        
+        function clearTests() {
+            testFramework.clear();
+            
+            if (app) {
+                // 清理画布
+                app.stage.removeChildren();
+                if (popupSystem) {
+                    popupSystem.closeAllPopups();
+                }
+            }
+        }
+        
+        // ============ 页面加载 ============
+        window.addEventListener('DOMContentLoaded', () => {
+            testFramework.log('🧪 弹出层系统测试框架已加载', 'info');
+            testFramework.log('✅ 包含10个核心功能测试用例', 'info');
+            testFramework.log('📊 支持自动化测试和详细报告', 'info');
+            testFramework.log('🚀 点击"运行所有测试"开始测试', 'info');
+        });
+        
+    </script>
+</body>
+</html>

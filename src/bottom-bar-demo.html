@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>底部栏组件演示 - PixiJS v8</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        #container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        #pixi-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-width: 300px;
+        }
+        
+        .control-panel h3 {
+            margin-bottom: 10px;
+            color: #1C1C1E;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        
+        .control-panel button {
+            margin: 5px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            background: #007AFF;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .control-panel button:hover {
+            background: #0056CC;
+            transform: translateY(-1px);
+        }
+        
+        .control-panel button.secondary {
+            background: #8E8E93;
+        }
+        
+        .control-panel button.secondary:hover {
+            background: #6D6D70;
+        }
+        
+        .event-log {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            height: 200px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #00FF41;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            padding: 10px;
+            border-radius: 8px;
+            overflow-y: auto;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        
+        .event-log h4 {
+            color: #00FF41;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #00FF41;
+            padding-bottom: 4px;
+        }
+        
+        .log-entry {
+            margin-bottom: 4px;
+            opacity: 0.9;
+        }
+        
+        .log-entry.new {
+            color: #00FF00;
+            font-weight: bold;
+            animation: highlight 0.5s ease-out;
+        }
+        
+        @keyframes highlight {
+            0% { background-color: rgba(0, 255, 0, 0.3); }
+            100% { background-color: transparent; }
+        }
+        
+        .demo-info {
+            position: absolute;
+            bottom: 100px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 12px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            max-width: 350px;
+        }
+        
+        .demo-info h4 {
+            color: #1C1C1E;
+            margin-bottom: 8px;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .demo-info ul {
+            margin-left: 16px;
+            color: #3C3C43;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        .demo-info li {
+            margin-bottom: 4px;
+        }
+        
+        @media (max-width: 768px) {
+            .control-panel, .event-log, .demo-info {
+                position: static;
+                margin: 10px;
+                max-width: none;
+            }
+            
+            .event-log {
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="pixi-container"></div>
+        
+        <div class="control-panel">
+            <h3>🎮 控制面板</h3>
+            <button onclick="toggleInput()">切换输入框状态</button>
+            <button onclick="toggleVoice()" class="secondary">切换语音模式</button>
+            <button onclick="simulateText()">模拟输入文字</button>
+            <button onclick="clearText()" class="secondary">清空文字</button>
+            <button onclick="resizeDemo()">调整尺寸</button>
+        </div>
+        
+        <div class="event-log">
+            <h4>📋 事件日志</h4>
+            <div id="log-content"></div>
+        </div>
+        
+        <div class="demo-info">
+            <h4>✨ 功能特色</h4>
+            <ul>
+                <li>🎯 居中输入框，左右小图标</li>
+                <li>🔄 输入激活时主页→表情动态切换</li>
+                <li>📜 输入框上方可滚动按钮组</li>
+                <li>➕ 加号展开12个功能菜单</li>
+                <li>🎨 Vision UI半透明毛玻璃效果</li>
+                <li>🎬 流畅的动画过渡效果</li>
+                <li>📱 支持触摸和鼠标交互</li>
+                <li>📐 响应式窗口大小调整</li>
+            </ul>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.2.4/pixi.min.js"></script>
+    <script type="module">
+        console.log('🚀 底部栏组件演示启动...');
+        
+        // Import the BottomBar component
+        const BottomBarModule = await import('./components/BottomBar.js');
+        const BottomBar = BottomBarModule.default || BottomBarModule.BottomBar;
+        
+        // Create PIXI Application
+        const app = new PIXI.Application();
+        
+        // Initialize the application
+        await app.init({
+            width: window.innerWidth,
+            height: window.innerHeight,
+            backgroundColor: 0x1e1e1e,
+            antialias: true,
+            autoDensity: true,
+            resolution: window.devicePixelRatio || 1
+        });
+        
+        // Add the application canvas to the DOM
+        document.getElementById('pixi-container').appendChild(app.canvas);
+        
+        console.log('✅ PIXI应用初始化完成', {
+            width: app.screen.width,
+            height: app.screen.height,
+            pixiVersion: PIXI.VERSION
+        });
+        
+        // Create background pattern
+        const bg = new PIXI.Graphics();
+        bg.rect(0, 0, app.screen.width, app.screen.height);
+        bg.fill(0x2C2C2E);
+        app.stage.addChild(bg);
+        
+        // Add some decorative elements
+        for (let i = 0; i < 20; i++) {
+            const star = new PIXI.Graphics();
+            star.circle(0, 0, Math.random() * 3 + 1);
+            star.fill(0xFFFFFF);
+            star.position.set(
+                Math.random() * app.screen.width,
+                Math.random() * (app.screen.height - 200)
+            );
+            star.alpha = Math.random() * 0.5 + 0.3;
+            app.stage.addChild(star);
+        }
+        
+        // Create BottomBar instance
+        const bottomBar = new BottomBar(app.screen.width, 80);
+        bottomBar.position.set(0, app.screen.height - 80);
+        app.stage.addChild(bottomBar);
+        
+        console.log('✅ 底部栏组件创建完成');
+        
+        // Event logging system
+        const logContainer = document.getElementById('log-content');
+        let logCount = 0;
+        
+        function addLog(message, type = 'info') {
+            logCount++;
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry new';
+            logEntry.textContent = `${new Date().toLocaleTimeString()} - ${message}`;
+            
+            logContainer.insertBefore(logEntry, logContainer.firstChild);
+            
+            // Remove old logs to prevent overflow
+            if (logContainer.children.length > 20) {
+                logContainer.removeChild(logContainer.lastChild);
+            }
+            
+            // Remove the 'new' class after animation
+            setTimeout(() => {
+                logEntry.classList.remove('new');
+            }, 500);
+        }
+        
+        // Set up event listeners for the bottom bar
+        bottomBar.events.on('inputStateChange', (data) => {
+            addLog(`📝 输入框状态变化: ${data.active ? '激活' : '关闭'}`, 'input');
+        });
+        
+        bottomBar.events.on('voiceModeChange', (data) => {
+            addLog(`🎤 语音模式: ${data.voiceMode ? '开启' : '关闭'}`, 'voice');
+        });
+        
+        bottomBar.events.on('homeClick', () => {
+            addLog('🏠 主页按钮点击', 'navigation');
+        });
+        
+        bottomBar.events.on('giftClick', () => {
+            addLog('🎁 礼物按钮点击', 'gift');
+        });
+        
+        bottomBar.events.on('menuExpandedChange', (data) => {
+            addLog(`📋 菜单状态: ${data.expanded ? '展开' : '收起'}`, 'menu');
+        });
+        
+        bottomBar.events.on('scrollButtonClick', (data) => {
+            addLog(`📜 滚动按钮点击: ${data.type}`, 'scroll');
+        });
+        
+        bottomBar.events.on('menuOptionClick', (data) => {
+            addLog(`🎯 菜单选项: ${data.type}`, 'menu');
+        });
+        
+        // Control functions
+        window.toggleInput = () => {
+            bottomBar.onInputActivate();
+            addLog('🎮 手动切换输入框状态', 'control');
+        };
+        
+        window.toggleVoice = () => {
+            bottomBar.onVoiceClick();
+            addLog('🎮 手动切换语音模式', 'control');
+        };
+        
+        window.simulateText = () => {
+            const sampleTexts = [
+                'Hello World! 👋',
+                '这是一个测试消息',
+                'PixiJS v8 真棒！🚀',
+                '底部栏组件工作正常 ✅'
+            ];
+            const randomText = sampleTexts[Math.floor(Math.random() * sampleTexts.length)];
+            bottomBar.setInputText(randomText);
+            addLog(`📝 模拟输入: ${randomText}`, 'control');
+        };
+        
+        window.clearText = () => {
+            bottomBar.setInputText('');
+            addLog('🗑️ 清空输入文字', 'control');
+        };
+        
+        window.resizeDemo = () => {
+            const newWidth = Math.max(300, Math.random() * window.innerWidth);
+            app.renderer.resize(newWidth, window.innerHeight);
+            bottomBar.handleResize(newWidth, window.innerHeight);
+            addLog(`📐 调整尺寸: ${Math.round(newWidth)}px`, 'control');
+        };
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const newWidth = window.innerWidth;
+            const newHeight = window.innerHeight;
+            
+            app.renderer.resize(newWidth, newHeight);
+            
+            // Update background
+            bg.clear();
+            bg.rect(0, 0, newWidth, newHeight);
+            bg.fill(0x2C2C2E);
+            
+            // Update bottom bar
+            bottomBar.handleResize(newWidth, newHeight);
+            bottomBar.position.set(0, newHeight - 80);
+            
+            addLog(`📐 窗口调整: ${newWidth}x${newHeight}`, 'resize');
+        });
+        
+        // Animation loop for smooth interactions
+        let animationFrame = 0;
+        app.ticker.add(() => {
+            animationFrame++;
+            
+            // Subtle background animation
+            if (animationFrame % 120 === 0) {
+                app.stage.children.forEach((child, index) => {
+                    if (index > 1 && index < 22) { // Stars
+                        child.alpha = Math.random() * 0.5 + 0.3;
+                    }
+                });
+            }
+        });
+        
+        // Initial log
+        addLog('🎉 底部栏组件演示初始化完成', 'system');
+        addLog('💡 点击输入框激活滚动按钮组', 'tip');
+        addLog('💡 点击+号展开功能菜单', 'tip');
+        
+        console.log('🎉 演示准备就绪！');
+        
+        // Expose for debugging
+        window.app = app;
+        window.bottomBar = bottomBar;
+        window.addLog = addLog;
+    </script>
+</body>
+</html>

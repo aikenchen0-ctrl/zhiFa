@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PixiJS Mobile Demo - Advanced Touch & Performance</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #000;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        #app {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        
+        #controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 5px;
+            padding: 10px;
+            color: white;
+            font-size: 12px;
+            max-width: 200px;
+        }
+        
+        #stats {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 5px;
+            padding: 10px;
+            color: white;
+            font-family: monospace;
+            font-size: 11px;
+            white-space: pre-line;
+        }
+        
+        .control-group {
+            margin-bottom: 10px;
+        }
+        
+        .control-group label {
+            display: block;
+            margin-bottom: 3px;
+            font-size: 11px;
+        }
+        
+        .control-group button {
+            background: #007acc;
+            border: none;
+            color: white;
+            padding: 5px 8px;
+            margin: 2px;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+        }
+        
+        .control-group button:active {
+            background: #005a99;
+        }
+        
+        .control-group button.active {
+            background: #28a745;
+        }
+        
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 5px;
+            padding: 10px;
+            color: white;
+            font-size: 12px;
+            text-align: center;
+        }
+        
+        /* Mobile-specific styles */
+        @media (max-width: 768px) {
+            #controls {
+                font-size: 11px;
+                padding: 8px;
+                max-width: 180px;
+            }
+            
+            #stats {
+                font-size: 10px;
+                padding: 8px;
+            }
+            
+            #instructions {
+                font-size: 11px;
+                padding: 8px;
+            }
+        }
+        
+        /* Support for safe areas (iPhone X notch) */
+        @supports (padding: max(0px)) {
+            #controls {
+                top: max(10px, env(safe-area-inset-top));
+                right: max(10px, env(safe-area-inset-right));
+            }
+            
+            #stats {
+                top: max(10px, env(safe-area-inset-top));
+                left: max(10px, env(safe-area-inset-left));
+            }
+            
+            #instructions {
+                bottom: max(10px, env(safe-area-inset-bottom));
+                left: max(10px, env(safe-area-inset-left));
+                right: max(10px, env(safe-area-inset-right));
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="controls">
+            <div class="control-group">
+                <label>Debug Mode:</label>
+                <button id="toggleDebug">Enable</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Performance:</label>
+                <button id="cleanupTextures">Cleanup</button>
+                <button id="forceGC">GC</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Scroll:</label>
+                <button id="scrollToCenter">Center</button>
+                <button id="toggleBounce">Bounce</button>
+            </div>
+            
+            <div class="control-group">
+                <label>Touch:</label>
+                <button id="toggleGestures">Gestures</button>
+            </div>
+        </div>
+        
+        <div id="stats">Loading...</div>
+        
+        <div id="instructions">
+            📱 Touch to interact • 👆 Swipe to scroll • 🤏 Pinch to zoom • ✌️ Two fingers to pan
+        </div>
+    </div>
+    
+    <!-- PixiJS v8 -->
+    <script src="https://pixijs.download/release/pixi.min.js"></script>
+    
+    <script type="module">
+        // Import our mobile system
+        import { MobilePixiApp } from './mobile/MobilePixiApp.js';
+        
+        class MobileDemo {
+            constructor() {
+                this.app = null;
+                this.debugMode = false;
+                this.bounceEnabled = true;
+                this.gesturesEnabled = true;
+                this.statsUpdateInterval = null;
+                
+                this.init();
+            }
+            
+            async init() {
+                console.log('🚀 Starting Mobile PixiJS Demo');
+                
+                try {
+                    // Create optimized mobile app with debug enabled
+                    this.app = await MobilePixiApp.createDebug({
+                        // Custom configuration
+                        width: 1920,
+                        height: 1080,
+                        backgroundColor: 0x1a1a2e,
+                        
+                        // Mobile optimizations
+                        touchOptions: {
+                            enableMultiTouch: true,
+                            enableGestures: true,
+                            debugMode: true
+                        },
+                        
+                        performanceOptions: {
+                            enableViewportCulling: true,
+                            enableObjectPooling: true,
+                            targetFPS: 60,
+                            debugMode: true
+                        },
+                        
+                        adaptationOptions: {
+                            scaleMode: 'contain',
+                            enableSafeAreaDetection: true,
+                            enableOrientationHandling: true,
+                            debugMode: true
+                        },
+                        
+                        scrollOptions: {
+                            enableInertia: true,
+                            enableBounce: true,
+                            friction: 0.92,
+                            debugMode: true
+                        }
+                    });
+                    
+                    // Add canvas to app container
+                    document.getElementById('app').appendChild(this.app.app.canvas);
+                    
+                    // Setup event listeners
+                    this.setupEventListeners();
+                    
+                    // Setup additional demo content
+                    this.setupDemoContent();
+                    
+                    // Start stats updates
+                    this.startStatsUpdate();
+                    
+                    console.log('✅ Mobile PixiJS Demo initialized successfully');
+                    
+                } catch (error) {
+                    console.error('❌ Failed to initialize Mobile PixiJS Demo:', error);
+                    document.getElementById('stats').textContent = 'Error: ' + error.message;
+                }
+            }
+            
+            setupEventListeners() {
+                // Control buttons
+                document.getElementById('toggleDebug').addEventListener('click', () => {
+                    this.toggleDebugMode();
+                });
+                
+                document.getElementById('cleanupTextures').addEventListener('click', () => {
+                    const cleaned = this.app.getPerformanceManager().cleanupUnusedTextures();
+                    console.log(`🧹 Cleaned ${cleaned} unused textures`);
+                });
+                
+                document.getElementById('forceGC').addEventListener('click', () => {
+                    this.app.getPerformanceManager().forceGarbageCollection();
+                    console.log('🗑️ Forced garbage collection');
+                });
+                
+                document.getElementById('scrollToCenter').addEventListener('click', () => {
+                    this.app.getScrollManager().setScrollPosition(750, 400, true);
+                });
+                
+                document.getElementById('toggleBounce').addEventListener('click', () => {
+                    this.toggleBounce();
+                });
+                
+                document.getElementById('toggleGestures').addEventListener('click', () => {
+                    this.toggleGestures();
+                });
+                
+                // Global mobile app events
+                this.app.app.on('touch-tap', (data) => {
+                    console.log('👆 Tap detected at:', data.x, data.y);
+                });
+                
+                this.app.app.on('touch-doubletap', (data) => {
+                    console.log('👆👆 Double tap detected at:', data.x, data.y);
+                    // Zoom in on double tap
+                    this.zoomToPoint(data.x, data.y, 1.5);
+                });
+                
+                this.app.app.on('touch-longpress', (data) => {
+                    console.log('👆⏱️ Long press detected at:', data.x, data.y);
+                });
+                
+                this.app.app.on('touch-pinch', (data) => {
+                    console.log('🤏 Pinch gesture:', data.scale, 'at', data.centerX, data.centerY);
+                });
+                
+                this.app.app.on('mobile-orientation-change', (data) => {
+                    console.log('🔄 Orientation changed:', data.from, '→', data.to);
+                });
+                
+                this.app.app.on('scroll-change', (data) => {
+                    if (Math.abs(data.deltaX) > 1 || Math.abs(data.deltaY) > 1) {
+                        console.log('📜 Scroll changed:', `(${data.x.toFixed(0)}, ${data.y.toFixed(0)})`);
+                    }
+                });
+                
+                // Handle visibility change for performance
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        this.app.pause();
+                    } else {
+                        this.app.resume();
+                    }
+                });
+            }
+            
+            setupDemoContent() {
+                // Additional interactive elements beyond the default demo
+                const stage = this.app.app.stage;
+                
+                // Create zoom indicator
+                const zoomIndicator = new PIXI.Text({
+                    text: 'Zoom: 1.0x',
+                    style: {
+                        fontFamily: 'Arial',
+                        fontSize: 16,
+                        fill: 0xffffff,
+                        backgroundColor: 0x000000,
+                        padding: 5
+                    }
+                });
+                zoomIndicator.x = 10;
+                zoomIndicator.y = 50;
+                zoomIndicator.zIndex = 1001;
+                stage.addChild(zoomIndicator);
+                
+                // Update zoom indicator on scale changes
+                let currentZoom = 1.0;
+                this.app.app.on('touch-pinch', (data) => {
+                    currentZoom *= data.scale;
+                    currentZoom = Math.max(0.5, Math.min(3.0, currentZoom));
+                    zoomIndicator.text = `Zoom: ${currentZoom.toFixed(1)}x`;
+                    
+                    // Apply zoom to stage
+                    stage.scale.set(currentZoom);
+                });
+                
+                // Create performance warning indicator
+                const perfWarning = new PIXI.Text({
+                    text: '⚠️ Low Performance',
+                    style: {
+                        fontFamily: 'Arial',
+                        fontSize: 14,
+                        fill: 0xff4444,
+                        backgroundColor: 0x000000,
+                        padding: 5
+                    }
+                });
+                perfWarning.x = 10;
+                perfWarning.y = 80;
+                perfWarning.zIndex = 1001;
+                perfWarning.visible = false;
+                stage.addChild(perfWarning);
+                
+                // Monitor performance and show warning
+                setInterval(() => {
+                    const stats = this.app.getDetailedStats();
+                    const fps = stats.performance?.fps || 60;
+                    perfWarning.visible = fps < 30;
+                }, 2000);
+            }
+            
+            zoomToPoint(x, y, scaleFactor) {
+                const stage = this.app.app.stage;
+                const currentScale = stage.scale.x;
+                const newScale = Math.max(0.5, Math.min(3.0, currentScale * scaleFactor));
+                
+                // Calculate new position to keep point under finger
+                const dx = x - stage.x;
+                const dy = y - stage.y;
+                
+                stage.scale.set(newScale);
+                stage.x = x - dx * (newScale / currentScale);
+                stage.y = y - dy * (newScale / currentScale);
+            }
+            
+            toggleDebugMode() {
+                this.debugMode = !this.debugMode;
+                this.app.setDebugMode(this.debugMode);
+                
+                const button = document.getElementById('toggleDebug');
+                button.textContent = this.debugMode ? 'Disable' : 'Enable';
+                button.classList.toggle('active', this.debugMode);
+                
+                console.log(`🐛 Debug mode ${this.debugMode ? 'enabled' : 'disabled'}`);
+            }
+            
+            toggleBounce() {
+                this.bounceEnabled = !this.bounceEnabled;
+                const scrollManager = this.app.getScrollManager();
+                scrollManager.config.enableBounce = this.bounceEnabled;
+                
+                const button = document.getElementById('toggleBounce');
+                button.textContent = this.bounceEnabled ? 'Disable' : 'Enable';
+                button.classList.toggle('active', this.bounceEnabled);
+                
+                console.log(`🎾 Bounce ${this.bounceEnabled ? 'enabled' : 'disabled'}`);
+            }
+            
+            toggleGestures() {
+                this.gesturesEnabled = !this.gesturesEnabled;
+                const touchManager = this.app.getTouchManager();
+                touchManager.config.enableGestures = this.gesturesEnabled;
+                
+                const button = document.getElementById('toggleGestures');
+                button.textContent = this.gesturesEnabled ? 'Disable' : 'Enable';
+                button.classList.toggle('active', this.gesturesEnabled);
+                
+                console.log(`👋 Gestures ${this.gesturesEnabled ? 'enabled' : 'disabled'}`);
+            }
+            
+            startStatsUpdate() {
+                this.statsUpdateInterval = setInterval(() => {
+                    const stats = this.app.getDetailedStats();
+                    const statsEl = document.getElementById('stats');
+                    
+                    const statsText = [
+                        `📊 Performance`,
+                        `FPS: ${stats.performance?.fps || 0}`,
+                        `Frame: ${(stats.performance?.frameTime || 0).toFixed(1)}ms`,
+                        `Draw Calls: ${stats.performance?.drawCalls || 0}`,
+                        `Memory: ${((stats.performance?.textureMemory || 0) / 1024 / 1024).toFixed(1)}MB`,
+                        ``,
+                        `👆 Touch`,
+                        `Events: ${stats.touch?.touchEvents || 0}`,
+                        `Gestures: ${stats.touch?.gestureEvents || 0}`,
+                        ``,
+                        `🎮 Rendering`,
+                        `Rendered: ${stats.performance?.objectsRendered || 0}`,
+                        `Culled: ${stats.performance?.objectsCulled || 0}`,
+                        `Pool Hits: ${stats.performance?.poolHits || 0}`,
+                        ``,
+                        `📱 Device`,
+                        `Scale: ${(stats.adaptation?.scale || 1).toFixed(2)}x`,
+                        `DPR: ${stats.device?.pixelRatio || 1}`,
+                        `Platform: ${stats.device?.platform || 'unknown'}`,
+                        ``,
+                        `📜 Scroll`,
+                        `Position: (${(stats.scroll?.x || 0).toFixed(0)}, ${(stats.scroll?.y || 0).toFixed(0)})`,
+                        `Velocity: ${(stats.scroll?.totalVelocity || 0).toFixed(1)}`
+                    ].join('\n');
+                    
+                    statsEl.textContent = statsText;
+                }, 1000);
+            }
+            
+            destroy() {
+                if (this.statsUpdateInterval) {
+                    clearInterval(this.statsUpdateInterval);
+                }
+                
+                if (this.app) {
+                    this.app.destroy();
+                }
+            }
+        }
+        
+        // Initialize demo when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                window.mobileDemo = new MobileDemo();
+            });
+        } else {
+            window.mobileDemo = new MobileDemo();
+        }
+        
+        // Global error handling
+        window.addEventListener('error', (event) => {
+            console.error('🚨 Global error:', event.error);
+            document.getElementById('stats').textContent = `Error: ${event.error.message}`;
+        });
+        
+        // Handle unload
+        window.addEventListener('beforeunload', () => {
+            if (window.mobileDemo) {
+                window.mobileDemo.destroy();
+            }
+        });
+    </script>
+</body>
+</html>

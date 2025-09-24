@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebGL Connection Line System Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/pixi.js@8.0.0/dist/pixi.min.js"></script>
+  <style>
+    /* 基于bubble-demo.html的样式 */
+    .glass-effect {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    
+    .glass-self {
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .glass-self-dark {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    
+    .glass-other {
+      background: transparent;
+      border: 1px solid rgba(156, 163, 175, 0.4);
+    }
+    
+    .text-shadow-enhanced {
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 0, 0, 0.25), 0 1px 1px rgba(0, 0, 0, 0.5);
+    }
+    
+    .sender-name-shadow {
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 1), 0 0 16px rgba(255, 255, 255, 0.9), 0 0 8px rgba(0, 0, 0, 0.8);
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+
+    /* Performance panel styles */
+    .performance-panel {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      font-family: monospace;
+      font-size: 12px;
+      z-index: 2000;
+      min-width: 250px;
+    }
+
+    .performance-panel h3 {
+      margin: 0 0 10px 0;
+      color: #00ff00;
+    }
+
+    .performance-panel .metric {
+      display: flex;
+      justify-content: space-between;
+      margin: 3px 0;
+    }
+
+    .performance-panel .metric .value {
+      color: #00ffff;
+    }
+
+    /* Control panel styles */
+    .control-panel {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 15px;
+      border-radius: 10px;
+      z-index: 2000;
+      min-width: 200px;
+    }
+
+    .control-panel button {
+      margin: 5px;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .control-panel button.primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .control-panel button.danger {
+      background: #ef4444;
+      color: white;
+    }
+
+    .control-panel button.success {
+      background: #10b981;
+      color: white;
+    }
+
+    /* Chat container scrollable area */
+    .chat-container {
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 20px;
+      margin: 100px 20px 20px 20px;
+    }
+
+    /* Scroll indicator */
+    .scroll-indicator {
+      position: fixed;
+      bottom: 20px;
+      right: 50%;
+      transform: translateX(50%);
+      background: rgba(0, 0, 0, 0.6);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Performance Panel -->
+  <div id="performancePanel" class="performance-panel">
+    <h3>🚀 Performance Metrics</h3>
+    <div class="metric">
+      <span>FPS:</span>
+      <span class="value" id="fps">--</span>
+    </div>
+    <div class="metric">
+      <span>Render Time:</span>
+      <span class="value" id="renderTime">--</span>
+    </div>
+    <div class="metric">
+      <span>Update Time:</span>
+      <span class="value" id="updateTime">--</span>
+    </div>
+    <div class="metric">
+      <span>Connections:</span>
+      <span class="value" id="connectionCount">--</span>
+    </div>
+    <div class="metric">
+      <span>Memory:</span>
+      <span class="value" id="memoryUsage">--</span>
+    </div>
+    <div class="metric">
+      <span>Canvas Size:</span>
+      <span class="value" id="canvasSize">--</span>
+    </div>
+  </div>
+
+  <!-- Control Panel -->
+  <div class="control-panel">
+    <h3>🎮 Controls</h3>
+    <button class="primary" onclick="connectionSystem.autoDetectConnections()">Auto Detect</button>
+    <button class="success" onclick="addRandomMessage()">Add Message</button>
+    <button class="danger" onclick="clearAllConnections()">Clear All</button>
+    <br>
+    <button class="primary" onclick="togglePerformanceLogging()">Toggle Logs</button>
+    <button class="success" onclick="scrollToBottom()">Scroll Down</button>
+    <button class="success" onclick="scrollToTop()">Scroll Up</button>
+  </div>
+
+  <!-- Scroll Indicator -->
+  <div class="scroll-indicator">
+    👆 Scroll to test connection line following 👇
+  </div>
+
+  <!-- Chat Container -->
+  <div class="chat-container" id="chatContainer">
+    <div class="max-w-4xl mx-auto space-y-6">
+      
+      <!-- Sample Messages with Avatars -->
+      <div class="flex items-start gap-3 max-w-full">
+        <!-- Avatar -->
+        <div class="flex-shrink-0">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center overflow-hidden avatar-element">
+            <span class="text-white text-sm sender-name-shadow">张</span>
+          </div>
+        </div>
+        
+        <!-- Message -->
+        <div class="flex flex-col">
+          <div class="relative">
+            <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+              张三
+            </span>
+            
+            <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200 bubble-element">
+              <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+              <div class="relative z-10 px-2 py-1.5">
+                <div class="text-white text-shadow-enhanced">
+                  这是第一条消息，测试连接线从气泡左侧到头像右侧的路径。注意圆角转折效果！
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Self Message -->
+      <div class="flex items-start gap-3 max-w-full flex-row-reverse ml-auto justify-start">
+        <div class="flex-shrink-0">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center overflow-hidden avatar-element">
+            <span class="text-white text-sm sender-name-shadow">我</span>
+          </div>
+        </div>
+        
+        <div class="flex flex-col items-end">
+          <div class="relative">
+            <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200 bubble-element">
+              <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+              <div class="relative z-10 px-2 py-1.5">
+                <div class="text-white text-shadow-enhanced">
+                  我的回复消息，连接线应该从右侧到头像左侧，带圆角转折。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Another Other Message -->
+      <div class="flex items-start gap-3 max-w-full">
+        <div class="flex-shrink-0">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center overflow-hidden avatar-element">
+            <span class="text-white text-sm sender-name-shadow">李</span>
+          </div>
+        </div>
+        
+        <div class="flex flex-col">
+          <div class="relative">
+            <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+              李四
+            </span>
+            
+            <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200 bubble-element">
+              <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+              <div class="relative z-10 px-2 py-1.5">
+                <div class="text-white text-shadow-enhanced">
+                  这是一条更长的消息，用来测试连接线在不同尺寸气泡下的表现。连接线应该始终从气泡的边框中心点出发，经过水平延伸、圆角转折、垂直延伸、再次圆角转折，最终到达头像的边缘中心点。整个路径应该流畅自然，具有良好的视觉效果。
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Multiple messages for scrolling test -->
+      <div class="space-y-6" id="dynamicMessages">
+        <!-- Dynamic messages will be added here -->
+      </div>
+
+      <!-- Bottom spacer for scrolling -->
+      <div style="height: 200vh;"></div>
+    </div>
+  </div>
+
+  <script src="./components/ConnectionLineSystem.js"></script>
+  <script>
+    // Global variables
+    let connectionSystem;
+    let performanceUpdateInterval;
+    let messageCounter = 0;
+
+    // Initialize the connection system
+    async function initConnectionSystem() {
+      try {
+        console.log('Initializing ConnectionLineSystem...');
+        
+        connectionSystem = new ConnectionLineSystem({
+          containerSelector: 'body',
+          lineColor: 0xFFFFFF,
+          lineAlpha: 0.8,
+          lineWidth: 3,
+          cornerRadius: 12,
+          horizontalExtension: 8,
+          enablePerformanceLogging: true,
+          maxFPS: 60,
+          batchSize: 30
+        });
+
+        // Wait for initialization
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Auto-detect initial connections
+        const detectedCount = connectionSystem.autoDetectConnections();
+        console.log(`Detected ${detectedCount} initial connections`);
+
+        // Start performance monitoring
+        startPerformanceMonitoring();
+
+        console.log('ConnectionLineSystem initialized successfully!');
+
+      } catch (error) {
+        console.error('Failed to initialize ConnectionLineSystem:', error);
+      }
+    }
+
+    // Performance monitoring
+    function startPerformanceMonitoring() {
+      performanceUpdateInterval = setInterval(() => {
+        if (connectionSystem && !connectionSystem.isDestroyed) {
+          const metrics = connectionSystem.getPerformanceMetrics();
+          
+          document.getElementById('fps').textContent = metrics.lastFPS;
+          document.getElementById('renderTime').textContent = `${metrics.averageRenderTime}ms`;
+          document.getElementById('updateTime').textContent = `${metrics.averageUpdateTime}ms`;
+          document.getElementById('connectionCount').textContent = metrics.connectionCount;
+          document.getElementById('memoryUsage').textContent = `${metrics.memoryUsageMB}MB`;
+          document.getElementById('canvasSize').textContent = `${connectionSystem.canvasWidth}x${connectionSystem.canvasHeight}`;
+        }
+      }, 1000);
+    }
+
+    // Add random message
+    function addRandomMessage() {
+      messageCounter++;
+      const isOther = Math.random() > 0.5;
+      const names = ['王五', '赵六', '钱七', '孙八', '李九'];
+      const colors = [
+        'from-red-400 to-orange-500',
+        'from-yellow-400 to-green-500',
+        'from-teal-400 to-blue-500',
+        'from-indigo-400 to-purple-500',
+        'from-pink-400 to-red-500'
+      ];
+      
+      const name = names[Math.floor(Math.random() * names.length)];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      const messages = [
+        '这是一条动态添加的测试消息',
+        '测试连接线的实时跟随效果',
+        'WebGL渲染性能很不错！',
+        '圆角转折效果很流畅',
+        '批量渲染优化工作正常',
+        '自动检测连接功能很棒',
+        '实时性能监控数据准确'
+      ];
+      const message = messages[Math.floor(Math.random() * messages.length)] + ` (#${messageCounter})`;
+
+      const messageHTML = isOther ? `
+        <div class="flex items-start gap-3 max-w-full">
+          <div class="flex-shrink-0">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center overflow-hidden avatar-element">
+              <span class="text-white text-sm sender-name-shadow">${name[0]}</span>
+            </div>
+          </div>
+          
+          <div class="flex flex-col">
+            <div class="relative">
+              <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                ${name}
+              </span>
+              
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200 bubble-element">
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    ${message}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ` : `
+        <div class="flex items-start gap-3 max-w-full flex-row-reverse ml-auto justify-start">
+          <div class="flex-shrink-0">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center overflow-hidden avatar-element">
+              <span class="text-white text-sm sender-name-shadow">我</span>
+            </div>
+          </div>
+          
+          <div class="flex flex-col items-end">
+            <div class="relative">
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200 bubble-element">
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    ${message}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      const dynamicContainer = document.getElementById('dynamicMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.innerHTML = messageHTML;
+      dynamicContainer.appendChild(messageDiv);
+
+      // Auto-detect new connections after a short delay
+      setTimeout(() => {
+        connectionSystem.autoDetectConnections();
+      }, 100);
+    }
+
+    // Clear all connections
+    function clearAllConnections() {
+      if (connectionSystem) {
+        connectionSystem.connections.forEach((connection, id) => {
+          connectionSystem.removeConnection(id);
+        });
+        console.log('All connections cleared');
+      }
+    }
+
+    // Toggle performance logging
+    function togglePerformanceLogging() {
+      if (connectionSystem) {
+        connectionSystem.options.enablePerformanceLogging = !connectionSystem.options.enablePerformanceLogging;
+        console.log(`Performance logging: ${connectionSystem.options.enablePerformanceLogging ? 'enabled' : 'disabled'}`);
+      }
+    }
+
+    // Scroll functions
+    function scrollToBottom() {
+      const container = document.getElementById('chatContainer');
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+
+    function scrollToTop() {
+      const container = document.getElementById('chatContainer');
+      container.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM loaded, initializing connection system...');
+      initConnectionSystem();
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      if (connectionSystem) {
+        connectionSystem.destroy();
+      }
+      if (performanceUpdateInterval) {
+        clearInterval(performanceUpdateInterval);
+      }
+    });
+
+    // Add some initial dynamic messages
+    setTimeout(() => {
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => addRandomMessage(), i * 200);
+      }
+    }, 2000);
+  </script>
+</body>
+</html>

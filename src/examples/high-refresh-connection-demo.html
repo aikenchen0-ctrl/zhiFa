@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High Refresh Rate Following Connection Lines Demo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="demo-container">
+        <div class="header">
+            <h1>High Refresh Rate Following Connection Lines (120Hz)</h1>
+            <div class="performance-stats">
+                <div class="stat">
+                    <label>FPS:</label>
+                    <span id="fps-counter">0</span>
+                </div>
+                <div class="stat">
+                    <label>Connections:</label>
+                    <span id="connection-counter">0</span>
+                </div>
+                <div class="stat">
+                    <label>Frame Time:</label>
+                    <span id="frame-time">0ms</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="chat-interface">
+            <div class="left-panel">
+                <div class="panel-header">Account Avatars</div>
+                <div id="account-list" class="account-avatar-list"></div>
+            </div>
+
+            <div class="center-panel">
+                <div class="panel-header">Messages</div>
+                <div id="message-list" class="message-bubble-list"></div>
+            </div>
+
+            <div class="right-panel">
+                <div class="panel-header">Session Avatars</div>
+                <div id="session-list" class="session-avatar-list"></div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>Animation:</label>
+                <input type="checkbox" id="animation-toggle" checked>
+                <span>Enable Animation</span>
+            </div>
+            
+            <div class="control-group">
+                <label>Smoothing:</label>
+                <input type="checkbox" id="smoothing-toggle" checked>
+                <span>Enable Smoothing</span>
+            </div>
+            
+            <div class="control-group">
+                <label>Target FPS:</label>
+                <select id="fps-select">
+                    <option value="60">60 FPS</option>
+                    <option value="90">90 FPS</option>
+                    <option value="120" selected>120 FPS</option>
+                </select>
+            </div>
+
+            <div class="control-group">
+                <label>Connection Color:</label>
+                <input type="color" id="color-picker" value="#007AFF">
+            </div>
+
+            <div class="control-group">
+                <button id="add-messages">Add Random Messages</button>
+                <button id="clear-messages">Clear Messages</button>
+                <button id="performance-test">Performance Test</button>
+            </div>
+        </div>
+
+        <div class="debug-panel">
+            <h3>Debug Information</h3>
+            <div id="debug-info"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import AccountAvatarList from '../components/virtual-list/AccountAvatarList.js';
+        import SessionAvatarList from '../components/virtual-list/SessionAvatarList.js';
+        import MessageBubbleList from '../components/virtual-list/MessageBubbleList.js';
+        import FollowingConnectionLine from '../components/connection-line/FollowingConnectionLine.js';
+
+        class HighRefreshConnectionDemo {
+            constructor() {
+                this.accountData = this.generateAccountData(20);
+                this.sessionData = this.generateSessionData(15);
+                this.messageData = this.generateMessageData(100, this.sessionData.length);
+                
+                this.setupVirtualLists();
+                this.setupConnectionLine();
+                this.setupControls();
+                this.setupPerformanceMonitoring();
+                this.loadData();
+            }
+
+            generateAccountData(count) {
+                const accounts = [{
+                    id: 'current-user',
+                    name: 'Me',
+                    avatar: `https://picsum.photos/60/60?random=999`,
+                    isOnline: true
+                }];
+                
+                for (let i = 0; i < count - 1; i++) {
+                    accounts.push({
+                        id: `account-${i}`,
+                        name: `User ${i + 1}`,
+                        avatar: `https://picsum.photos/60/60?random=${i}`,
+                        isOnline: Math.random() > 0.3
+                    });
+                }
+                
+                return accounts;
+            }
+
+            generateSessionData(count) {
+                return Array.from({ length: count }, (_, i) => ({
+                    id: `session-${i}`,
+                    name: `Session ${i + 1}`,
+                    avatar: `https://picsum.photos/50/50?random=${i + 100}`,
+                    lastMessage: `Last message preview ${i + 1}...`,
+                    time: new Date(Date.now() - Math.random() * 86400000).toLocaleTimeString(),
+                    unreadCount: Math.floor(Math.random() * 10)
+                }));
+            }
+
+            generateMessageData(count, sessionCount = 15) {
+                const messages = [];
+                const messageTypes = ['text', 'image'];
+                const textSamples = [
+                    'Hello there!',
+                    'How are you doing today?',
+                    'This is a longer message to test different bubble sizes and connection calculations.',
+                    'Quick reply',
+                    'Let me send you this important information that spans multiple lines and requires careful handling.',
+                    '👍',
+                    'See you later!',
+                    'This message contains some technical details about our implementation.'
+                ];
+
+                for (let i = 0; i < count; i++) {
+                    const isOwnMessage = Math.random() > 0.6;
+                    const senderId = isOwnMessage ? 'current-user' : `session-${Math.floor(Math.random() * sessionCount)}`;
+                    const type = messageTypes[Math.floor(Math.random() * messageTypes.length)];
+                    
+                    const message = {
+                        id: `message-${i}`,
+                        senderId,
+                        type,
+                        time: new Date(Date.now() - Math.random() * 86400000).toLocaleTimeString(),
+                        isOwnMessage
+                    };
+
+                    if (type === 'text') {
+                        message.text = textSamples[Math.floor(Math.random() * textSamples.length)];
+                    } else {
+                        message.imageUrl = `https://picsum.photos/200/150?random=${i + 200}`;
+                    }
+
+                    if (Math.random() > 0.8) {
+                        message.reactions = [
+                            { emoji: '👍', count: Math.floor(Math.random() * 5) + 1 },
+                            { emoji: '❤️', count: Math.floor(Math.random() * 3) + 1 }
+                        ];
+                    }
+
+                    messages.push(message);
+                }
+
+                return messages;
+            }
+
+            setupVirtualLists() {
+                this.accountList = new AccountAvatarList(
+                    document.getElementById('account-list'),
+                    { itemHeight: 80 }
+                );
+
+                this.sessionList = new SessionAvatarList(
+                    document.getElementById('session-list'),
+                    { itemHeight: 72 }
+                );
+
+                this.messageList = new MessageBubbleList(
+                    document.getElementById('message-list'),
+                    { estimatedItemHeight: 60 }
+                );
+            }
+
+            setupConnectionLine() {
+                this.connectionLine = new FollowingConnectionLine(
+                    document.querySelector('.chat-interface'),
+                    {
+                        strokeWidth: 2,
+                        strokeColor: '#007AFF',
+                        cornerRadius: 8,
+                        horizontalOffset: 4,
+                        animationDuration: 150,
+                        enableSmoothing: true,
+                        enableAnimation: true,
+                        opacity: 0.8,
+                        debug: true
+                    }
+                );
+
+                this.connectionLine.connectVirtualLists(
+                    this.accountList,
+                    this.sessionList,
+                    this.messageList
+                );
+            }
+
+            setupControls() {
+                const animationToggle = document.getElementById('animation-toggle');
+                const smoothingToggle = document.getElementById('smoothing-toggle');
+                const fpsSelect = document.getElementById('fps-select');
+                const colorPicker = document.getElementById('color-picker');
+                const addMessagesBtn = document.getElementById('add-messages');
+                const clearMessagesBtn = document.getElementById('clear-messages');
+                const performanceTestBtn = document.getElementById('performance-test');
+
+                animationToggle.addEventListener('change', (e) => {
+                    this.connectionLine.setOptions({ enableAnimation: e.target.checked });
+                });
+
+                smoothingToggle.addEventListener('change', (e) => {
+                    this.connectionLine.setOptions({ enableSmoothing: e.target.checked });
+                });
+
+                fpsSelect.addEventListener('change', (e) => {
+                    const targetFPS = parseInt(e.target.value);
+                    this.connectionLine.animationManager.options.targetFPS = targetFPS;
+                    this.connectionLine.positionManager.options.updateFrequency = targetFPS;
+                });
+
+                colorPicker.addEventListener('change', (e) => {
+                    this.connectionLine.setOptions({ strokeColor: e.target.value });
+                });
+
+                addMessagesBtn.addEventListener('click', () => {
+                    const newMessages = this.generateMessageData(20, this.sessionData.length);
+                    this.messageData = [...this.messageData, ...newMessages];
+                    this.messageList.setData(this.messageData);
+                });
+
+                clearMessagesBtn.addEventListener('click', () => {
+                    this.messageData = [];
+                    this.messageList.setData(this.messageData);
+                });
+
+                performanceTestBtn.addEventListener('click', () => {
+                    this.runPerformanceTest();
+                });
+            }
+
+            setupPerformanceMonitoring() {
+                const fpsCounter = document.getElementById('fps-counter');
+                const connectionCounter = document.getElementById('connection-counter');
+                const frameTimeCounter = document.getElementById('frame-time');
+                const debugInfo = document.getElementById('debug-info');
+
+                setInterval(() => {
+                    const stats = this.connectionLine.getStats();
+                    
+                    fpsCounter.textContent = stats.animation.actualFPS;
+                    connectionCounter.textContent = stats.connections;
+                    frameTimeCounter.textContent = `${stats.animation.averageFrameTime.toFixed(2)}ms`;
+                    
+                    debugInfo.innerHTML = `
+                        <div><strong>Animation Stats:</strong></div>
+                        <div>Target FPS: ${stats.animation.targetFPS}</div>
+                        <div>Actual FPS: ${stats.animation.actualFPS}</div>
+                        <div>Active Tasks: ${stats.animation.activeTasks}</div>
+                        <div>Frame Count: ${stats.animation.frameCount}</div>
+                        <br>
+                        <div><strong>Position Stats:</strong></div>
+                        <div>Accounts: ${stats.position.totalPositions.accounts}</div>
+                        <div>Sessions: ${stats.position.totalPositions.sessions}</div>
+                        <div>Messages: ${stats.position.totalPositions.messages}</div>
+                        <div>Update Frequency: ${stats.position.updateFrequency}Hz</div>
+                        <br>
+                        <div><strong>Connection Stats:</strong></div>
+                        <div>Total Connections: ${stats.connections}</div>
+                        <div>SVG Elements: ${stats.svgElements}</div>
+                        <div>Animating Paths: ${stats.animatingPaths}</div>
+                    `;
+                }, 1000);
+            }
+
+            loadData() {
+                this.accountList.setData(this.accountData);
+                this.sessionList.setData(this.sessionData);
+                this.messageList.setData(this.messageData);
+            }
+
+            runPerformanceTest() {
+                console.log('Starting performance test...');
+                
+                const startTime = performance.now();
+                const testMessages = this.generateMessageData(500, this.sessionData.length);
+                
+                this.messageList.setData(testMessages);
+                
+                setTimeout(() => {
+                    const endTime = performance.now();
+                    const duration = endTime - startTime;
+                    const stats = this.connectionLine.getStats();
+                    
+                    console.log('Performance Test Results:', {
+                        duration: `${duration.toFixed(2)}ms`,
+                        messagesRendered: testMessages.length,
+                        connectionsCreated: stats.connections,
+                        averageFPS: stats.animation.actualFPS,
+                        frameTime: `${stats.animation.averageFrameTime.toFixed(2)}ms`
+                    });
+                    
+                    alert(`Performance test completed in ${duration.toFixed(2)}ms\nMessages: ${testMessages.length}\nConnections: ${stats.connections}\nFPS: ${stats.animation.actualFPS}`);
+                }, 2000);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const demo = new HighRefreshConnectionDemo();
+            window.demo = demo; // 将实例暴露到全局供调试
+            
+            // 添加调试功能
+            setTimeout(() => {
+                console.log('=== setupSVGContainer 调试 ===');
+                
+                const connectionLine = demo.connectionLine;
+                console.log('1. connectionLine 实例:', connectionLine);
+                console.log('2. connectionLine.svg 存在:', !!connectionLine.svg);
+                console.log('3. connectionLine.container 存在:', !!connectionLine.container);
+                
+                if (connectionLine.svg) {
+                    console.log('4. SVG 元素:', connectionLine.svg);
+                    console.log('5. SVG 在 DOM 中:', document.contains(connectionLine.svg));
+                    console.log('6. SVG parentNode:', connectionLine.svg.parentNode);
+                    console.log('7. SVG 样式:', {
+                        position: connectionLine.svg.style.position,
+                        width: connectionLine.svg.style.width,
+                        height: connectionLine.svg.style.height,
+                        zIndex: connectionLine.svg.style.zIndex
+                    });
+                }
+                
+                if (connectionLine.container) {
+                    console.log('8. Container 元素:', connectionLine.container);
+                    console.log('9. Container children 数量:', connectionLine.container.children.length);
+                    
+                    // 列出 container 的所有子元素
+                    Array.from(connectionLine.container.children).forEach((child, index) => {
+                        console.log(`   - Child ${index}:`, child.tagName, child.className || child.getAttribute('class'));
+                    });
+                }
+                
+                // 查找页面中的所有 SVG 元素
+                const allSvgs = document.querySelectorAll('svg');
+                console.log('10. 页面中所有 SVG 元素:', allSvgs.length);
+                allSvgs.forEach((svg, index) => {
+                    console.log(`    - SVG ${index}:`, svg.getAttribute('class') || 'no-class', svg);
+                });
+                
+                // 详细检查 SVG 样式和内容
+                console.log('=== SVG 详细检查 ===');
+                if (connectionLine.svg) {
+                    const svg = connectionLine.svg;
+                    console.log('11. SVG 完整样式:', {
+                        position: svg.style.position,
+                        width: svg.style.width,
+                        height: svg.style.height,
+                        top: svg.style.top,
+                        left: svg.style.left,
+                        zIndex: svg.style.zIndex,
+                        pointerEvents: svg.style.pointerEvents,
+                        overflow: svg.style.overflow
+                    });
+                    
+                    console.log('12. SVG 属性:', {
+                        width: svg.getAttribute('width'),
+                        height: svg.getAttribute('height'),
+                        viewBox: svg.getAttribute('viewBox'),
+                        class: svg.getAttribute('class')
+                    });
+                    
+                    console.log('13. SVG 子元素数量:', svg.children.length);
+                    Array.from(svg.children).forEach((child, index) => {
+                        console.log(`    - SVG Child ${index}:`, child.tagName, child);
+                        if (child.tagName === 'defs') {
+                            console.log(`      检查 defs 内容:`);
+                            console.log(`        defs children 数量: ${child.children.length}`);
+                            Array.from(child.children).forEach((defChild, defIndex) => {
+                                console.log(`        - defs Child ${defIndex}: ${defChild.tagName}, id=${defChild.id}`);
+                                if (defChild.tagName === 'linearGradient') {
+                                    console.log(`          渐变属性:`, {
+                                        id: defChild.id,
+                                        gradientUnits: defChild.getAttribute('gradientUnits'),
+                                        stopCount: defChild.children.length
+                                    });
+                                    Array.from(defChild.children).forEach((stop, stopIndex) => {
+                                        console.log(`            stop ${stopIndex}:`, {
+                                            offset: stop.getAttribute('offset'),
+                                            stopColor: stop.getAttribute('stop-color'),
+                                            stopOpacity: stop.getAttribute('stop-opacity')
+                                        });
+                                    });
+                                }
+                            });
+                        } else if (child.tagName === 'path') {
+                            const pathData = {
+                                d: child.getAttribute('d'),
+                                stroke: child.getAttribute('stroke'),
+                                strokeWidth: child.getAttribute('stroke-width'),
+                                fill: child.getAttribute('fill'),
+                                opacity: child.getAttribute('opacity'),
+                                class: child.getAttribute('class')
+                            };
+                            console.log(`      Path ${index} 详细属性:`);
+                            console.log(`        d: ${pathData.d ? pathData.d.substring(0, 100) + '...' : 'null'}`);
+                            console.log(`        stroke: ${pathData.stroke}`);
+                            console.log(`        stroke-width: ${pathData.strokeWidth}`);
+                            console.log(`        fill: ${pathData.fill}`);
+                            console.log(`        opacity: ${pathData.opacity}`);
+                            console.log(`        class: ${pathData.class}`);
+                        }
+                    });
+                    
+                    // 检查连接数据
+                    console.log('14. 连接线管理器状态:');
+                    console.log('    - connections size:', connectionLine.connections.size);
+                    console.log('    - svgElements size:', connectionLine.svgElements.size);
+                    console.log('    - animatingPaths size:', connectionLine.animatingPaths.size);
+                    
+                    connectionLine.connections.forEach((conn, id) => {
+                        console.log(`    - Connection ${id}:`, {
+                            type: conn.type,
+                            visible: conn.visible,
+                            startPoint: conn.startPoint,
+                            endPoint: conn.endPoint
+                        });
+                    });
+                }
+                
+                // 临时测试：尝试修复渐变问题
+                console.log('=== 临时修复测试 ===');
+                setTimeout(() => {
+                    console.log('开始临时修复测试...');
+                    
+                    // 找到所有 path 元素，临时改为简单颜色
+                    const paths = connectionLine.svg.querySelectorAll('path');
+                    console.log(`找到 ${paths.length} 个 path 元素，临时修改 stroke 为 #007AFF`);
+                    
+                    paths.forEach((path, index) => {
+                        const originalStroke = path.getAttribute('stroke');
+                        console.log(`Path ${index} 原始 stroke: ${originalStroke}`);
+                        
+                        // 临时设置为简单颜色
+                        path.setAttribute('stroke', '#007AFF');
+                        path.setAttribute('stroke-width', '3'); // 稍微加粗便于观察
+                        
+                        console.log(`Path ${index} 新 stroke: ${path.getAttribute('stroke')}`);
+                    });
+                    
+                    console.log('临时修复完成，检查页面是否显示连接线');
+                }, 1000);
+                
+                console.log('=== 调试结束 ===');
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

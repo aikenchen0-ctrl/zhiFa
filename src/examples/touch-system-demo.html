@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>TouchEventSystem Demo - 完整的移动端触摸系统演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        
+        #gameCanvas {
+            display: block;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .control-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+            padding: 2px 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+        
+        .gesture-log {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .log-entry {
+            margin: 1px 0;
+            padding: 1px 3px;
+            border-left: 3px solid #4CAF50;
+            padding-left: 6px;
+        }
+        
+        .log-tap { border-left-color: #2196F3; }
+        .log-longpress { border-left-color: #FF9800; }
+        .log-swipe { border-left-color: #9C27B0; }
+        .log-drag { border-left-color: #F44336; }
+        .log-pinch { border-left-color: #00BCD4; }
+        .log-scroll { border-left-color: #4CAF50; }
+        .log-hover { border-left-color: #FFEB3B; color: #333; background: #FFEB3B; }
+        
+        @media (max-width: 768px) {
+            .control-panel {
+                font-size: 10px;
+                max-height: 120px;
+            }
+            
+            .gesture-log {
+                font-size: 9px;
+                max-height: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="control-panel" id="controlPanel">
+        <div class="info-row">
+            <span>触摸点数:</span>
+            <span id="touchCount">0</span>
+        </div>
+        <div class="info-row">
+            <span>手势状态:</span>
+            <span id="gestureStatus">等待触摸</span>
+        </div>
+        <div class="info-row">
+            <span>滚动位置:</span>
+            <span id="scrollPosition">x: 0, y: 0</span>
+        </div>
+        <div class="info-row">
+            <span>滚动速度:</span>
+            <span id="scrollVelocity">x: 0, y: 0</span>
+        </div>
+        <div class="info-row">
+            <span>点击计数:</span>
+            <span id="tapCount">0</span>
+        </div>
+        <div class="info-row">
+            <span>缩放比例:</span>
+            <span id="scaleValue">1.0</span>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="gesture-log" id="gestureLog">
+        <div>手势日志 (最新事件在顶部):</div>
+    </div>
+
+    <script src="https://pixijs.download/release/pixi.min.js"></script>
+    <script type="module">
+        import { TouchEventSystem } from '../systems/TouchEventSystem.js';
+        
+        class TouchSystemDemo {
+            constructor() {
+                this.app = null;
+                this.touchSystem = null;
+                this.objects = [];
+                this.currentScale = 1;
+                this.totalTaps = 0;
+                
+                this.init();
+            }
+            
+            async init() {
+                await this.createPixiApp();
+                this.createScene();
+                this.setupTouchSystem();
+                this.setupUI();
+                this.startDemo();
+            }
+            
+            async createPixiApp() {
+                this.app = new PIXI.Application({
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    backgroundColor: 0x1e3c72,
+                    antialias: true,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true
+                });
+                
+                const canvas = this.app.view;
+                canvas.id = 'gameCanvas';
+                document.body.appendChild(canvas);
+                
+                // Handle resize
+                window.addEventListener('resize', () => {
+                    this.app.renderer.resize(window.innerWidth, window.innerHeight);
+                });
+            }
+            
+            createScene() {
+                // Create interactive objects
+                this.createInteractiveShapes();
+                this.createScrollableContent();
+                
+                // Add instructions
+                this.createInstructions();
+            }
+            
+            createInteractiveShapes() {
+                const shapes = [
+                    { type: 'circle', color: 0xFF6B6B, x: 150, y: 200 },
+                    { type: 'rect', color: 0x4ECDC4, x: 300, y: 200 },
+                    { type: 'triangle', color: 0x45B7D1, x: 450, y: 200 },
+                    { type: 'star', color: 0xF9CA24, x: 600, y: 200 }
+                ];
+                
+                shapes.forEach((shapeData, index) => {
+                    const shape = this.createShape(shapeData);
+                    shape.userData = { type: shapeData.type, index };
+                    this.app.stage.addChild(shape);
+                    this.objects.push(shape);
+                });
+            }
+            
+            createShape(data) {
+                const graphics = new PIXI.Graphics();
+                graphics.beginFill(data.color);
+                
+                switch (data.type) {
+                    case 'circle':
+                        graphics.drawCircle(0, 0, 40);
+                        break;
+                    case 'rect':
+                        graphics.drawRoundedRect(-40, -40, 80, 80, 10);
+                        break;
+                    case 'triangle':
+                        graphics.moveTo(0, -40);
+                        graphics.lineTo(-35, 35);
+                        graphics.lineTo(35, 35);
+                        graphics.closePath();
+                        break;
+                    case 'star':
+                        const star = this.createStarPath(0, 0, 5, 40, 20);
+                        graphics.drawPolygon(star);
+                        break;
+                }
+                
+                graphics.endFill();
+                graphics.x = data.x;
+                graphics.y = data.y;
+                graphics.eventMode = 'static';
+                graphics.cursor = 'pointer';
+                
+                return graphics;
+            }
+            
+            createStarPath(cx, cy, spikes, outerRadius, innerRadius) {
+                const path = [];
+                const step = Math.PI / spikes;
+                
+                for (let i = 0; i < spikes * 2; i++) {
+                    const angle = i * step;
+                    const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                    const x = cx + Math.cos(angle) * radius;
+                    const y = cy + Math.sin(angle) * radius;
+                    path.push(x, y);
+                }
+                
+                return path;
+            }
+            
+            createScrollableContent() {
+                // Create grid of small objects for scrolling demo
+                for (let i = 0; i < 50; i++) {
+                    const dot = new PIXI.Graphics();
+                    dot.beginFill(0xFFFFFF, 0.3);
+                    dot.drawCircle(0, 0, 5);
+                    dot.endFill();
+                    
+                    dot.x = (i % 10) * 80 + 100;
+                    dot.y = Math.floor(i / 10) * 80 + 400;
+                    
+                    this.app.stage.addChild(dot);
+                }
+            }
+            
+            createInstructions() {
+                const style = new PIXI.TextStyle({
+                    fontFamily: 'Arial',
+                    fontSize: 16,
+                    fill: 0xFFFFFF,
+                    align: 'center'
+                });
+                
+                const instructions = new PIXI.Text(
+                    '触摸操作说明:\n' +
+                    '• 单击: 选择对象\n' +
+                    '• 双击: 多选模式\n' +
+                    '• 长按: 上下文菜单\n' +
+                    '• 拖拽: 移动对象\n' +
+                    '• 滑动: 翻页/显示更多\n' +
+                    '• 双指缩放: 缩放场景\n' +
+                    '• 停留5秒: 显示帮助',
+                    style
+                );
+                
+                instructions.x = 50;
+                instructions.y = 50;
+                this.app.stage.addChild(instructions);
+            }
+            
+            setupTouchSystem() {
+                this.touchSystem = new TouchEventSystem(this.app, {
+                    logLevel: 'info',
+                    scrollBoundaryThreshold: 100
+                });
+                
+                // Override scroll bounds
+                this.touchSystem.getScrollBounds = () => ({
+                    left: -500,
+                    right: 500,
+                    top: -300,
+                    bottom: 300
+                });
+                
+                this.setupTouchEventHandlers();
+            }
+            
+            setupTouchEventHandlers() {
+                // Basic touch events
+                this.touchSystem.on('touchstart', (data) => {
+                    this.updateTouchCount();
+                });
+                
+                this.touchSystem.on('touchend', (data) => {
+                    this.updateTouchCount();
+                });
+                
+                // Gesture events
+                this.touchSystem.on('tap', (data) => {
+                    this.totalTaps++;
+                    this.logGesture('tap', `点击 ${data.target.constructor.name} (第${data.count}次)`);
+                    this.highlightObject(data.target);
+                    this.updateUI();
+                });
+                
+                this.touchSystem.on('longpress', (data) => {
+                    this.logGesture('longpress', `长按 ${data.target.constructor.name}`);
+                    this.showContextMenu(data.position, data.target);
+                });
+                
+                this.touchSystem.on('swipe', (data) => {
+                    this.logGesture('swipe', `${data.direction}滑动 距离:${Math.round(data.distance)} 速度:${Math.round(data.velocity)}`);
+                    this.handleSwipe(data);
+                });
+                
+                this.touchSystem.on('dragstart', (data) => {
+                    this.logGesture('drag', `开始拖拽 ${data.target.constructor.name}`);
+                    this.startObjectDrag(data.target);
+                });
+                
+                this.touchSystem.on('dragmove', (data) => {
+                    this.updateObjectDrag(data);
+                });
+                
+                this.touchSystem.on('dragend', (data) => {
+                    this.logGesture('drag', `结束拖拽`);
+                    this.endObjectDrag();
+                });
+                
+                this.touchSystem.on('pinch', (data) => {
+                    this.currentScale = data.scale;
+                    this.logGesture('pinch', `缩放 ${data.scale.toFixed(2)}x`);
+                    this.updateSceneScale(data.scale, data.center);
+                    this.updateUI();
+                });
+                
+                this.touchSystem.on('scroll', (data) => {
+                    if (Math.abs(data.velocity.x) > 10 || Math.abs(data.velocity.y) > 10) {
+                        this.logGesture('scroll', `滚动 位置:(${Math.round(data.position.x)}, ${Math.round(data.position.y)})`);
+                    }
+                    this.updateScenePosition(data.position);
+                    this.updateUI();
+                });
+                
+                this.touchSystem.on('multiselect', (data) => {
+                    this.logGesture('tap', '进入多选模式');
+                    this.enableMultiSelectMode();
+                });
+                
+                this.touchSystem.on('swipetoreveal', (data) => {
+                    this.logGesture('swipe', `${data.direction}滑动显示更多信息`);
+                    this.showMoreInfo(data.direction);
+                });
+                
+                this.touchSystem.on('hoverdetection', (data) => {
+                    this.logGesture('hover', `检测到5秒停留悬停`);
+                    this.showHelpTooltip(data.position);
+                });
+            }
+            
+            // Event handlers
+            highlightObject(target) {
+                // Reset all objects
+                this.objects.forEach(obj => {
+                    obj.alpha = 1;
+                    obj.scale.set(1);
+                });
+                
+                // Highlight selected object
+                if (target && target.userData) {
+                    target.alpha = 0.8;
+                    target.scale.set(1.2);
+                }
+            }
+            
+            startObjectDrag(target) {
+                if (target.userData) {
+                    target.isDragging = true;
+                    target.alpha = 0.7;
+                }
+            }
+            
+            updateObjectDrag(data) {
+                if (data.target.isDragging) {
+                    data.target.x += data.deltaPosition.x;
+                    data.target.y += data.deltaPosition.y;
+                }
+            }
+            
+            endObjectDrag() {
+                this.objects.forEach(obj => {
+                    obj.isDragging = false;
+                    obj.alpha = 1;
+                });
+            }
+            
+            updateSceneScale(scale, center) {
+                // Apply scale to all objects
+                this.objects.forEach(obj => {
+                    if (!obj.isDragging) {
+                        const originalScale = obj.originalScale || 1;
+                        obj.scale.set(originalScale * scale);
+                        obj.originalScale = originalScale;
+                    }
+                });
+            }
+            
+            updateScenePosition(position) {
+                // Move background elements based on scroll
+                this.objects.forEach((obj, index) => {
+                    if (!obj.isDragging && index < 4) { // Only main shapes
+                        const factor = 0.1;
+                        obj.x = obj.originalX + position.x * factor;
+                        obj.y = obj.originalY + position.y * factor;
+                        
+                        if (!obj.originalX) {
+                            obj.originalX = obj.x - position.x * factor;
+                            obj.originalY = obj.y - position.y * factor;
+                        }
+                    }
+                });
+            }
+            
+            handleSwipe(data) {
+                // Animate objects based on swipe direction
+                const force = Math.min(data.velocity / 10, 50);
+                
+                this.objects.forEach(obj => {
+                    if (!obj.isDragging) {
+                        const direction = data.direction;
+                        let deltaX = 0, deltaY = 0;
+                        
+                        switch (direction) {
+                            case 'left': deltaX = -force; break;
+                            case 'right': deltaX = force; break;
+                            case 'up': deltaY = -force; break;
+                            case 'down': deltaY = force; break;
+                        }
+                        
+                        // Smooth animation
+                        const animationDuration = 500;
+                        const startTime = performance.now();
+                        const startX = obj.x;
+                        const startY = obj.y;
+                        
+                        const animate = (currentTime) => {
+                            const elapsed = currentTime - startTime;
+                            const progress = Math.min(elapsed / animationDuration, 1);
+                            
+                            // Easing function
+                            const eased = 1 - Math.pow(1 - progress, 3);
+                            
+                            obj.x = startX + deltaX * eased;
+                            obj.y = startY + deltaY * eased;
+                            
+                            if (progress < 1) {
+                                requestAnimationFrame(animate);
+                            }
+                        };
+                        
+                        requestAnimationFrame(animate);
+                    }
+                });
+            }
+            
+            showContextMenu(position, target) {
+                // Create temporary context menu
+                const menu = new PIXI.Graphics();
+                menu.beginFill(0x000000, 0.8);
+                menu.drawRoundedRect(0, 0, 120, 80, 5);
+                menu.endFill();
+                
+                const menuText = new PIXI.Text('上下文菜单\n• 编辑\n• 删除\n• 复制', {
+                    fontSize: 12,
+                    fill: 0xFFFFFF
+                });
+                menuText.x = 10;
+                menuText.y = 10;
+                menu.addChild(menuText);
+                
+                menu.x = position.x;
+                menu.y = position.y;
+                
+                this.app.stage.addChild(menu);
+                
+                // Auto remove after 3 seconds
+                setTimeout(() => {
+                    if (menu.parent) {
+                        this.app.stage.removeChild(menu);
+                    }
+                }, 3000);
+            }
+            
+            enableMultiSelectMode() {
+                // Visual feedback for multi-select mode
+                this.objects.forEach(obj => {
+                    obj.tint = 0xFFFF00; // Yellow tint
+                });
+                
+                setTimeout(() => {
+                    this.objects.forEach(obj => {
+                        obj.tint = 0xFFFFFF; // Reset tint
+                    });
+                }, 1000);
+            }
+            
+            showMoreInfo(direction) {
+                const info = new PIXI.Text(`${direction}滑动显示的更多信息`, {
+                    fontSize: 14,
+                    fill: 0x00FF00
+                });
+                info.x = this.app.screen.width / 2 - info.width / 2;
+                info.y = this.app.screen.height / 2;
+                
+                this.app.stage.addChild(info);
+                
+                setTimeout(() => {
+                    if (info.parent) {
+                        this.app.stage.removeChild(info);
+                    }
+                }, 2000);
+            }
+            
+            showHelpTooltip(position) {
+                const tooltip = new PIXI.Graphics();
+                tooltip.beginFill(0xFFEB3B, 0.9);
+                tooltip.drawRoundedRect(0, 0, 200, 60, 5);
+                tooltip.endFill();
+                
+                const helpText = new PIXI.Text('5秒悬停检测!\n这是帮助提示信息', {
+                    fontSize: 12,
+                    fill: 0x333333,
+                    align: 'center'
+                });
+                helpText.x = 10;
+                helpText.y = 10;
+                tooltip.addChild(helpText);
+                
+                tooltip.x = position.x - 100;
+                tooltip.y = position.y - 70;
+                
+                this.app.stage.addChild(tooltip);
+                
+                setTimeout(() => {
+                    if (tooltip.parent) {
+                        this.app.stage.removeChild(tooltip);
+                    }
+                }, 5000);
+            }
+            
+            // UI Updates
+            setupUI() {
+                this.updateUI();
+            }
+            
+            updateTouchCount() {
+                const count = this.touchSystem.getTouchCount();
+                document.getElementById('touchCount').textContent = count;
+                
+                let status = '等待触摸';
+                if (count === 1) status = '单点触摸';
+                else if (count === 2) status = '双点触摸';
+                else if (count > 2) status = `${count}点触摸`;
+                
+                document.getElementById('gestureStatus').textContent = status;
+            }
+            
+            updateUI() {
+                const scrollPos = this.touchSystem.getScrollPosition();
+                document.getElementById('scrollPosition').textContent = 
+                    `x: ${Math.round(scrollPos.x)}, y: ${Math.round(scrollPos.y)}`;
+                
+                const velocity = this.touchSystem.scrollVelocity;
+                document.getElementById('scrollVelocity').textContent = 
+                    `x: ${Math.round(velocity.x)}, y: ${Math.round(velocity.y)}`;
+                
+                document.getElementById('tapCount').textContent = this.totalTaps;
+                document.getElementById('scaleValue').textContent = this.currentScale.toFixed(2);
+            }
+            
+            logGesture(type, message) {
+                const logDiv = document.getElementById('gestureLog');
+                const entry = document.createElement('div');
+                entry.className = `log-entry log-${type}`;
+                
+                const timestamp = new Date().toLocaleTimeString();
+                entry.textContent = `[${timestamp}] ${message}`;
+                
+                // Insert at top
+                logDiv.insertBefore(entry, logDiv.children[1]);
+                
+                // Keep only last 20 entries
+                while (logDiv.children.length > 21) {
+                    logDiv.removeChild(logDiv.lastChild);
+                }
+                
+                // Auto scroll to top
+                logDiv.scrollTop = 0;
+            }
+            
+            startDemo() {
+                // Add welcome message
+                this.logGesture('info', '触摸系统演示已启动 - 开始体验各种手势!');
+                
+                // Periodic status updates
+                setInterval(() => {
+                    this.updateUI();
+                }, 100);
+            }
+        }
+        
+        // Start the demo
+        window.addEventListener('load', () => {
+            new TouchSystemDemo();
+        });
+        
+        // Prevent default touch behaviors
+        document.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+        document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        document.addEventListener('touchend', (e) => e.preventDefault(), { passive: false });
+    </script>
+</body>
+</html>

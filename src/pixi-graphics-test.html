@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PixiJS Graphics API 极简测试</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: Arial, sans-serif;
+            background: #222;
+            color: #00ff00;
+            padding: 20px;
+        }
+        
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .controls {
+            width: 300px;
+            background: #333;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        
+        .controls button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 8px;
+            background: #555;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .controls button:hover {
+            background: #666;
+        }
+        
+        .status {
+            margin-top: 15px;
+            padding: 10px;
+            background: #111;
+            border-radius: 4px;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .canvas-area {
+            flex: 1;
+        }
+        
+        #pixiCanvas {
+            border: 2px solid #00ff00;
+            background: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <h3>🔬 Graphics API 测试</h3>
+            <button onclick="initPixi()">1. 初始化PixiJS</button>
+            <button onclick="testBasicShapes()">2. 基础形状测试</button>
+            <button onclick="testLineDrawing()">3. 线条绘制测试</button>
+            <button onclick="testComplexLines()">4. 复杂线条测试</button>
+            <button onclick="testPositions()">5. 位置测试</button>
+            <button onclick="clearAll()">清除所有</button>
+            <button onclick="logCanvasInfo()">Canvas信息</button>
+            
+            <div class="status" id="statusLog">
+                等待开始测试...
+            </div>
+        </div>
+        
+        <div class="canvas-area">
+            <h3>Canvas区域 (应该显示绘制内容)</h3>
+            <div id="canvasContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        let app = null;
+        let container = null;
+        let testCounter = 0;
+        
+        function log(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const statusLog = document.getElementById('statusLog');
+            statusLog.innerHTML += `[${timestamp}] ${message}<br>`;
+            statusLog.scrollTop = statusLog.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearLog() {
+            document.getElementById('statusLog').innerHTML = '';
+        }
+        
+        // 1. 初始化PixiJS
+        async function initPixi() {
+            log('🚀 开始初始化PixiJS...');
+            
+            try {
+                if (app) {
+                    app.destroy();
+                }
+                
+                app = new PIXI.Application();
+                await app.init({
+                    width: 600,
+                    height: 400,
+                    backgroundColor: 0x000000,
+                    antialias: true
+                });
+                
+                const canvasContainer = document.getElementById('canvasContainer');
+                canvasContainer.innerHTML = '';
+                canvasContainer.appendChild(app.canvas);
+                app.canvas.id = 'pixiCanvas';
+                
+                container = new PIXI.Container();
+                app.stage.addChild(container);
+                
+                log(`✅ PixiJS初始化成功 - Canvas: ${app.canvas.width}x${app.canvas.height}`);
+                log(`✅ PIXI版本: ${PIXI.VERSION}`);
+                log(`✅ 主容器已创建并添加到stage`);
+                
+            } catch (error) {
+                log(`❌ PixiJS初始化失败: ${error.message}`);
+            }
+        }
+        
+        // 2. 基础形状测试
+        function testBasicShapes() {
+            if (!app || !container) {
+                log('❌ 请先初始化PixiJS');
+                return;
+            }
+            
+            log('🔷 开始基础形状测试...');
+            
+            try {
+                // 测试1: 红色矩形
+                const rect = new PIXI.Graphics();
+                rect.rect(50, 50, 100, 60);
+                rect.fill(0xFF0000);
+                container.addChild(rect);
+                log('✅ 红色矩形绘制完成 (50,50,100x60)');
+                
+                // 测试2: 绿色圆形
+                const circle = new PIXI.Graphics();
+                circle.circle(250, 80, 30);
+                circle.fill(0x00FF00);
+                container.addChild(circle);
+                log('✅ 绿色圆形绘制完成 (250,80,r=30)');
+                
+                // 测试3: 蓝色三角形
+                const triangle = new PIXI.Graphics();
+                triangle.poly([400, 50, 450, 120, 350, 120]);
+                triangle.fill(0x0000FF);
+                container.addChild(triangle);
+                log('✅ 蓝色三角形绘制完成');
+                
+                log(`📊 容器子元素数量: ${container.children.length}`);
+                
+            } catch (error) {
+                log(`❌ 基础形状测试失败: ${error.message}`);
+            }
+        }
+        
+        // 3. 线条绘制测试 - 关键测试
+        function testLineDrawing() {
+            if (!app || !container) {
+                log('❌ 请先初始化PixiJS');
+                return;
+            }
+            
+            log('📏 开始线条绘制测试...');
+            
+            try {
+                // 测试方法1: 传统API
+                const line1 = new PIXI.Graphics();
+                try {
+                    line1.lineStyle(4, 0xFF0000, 1);
+                    line1.moveTo(50, 200);
+                    line1.lineTo(200, 200);
+                    container.addChild(line1);
+                    log('✅ 方法1: 传统lineStyle API - 红线 (50,200) -> (200,200)');
+                } catch (e) {
+                    log(`❌ 方法1失败: ${e.message}`);
+                }
+                
+                // 测试方法2: 新版API对象参数
+                const line2 = new PIXI.Graphics();
+                try {
+                    line2.lineStyle({
+                        width: 4,
+                        color: 0x00FF00,
+                        alpha: 1
+                    });
+                    line2.moveTo(50, 230);
+                    line2.lineTo(200, 230);
+                    container.addChild(line2);
+                    log('✅ 方法2: 新版lineStyle对象API - 绿线 (50,230) -> (200,230)');
+                } catch (e) {
+                    log(`❌ 方法2失败: ${e.message}`);
+                }
+                
+                // 测试方法3: stroke API（如果存在）
+                const line3 = new PIXI.Graphics();
+                try {
+                    line3.moveTo(50, 260);
+                    line3.lineTo(200, 260);
+                    line3.stroke({
+                        width: 4,
+                        color: 0x0000FF,
+                        alpha: 1
+                    });
+                    container.addChild(line3);
+                    log('✅ 方法3: stroke API - 蓝线 (50,260) -> (200,260)');
+                } catch (e) {
+                    log(`❌ 方法3失败: ${e.message}`);
+                }
+                
+                // 测试方法4: 最简单的线
+                const line4 = new PIXI.Graphics();
+                try {
+                    line4.lineStyle(4, 0xFFFF00);
+                    line4.moveTo(50, 290);
+                    line4.lineTo(200, 290);
+                    container.addChild(line4);
+                    log('✅ 方法4: 简化lineStyle - 黄线 (50,290) -> (200,290)');
+                } catch (e) {
+                    log(`❌ 方法4失败: ${e.message}`);
+                }
+                
+            } catch (error) {
+                log(`❌ 线条绘制测试失败: ${error.message}`);
+            }
+        }
+        
+        // 4. 复杂线条测试
+        function testComplexLines() {
+            if (!app || !container) {
+                log('❌ 请先初始化PixiJS');
+                return;
+            }
+            
+            log('🔗 开始复杂线条测试...');
+            
+            try {
+                // L型线条
+                const lLine = new PIXI.Graphics();
+                lLine.lineStyle(3, 0xFF9500, 1);
+                lLine.moveTo(300, 200);
+                lLine.lineTo(350, 200);
+                lLine.lineTo(350, 280);
+                lLine.lineTo(400, 280);
+                container.addChild(lLine);
+                log('✅ L型线条绘制完成');
+                
+                // 带圆角的L型线条
+                const roundLLine = new PIXI.Graphics();
+                roundLLine.lineStyle(3, 0xFF1493, 1);
+                roundLLine.moveTo(450, 200);
+                roundLLine.lineTo(490, 200);
+                roundLLine.arcTo(500, 200, 500, 210, 10);
+                roundLLine.lineTo(500, 270);
+                roundLLine.arcTo(500, 280, 510, 280, 10);
+                roundLLine.lineTo(550, 280);
+                container.addChild(roundLLine);
+                log('✅ 圆角L型线条绘制完成');
+                
+            } catch (error) {
+                log(`❌ 复杂线条测试失败: ${error.message}`);
+            }
+        }
+        
+        // 5. 位置和可见性测试
+        function testPositions() {
+            if (!app || !container) {
+                log('❌ 请先初始化PixiJS');
+                return;
+            }
+            
+            log('📍 开始位置测试...');
+            
+            try {
+                // 创建一个带边框的测试区域
+                const testArea = new PIXI.Graphics();
+                testArea.lineStyle(2, 0xFFFFFF, 0.5);
+                testArea.rect(10, 10, app.canvas.width - 20, app.canvas.height - 20);
+                testArea.stroke();
+                container.addChild(testArea);
+                log('✅ 测试区域边框绘制完成');
+                
+                // 四个角落的点
+                const corners = [
+                    {x: 20, y: 20, color: 0xFF0000},
+                    {x: app.canvas.width - 20, y: 20, color: 0x00FF00},
+                    {x: 20, y: app.canvas.height - 20, color: 0x0000FF},
+                    {x: app.canvas.width - 20, y: app.canvas.height - 20, color: 0xFFFF00}
+                ];
+                
+                corners.forEach((corner, i) => {
+                    const point = new PIXI.Graphics();
+                    point.circle(corner.x, corner.y, 8);
+                    point.fill(corner.color);
+                    container.addChild(point);
+                    log(`✅ 角落点${i+1}绘制完成 (${corner.x}, ${corner.y})`);
+                });
+                
+            } catch (error) {
+                log(`❌ 位置测试失败: ${error.message}`);
+            }
+        }
+        
+        // 清除所有绘制内容
+        function clearAll() {
+            if (container) {
+                container.removeChildren();
+                log('🧹 已清除所有绘制内容');
+                log(`📊 容器子元素数量: ${container.children.length}`);
+            }
+        }
+        
+        // 打印Canvas详细信息
+        function logCanvasInfo() {
+            if (!app) {
+                log('❌ PixiJS未初始化');
+                return;
+            }
+            
+            log('📊 Canvas详细信息:');
+            log(`  Canvas尺寸: ${app.canvas.width}x${app.canvas.height}`);
+            log(`  Canvas样式尺寸: ${app.canvas.style.width}x${app.canvas.style.height}`);
+            log(`  Canvas可见性: ${app.canvas.style.display !== 'none' ? '可见' : '隐藏'}`);
+            log(`  Stage子元素: ${app.stage.children.length}`);
+            log(`  主容器子元素: ${container ? container.children.length : 0}`);
+            log(`  Renderer类型: ${app.renderer.type}`);
+            log(`  设备像素比: ${window.devicePixelRatio}`);
+        }
+        
+        // 页面加载完成
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🎯 Graphics API测试系统已加载');
+            log('👆 请按顺序点击测试按钮');
+        });
+    </script>
+</body>
+</html>

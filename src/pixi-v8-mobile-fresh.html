@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PixiJS v8 移动端连接线系统 - 全新实现</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #000;
+            color: #00ff00;
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        .debug-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.95);
+            border: 1px solid #00ff00;
+            border-radius: 8px;
+            padding: 12px;
+            min-width: 320px;
+            max-height: 40vh;
+            overflow-y: auto;
+            font-size: 11px;
+            line-height: 1.3;
+        }
+        
+        .debug-title {
+            color: #00ff00;
+            font-weight: bold;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #333;
+            padding-bottom: 4px;
+        }
+        
+        .status-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .status-item {
+            color: #fff;
+            padding: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 3px;
+        }
+        
+        .log-container {
+            max-height: 150px;
+            overflow-y: auto;
+            border-top: 1px solid #333;
+            padding-top: 8px;
+        }
+        
+        .log-entry {
+            margin: 2px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+        }
+        
+        .log-success { color: #00ff00; }
+        .log-error { color: #ff4444; }
+        .log-warning { color: #ffaa00; }
+        .log-info { color: #00aaff; }
+        
+        #pixiContainer {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        
+        .test-controls {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+        
+        .test-btn {
+            display: block;
+            margin: 4px 0;
+            padding: 8px 12px;
+            background: #333;
+            color: #00ff00;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            min-width: 120px;
+        }
+        
+        .test-btn:hover {
+            background: #444;
+            border-color: #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div id="pixiContainer"></div>
+    
+    <div class="debug-panel">
+        <div class="debug-title">🚀 PixiJS v8 系统状态</div>
+        <div class="status-info">
+            <div class="status-item">版本: <span id="pixiVersion">-</span></div>
+            <div class="status-item">FPS: <span id="fpsDisplay">-</span></div>
+            <div class="status-item">内存: <span id="memoryDisplay">-</span></div>
+            <div class="status-item">元素: <span id="elementDisplay">-</span></div>
+            <div class="status-item">连接线: <span id="connectionDisplay">-</span></div>
+            <div class="status-item">状态: <span id="systemStatus">初始化中</span></div>
+        </div>
+        <div class="log-container" id="logContainer">
+            <div class="log-entry log-info">系统启动中...</div>
+        </div>
+    </div>
+    
+    <div class="test-controls">
+        <button class="test-btn" onclick="addTestData(100)">添加100元素</button>
+        <button class="test-btn" onclick="addTestData(500)">添加500元素</button>
+        <button class="test-btn" onclick="addTestData(1000)">测试1000元素</button>
+        <button class="test-btn" onclick="clearAll()">清除全部</button>
+        <button class="test-btn" onclick="toggleConnections()">切换连接线</button>
+    </div>
+
+    <script>
+        // ============ 系统全局状态 ============
+        const SystemState = {
+            app: null,
+            initialized: false,
+            zones: {
+                conversation: { container: null, mask: null, elements: [], scrollY: 0 },
+                message: { container: null, mask: null, elements: [], scrollY: 0 },
+                account: { container: null, mask: null, elements: [], scrollY: 0 }
+            },
+            connections: [],
+            performance: {
+                fps: 0,
+                memory: 0,
+                elementCount: 0,
+                lastFrameTime: 0,
+                frameCount: 0
+            },
+            settings: {
+                showConnections: true,
+                maxElements: 2000,
+                connectionUpdateThrottle: 16, // 60fps
+                touchSensitivity: 1.0
+            }
+        };
+
+        // ============ 日志系统 ============
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${timestamp}] ${message}`;
+            
+            container.insertBefore(entry, container.firstChild);
+            
+            // 保持最多50条日志
+            while (container.children.length > 50) {
+                container.removeChild(container.lastChild);
+            }
+            
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // ============ 性能监控系统 ============
+        class PerformanceMonitor {
+            constructor() {
+                this.lastTime = performance.now();
+                this.frameCount = 0;
+                this.fpsHistory = [];
+                this.updateInterval = 60; // 每60帧更新一次显示
+                
+                this.startMonitoring();
+            }
+            
+            startMonitoring() {
+                const monitor = () => {
+                    const now = performance.now();
+                    const deltaTime = now - this.lastTime;
+                    
+                    SystemState.performance.lastFrameTime = deltaTime;
+                    this.lastTime = now;
+                    this.frameCount++;
+                    
+                    if (this.frameCount % this.updateInterval === 0) {
+                        // 计算FPS
+                        const fps = Math.round(1000 / deltaTime);
+                        this.fpsHistory.push(fps);
+                        if (this.fpsHistory.length > 10) this.fpsHistory.shift();
+                        
+                        SystemState.performance.fps = Math.round(
+                            this.fpsHistory.reduce((a, b) => a + b, 0) / this.fpsHistory.length
+                        );
+                        
+                        // 获取内存信息
+                        SystemState.performance.memory = performance.memory ? 
+                            Math.round(performance.memory.usedJSHeapSize / 1024 / 1024) : 'N/A';
+                        
+                        // 统计元素数量
+                        SystemState.performance.elementCount = 
+                            SystemState.zones.conversation.elements.length +
+                            SystemState.zones.message.elements.length +
+                            SystemState.zones.account.elements.length;
+                        
+                        this.updateDisplay();
+                    }
+                    
+                    requestAnimationFrame(monitor);
+                };
+                monitor();
+            }
+            
+            updateDisplay() {
+                const { fps, memory, elementCount } = SystemState.performance;
+                
+                document.getElementById('fpsDisplay').textContent = fps;
+                document.getElementById('memoryDisplay').textContent = `${memory} MB`;
+                document.getElementById('elementDisplay').textContent = elementCount;
+                document.getElementById('connectionDisplay').textContent = SystemState.connections.length;
+                
+                // FPS颜色指示
+                const fpsElement = document.getElementById('fpsDisplay');
+                if (fps >= 50) fpsElement.style.color = '#00ff00';
+                else if (fps >= 30) fpsElement.style.color = '#ffaa00';
+                else fpsElement.style.color = '#ff4444';
+            }
+        }
+
+        // ============ PixiJS v8 应用初始化 ============
+        async function initializePixiApp() {
+            try {
+                log('开始初始化PixiJS v8应用...', 'info');
+                
+                // 创建应用实例（v8新语法）
+                SystemState.app = new PIXI.Application();
+                
+                // v8异步初始化语法
+                await SystemState.app.init({
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    backgroundColor: 0x000000,
+                    antialias: true,
+                    resolution: window.devicePixelRatio || 1,
+                    autoDensity: true
+                });
+                
+                // 将canvas添加到DOM
+                const container = document.getElementById('pixiContainer');
+                container.appendChild(SystemState.app.canvas);
+                
+                // 显示版本信息
+                document.getElementById('pixiVersion').textContent = PIXI.VERSION;
+                log(`PixiJS v${PIXI.VERSION} 初始化成功！`, 'success');
+                log(`Canvas尺寸: ${SystemState.app.canvas.width}x${SystemState.app.canvas.height}`, 'info');
+                log(`设备像素比: ${window.devicePixelRatio || 1}`, 'info');
+                
+                return true;
+                
+            } catch (error) {
+                log(`PixiJS初始化失败: ${error.message}`, 'error');
+                console.error('PixiJS初始化错误:', error);
+                return false;
+            }
+        }
+
+        // ============ 三区域布局系统 ============
+        function createThreeZoneLayout() {
+            log('创建三区域布局...', 'info');
+            
+            const screenWidth = SystemState.app.canvas.width;
+            const screenHeight = SystemState.app.canvas.height;
+            
+            // 区域尺寸配置
+            const zones = {
+                conversation: { x: 0, width: screenWidth * 0.15 },
+                message: { x: screenWidth * 0.15, width: screenWidth * 0.7 },
+                account: { x: screenWidth * 0.85, width: screenWidth * 0.15 }
+            };
+            
+            // 创建每个区域
+            Object.keys(zones).forEach(zoneKey => {
+                const zoneConfig = zones[zoneKey];
+                const zoneState = SystemState.zones[zoneKey];
+                
+                // 创建容器
+                zoneState.container = new PIXI.Container();
+                SystemState.app.stage.addChild(zoneState.container);
+                
+                // 创建遮罩（v8语法）
+                zoneState.mask = new PIXI.Graphics()
+                    .rect(zoneConfig.x, 0, zoneConfig.width, screenHeight)
+                    .fill(0xffffff);
+                
+                SystemState.app.stage.addChild(zoneState.mask);
+                zoneState.container.mask = zoneState.mask;
+                
+                // 添加区域边框（调试用）
+                const border = new PIXI.Graphics()
+                    .rect(zoneConfig.x, 0, zoneConfig.width, screenHeight)
+                    .stroke({ width: 1, color: 0x333333, alpha: 0.5 });
+                
+                SystemState.app.stage.addChild(border);
+                
+                log(`${zoneKey}区域创建: x=${zoneConfig.x}, width=${zoneConfig.width}`, 'info');
+            });
+            
+            log('三区域布局创建完成', 'success');
+        }
+
+        // ============ 移动端触摸处理系统 ============
+        class MobileTouchHandler {
+            constructor(zone, zoneKey) {
+                this.zone = zone;
+                this.zoneKey = zoneKey;
+                this.zoneState = SystemState.zones[zoneKey];
+                
+                this.isScrolling = false;
+                this.lastTouchY = 0;
+                this.velocity = 0;
+                this.lastTouchTime = 0;
+                
+                // 惯性滚动参数
+                this.friction = 0.95;
+                this.minVelocity = 0.5;
+                
+                this.setupTouchEvents();
+                this.startInertialScroll();
+            }
+            
+            setupTouchEvents() {
+                this.zone.interactive = true;
+                this.zone.eventMode = 'static';
+                
+                this.zone.on('pointerdown', this.onTouchStart.bind(this));
+                this.zone.on('pointermove', this.onTouchMove.bind(this));
+                this.zone.on('pointerup', this.onTouchEnd.bind(this));
+                this.zone.on('pointercancel', this.onTouchEnd.bind(this));
+            }
+            
+            onTouchStart(event) {
+                this.isScrolling = true;
+                this.lastTouchY = event.data.global.y;
+                this.lastTouchTime = performance.now();
+                this.velocity = 0;
+            }
+            
+            onTouchMove(event) {
+                if (!this.isScrolling) return;
+                
+                const currentY = event.data.global.y;
+                const currentTime = performance.now();
+                const deltaY = currentY - this.lastTouchY;
+                const deltaTime = currentTime - this.lastTouchTime;
+                
+                // 更新滚动位置
+                this.zoneState.scrollY += deltaY * SystemState.settings.touchSensitivity;
+                this.applyScrollBounds();
+                this.updateZoneScroll();
+                
+                // 计算速度（用于惯性滚动）
+                if (deltaTime > 0) {
+                    this.velocity = deltaY / deltaTime * 16; // 转换为每帧速度
+                }
+                
+                this.lastTouchY = currentY;
+                this.lastTouchTime = currentTime;
+                
+                // 触发连接线更新
+                this.updateConnections();
+            }
+            
+            onTouchEnd() {
+                this.isScrolling = false;
+            }
+            
+            applyScrollBounds() {
+                const maxScroll = Math.max(0, this.zoneState.elements.length * 80 - SystemState.app.canvas.height);
+                this.zoneState.scrollY = Math.max(-100, Math.min(this.zoneState.scrollY, maxScroll + 100));
+            }
+            
+            updateZoneScroll() {
+                if (this.zone) {
+                    this.zone.y = -this.zoneState.scrollY;
+                }
+            }
+            
+            startInertialScroll() {
+                const inertialUpdate = () => {
+                    if (!this.isScrolling && Math.abs(this.velocity) > this.minVelocity) {
+                        this.zoneState.scrollY += this.velocity;
+                        this.applyScrollBounds();
+                        this.updateZoneScroll();
+                        this.updateConnections();
+                        
+                        this.velocity *= this.friction;
+                    }
+                    
+                    requestAnimationFrame(inertialUpdate);
+                };
+                inertialUpdate();
+            }
+            
+            updateConnections() {
+                // 节流更新连接线
+                if (!this.lastConnectionUpdate || 
+                    performance.now() - this.lastConnectionUpdate > SystemState.settings.connectionUpdateThrottle) {
+                    updateAllConnections();
+                    this.lastConnectionUpdate = performance.now();
+                }
+            }
+        }
+
+        // ============ 元素创建系统 ============
+        function createElement(type, index) {
+            const colors = {
+                conversation: [0x007AFF, 0x34C759, 0xFF9500],
+                message: [0xFF6B35, 0xFF3B30, 0x5856D6],
+                account: [0x32D74B, 0x5AC8FA, 0xAF52DE]
+            };
+            
+            // v8 Graphics新语法
+            const element = new PIXI.Graphics()
+                .roundRect(-20, -20, 40, 40, 8)
+                .fill(colors[type][index % colors[type].length]);
+            
+            // 设置位置
+            const zoneWidth = type === 'message' ? 
+                SystemState.app.canvas.width * 0.7 : 
+                SystemState.app.canvas.width * 0.15;
+            
+            element.x = Math.random() * (zoneWidth - 40) + 20;
+            element.y = index * 80 + 50;
+            
+            // 添加标识
+            element.elementType = type;
+            element.elementIndex = index;
+            
+            return element;
+        }
+
+        // ============ 连接线系统 ============
+        function createConnection(fromElement, toElement) {
+            if (!fromElement || !toElement) return null;
+            
+            const connection = new PIXI.Graphics();
+            connection.fromElement = fromElement;
+            connection.toElement = toElement;
+            
+            updateConnectionLine(connection);
+            
+            return connection;
+        }
+        
+        function updateConnectionLine(connection) {
+            const { fromElement, toElement } = connection;
+            if (!fromElement || !toElement) return;
+            
+            // 获取全局坐标
+            const fromPos = fromElement.getGlobalPosition();
+            const toPos = toElement.getGlobalPosition();
+            
+            // 清除之前的绘制
+            connection.clear();
+            
+            // L型连接线路径计算
+            const startX = fromPos.x + 20; // 从右边缘出发
+            const startY = fromPos.y;
+            const endX = toPos.x - 20;     // 到左边缘
+            const endY = toPos.y;
+            
+            const midX = startX + (endX - startX) * 0.5;
+            const cornerRadius = 8;
+            
+            // v8新语法绘制L型圆角连接线
+            connection
+                .moveTo(startX, startY)
+                .lineTo(midX - cornerRadius, startY)
+                .quadraticCurveTo(midX, startY, midX, startY + (endY > startY ? cornerRadius : -cornerRadius))
+                .lineTo(midX, endY - (endY > startY ? cornerRadius : -cornerRadius))
+                .quadraticCurveTo(midX, endY, midX + cornerRadius, endY)
+                .lineTo(endX, endY)
+                .stroke({ 
+                    width: 2, 
+                    color: 0x00ff00, 
+                    alpha: 0.8,
+                    cap: 'round',
+                    join: 'round'
+                });
+        }
+        
+        function updateAllConnections() {
+            if (!SystemState.settings.showConnections) return;
+            
+            SystemState.connections.forEach(connection => {
+                updateConnectionLine(connection);
+            });
+        }
+
+        // ============ 测试数据添加 ============
+        function addTestData(count) {
+            log(`添加${count}个测试元素...`, 'info');
+            
+            const startTime = performance.now();
+            let elementsAdded = 0;
+            let connectionsAdded = 0;
+            
+            for (let i = 0; i < count; i++) {
+                // 创建对话头像
+                const convElement = createElement('conversation', SystemState.zones.conversation.elements.length);
+                SystemState.zones.conversation.container.addChild(convElement);
+                SystemState.zones.conversation.elements.push(convElement);
+                elementsAdded++;
+                
+                // 创建消息气泡
+                const msgElement = createElement('message', SystemState.zones.message.elements.length);
+                SystemState.zones.message.container.addChild(msgElement);
+                SystemState.zones.message.elements.push(msgElement);
+                elementsAdded++;
+                
+                // 创建账户头像
+                const accElement = createElement('account', SystemState.zones.account.elements.length);
+                SystemState.zones.account.container.addChild(accElement);
+                SystemState.zones.account.elements.push(accElement);
+                elementsAdded++;
+                
+                // 创建连接线
+                if (SystemState.settings.showConnections) {
+                    const connection1 = createConnection(convElement, msgElement);
+                    const connection2 = createConnection(msgElement, accElement);
+                    
+                    if (connection1) {
+                        SystemState.app.stage.addChild(connection1);
+                        SystemState.connections.push(connection1);
+                        connectionsAdded++;
+                    }
+                    
+                    if (connection2) {
+                        SystemState.app.stage.addChild(connection2);
+                        SystemState.connections.push(connection2);
+                        connectionsAdded++;
+                    }
+                }
+            }
+            
+            const endTime = performance.now();
+            log(`添加完成: ${elementsAdded}元素, ${connectionsAdded}连接线, 耗时${(endTime-startTime).toFixed(1)}ms`, 'success');
+            
+            // 更新所有连接线
+            setTimeout(() => updateAllConnections(), 100);
+        }
+
+        // ============ 系统控制函数 ============
+        function clearAll() {
+            log('清除所有元素...', 'info');
+            
+            // 清除所有元素
+            Object.keys(SystemState.zones).forEach(zoneKey => {
+                const zone = SystemState.zones[zoneKey];
+                zone.container.removeChildren();
+                zone.elements = [];
+                zone.scrollY = 0;
+            });
+            
+            // 清除连接线
+            SystemState.connections.forEach(connection => {
+                SystemState.app.stage.removeChild(connection);
+            });
+            SystemState.connections = [];
+            
+            log('清除完成', 'success');
+        }
+        
+        function toggleConnections() {
+            SystemState.settings.showConnections = !SystemState.settings.showConnections;
+            
+            if (SystemState.settings.showConnections) {
+                log('显示连接线', 'info');
+                SystemState.connections.forEach(connection => {
+                    connection.visible = true;
+                });
+            } else {
+                log('隐藏连接线', 'info');
+                SystemState.connections.forEach(connection => {
+                    connection.visible = false;
+                });
+            }
+        }
+
+        // ============ 系统初始化 ============
+        async function initializeSystem() {
+            try {
+                log('开始初始化系统...', 'info');
+                document.getElementById('systemStatus').textContent = '初始化中...';
+                
+                // 初始化PixiJS
+                const pixiInitialized = await initializePixiApp();
+                if (!pixiInitialized) {
+                    throw new Error('PixiJS初始化失败');
+                }
+                
+                // 创建布局
+                createThreeZoneLayout();
+                
+                // 设置触摸处理
+                Object.keys(SystemState.zones).forEach(zoneKey => {
+                    const zone = SystemState.zones[zoneKey];
+                    new MobileTouchHandler(zone.container, zoneKey);
+                });
+                
+                // 启动性能监控
+                new PerformanceMonitor();
+                
+                // 添加初始测试数据
+                addTestData(50);
+                
+                SystemState.initialized = true;
+                document.getElementById('systemStatus').textContent = '运行正常';
+                log('🚀 系统初始化完成！', 'success');
+                
+            } catch (error) {
+                log(`系统初始化失败: ${error.message}`, 'error');
+                document.getElementById('systemStatus').textContent = '初始化失败';
+                console.error('系统初始化错误:', error);
+            }
+        }
+
+        // ============ 启动系统 ============
+        window.addEventListener('DOMContentLoaded', () => {
+            log('页面加载完成，启动PixiJS v8移动端系统...', 'info');
+            initializeSystem();
+        });
+        
+        // 防止移动端页面滚动
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+        
+        // 窗口大小调整
+        window.addEventListener('resize', () => {
+            if (SystemState.app && SystemState.initialized) {
+                SystemState.app.renderer.resize(window.innerWidth, window.innerHeight);
+                log('窗口大小已调整', 'info');
+            }
+        });
+
+        // 全局错误处理
+        window.addEventListener('error', (event) => {
+            log(`全局错误: ${event.error?.message || event.message}`, 'error');
+        });
+        
+    </script>
+</body>
+</html>

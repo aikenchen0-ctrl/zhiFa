@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>弹出层系统 - 简单示例</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <script src="components/PopupLayerSystem.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            max-width: 300px;
+            z-index: 1000;
+        }
+        
+        .code-example {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        
+        h2 {
+            color: #00ff88;
+            margin: 0 0 10px 0;
+        }
+        
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    
+    <div class="info-panel">
+        <h2>🎨 弹出层系统</h2>
+        <p>点击任意图标查看多层级弹出效果</p>
+        
+        <div class="code-example">
+// 基本使用方法<br>
+const system = new PopupLayerSystem(app);<br>
+<br>
+const config = {<br>
+&nbsp;&nbsp;main: { text: '主功能', size: 'large' },<br>
+&nbsp;&nbsp;subBubbles: [<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{ text: '子功能', size: 'medium' }<br>
+&nbsp;&nbsp;],<br>
+&nbsp;&nbsp;sideBubbles: [<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{ text: '副功能', size: 'small' }<br>
+&nbsp;&nbsp;]<br>
+};<br>
+<br>
+system.registerTrigger(element, config);
+        </div>
+        
+        <p><strong>特性：</strong></p>
+        <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+            <li>多层级气泡系统</li>
+            <li>智能布局算法</li>
+            <li>连接线自动绘制</li>
+            <li>移动端适配</li>
+            <li>流畅动画效果</li>
+        </ul>
+    </div>
+
+    <script>
+        // ============ 应用初始化 ============
+        async function initApp() {
+            // 创建PixiJS应用
+            const app = new PIXI.Application();
+            await app.init({
+                width: window.innerWidth,
+                height: window.innerHeight,
+                backgroundColor: 0x1a237e,
+                antialias: true
+            });
+            
+            document.getElementById('app').appendChild(app.canvas);
+            
+            // 创建弹出层系统
+            const popupSystem = new PopupLayerSystem(app, {
+                enableDebugLogs: false,
+                bubbleAnimationDuration: 250,
+                connectionLineColor: 0x00AAFF
+            });
+            
+            // 创建示例触发器
+            createExampleTriggers(app, popupSystem);
+            
+            console.log('✅ 弹出层系统示例已启动');
+        }
+        
+        // ============ 创建示例触发器 ============
+        function createExampleTriggers(app, popupSystem) {
+            // 示例1：社交媒体功能
+            const socialIcon = createIcon('📱', 0x1DA1F2, 120, 150);
+            app.stage.addChild(socialIcon);
+            
+            popupSystem.registerTrigger(socialIcon, {
+                main: {
+                    text: '社交媒体',
+                    color: 0x1DA1F2,
+                    size: 'large',
+                    hasAvatar: true,
+                    showSender: true,
+                    senderName: '社交'
+                },
+                subBubbles: [
+                    {
+                        text: '发布',
+                        color: 0x4CAF50,
+                        size: 'medium',
+                        sideBubbles: [
+                            { text: '照片', color: 0xFF9800, size: 'small' },
+                            { text: '视频', color: 0xE91E63, size: 'small' },
+                            { text: '文字', color: 0x9C27B0, size: 'small' }
+                        ]
+                    },
+                    {
+                        text: '消息',
+                        color: 0x00BCD4,
+                        size: 'medium',
+                        sideBubbles: [
+                            { text: '私信', color: 0x607D8B, size: 'small' },
+                            { text: '群聊', color: 0x795548, size: 'small' }
+                        ]
+                    },
+                    {
+                        text: '发现',
+                        color: 0xFF5722,
+                        size: 'medium'
+                    }
+                ],
+                sideBubbles: [
+                    { text: '设置', color: 0x9E9E9E, size: 'small' },
+                    { text: '通知', color: 0xFF9800, size: 'small' }
+                ]
+            });
+            
+            // 示例2：工作工具
+            const workIcon = createIcon('💼', 0x34495e, app.screen.width - 120, 200);
+            app.stage.addChild(workIcon);
+            
+            popupSystem.registerTrigger(workIcon, {
+                main: {
+                    text: '工作空间',
+                    color: 0x34495e,
+                    size: 'large',
+                    showSender: true,
+                    senderName: '办公'
+                },
+                subBubbles: [
+                    {
+                        text: '文档',
+                        color: 0x3498db,
+                        size: 'medium',
+                        sideBubbles: [
+                            { text: '新建', color: 0x2ecc71, size: 'small' },
+                            { text: '打开', color: 0xf39c12, size: 'small' },
+                            { text: '分享', color: 0xe74c3c, size: 'small' }
+                        ]
+                    },
+                    {
+                        text: '会议',
+                        color: 0x9b59b6,
+                        size: 'medium',
+                        sideBubbles: [
+                            { text: '加入', color: 0x1abc9c, size: 'small' },
+                            { text: '创建', color: 0xe67e22, size: 'small' }
+                        ]
+                    }
+                ],
+                sideBubbles: [
+                    { text: '日历', color: 0x16a085, size: 'small' },
+                    { text: '任务', color: 0x8e44ad, size: 'small' }
+                ]
+            });
+            
+            // 示例3：娱乐中心
+            const gameIcon = createIcon('🎮', 0xe74c3c, app.screen.width / 2, app.screen.height - 100);
+            app.stage.addChild(gameIcon);
+            
+            popupSystem.registerTrigger(gameIcon, {
+                main: {
+                    text: '游戏中心',
+                    color: 0xe74c3c,
+                    size: 'large',
+                    hasAvatar: true,
+                    showSender: true,
+                    senderName: '游戏'
+                },
+                subBubbles: [
+                    {
+                        text: '单人游戏',
+                        color: 0xf39c12,
+                        size: 'medium',
+                        sideBubbles: [
+                            { text: '冒险', color: 0x27ae60, size: 'small' },
+                            { text: '解谜', color: 0x2980b9, size: 'small' }
+                        ]
+                    },
+                    {
+                        text: '多人游戏',
+                        color: 0x8e44ad,
+                        size: 'medium',
+                        sideBubbles: [
+                            { text: '竞技', color: 0xc0392b, size: 'small' },
+                            { text: '合作', color: 0x16a085, size: 'small' }
+                        ]
+                    }
+                ]
+            });
+            
+            // 示例4：学习工具
+            const studyIcon = createIcon('📚', 0x2ecc71, 150, app.screen.height / 2);
+            app.stage.addChild(studyIcon);
+            
+            popupSystem.registerTrigger(studyIcon, {
+                main: {
+                    text: '学习助手',
+                    color: 0x2ecc71,
+                    size: 'large',
+                    showSender: true,
+                    senderName: '学习'
+                },
+                subBubbles: [
+                    {
+                        text: '课程',
+                        color: 0x3498db,
+                        size: 'medium',
+                        sideBubbles: [
+                            { text: '视频', color: 0xe74c3c, size: 'small' },
+                            { text: '音频', color: 0xf39c12, size: 'small' },
+                            { text: '文本', color: 0x9b59b6, size: 'small' }
+                        ]
+                    },
+                    {
+                        text: '练习',
+                        color: 0xe67e22,
+                        size: 'medium',
+                        sideBubbles: [
+                            { text: '题库', color: 0x1abc9c, size: 'small' },
+                            { text: '测试', color: 0x34495e, size: 'small' }
+                        ]
+                    }
+                ],
+                sideBubbles: [
+                    { text: '进度', color: 0x95a5a6, size: 'small' },
+                    { text: '笔记', color: 0xf1c40f, size: 'small' }
+                ]
+            });
+            
+            // 示例5：设置中心
+            const settingsIcon = createIcon('⚙️', 0x95a5a6, app.screen.width - 150, app.screen.height / 2);
+            app.stage.addChild(settingsIcon);
+            
+            popupSystem.registerTrigger(settingsIcon, {
+                main: {
+                    text: '系统设置',
+                    color: 0x95a5a6,
+                    size: 'medium'
+                },
+                subBubbles: [
+                    {
+                        text: '显示',
+                        color: 0x3498db,
+                        size: 'small',
+                        sideBubbles: [
+                            { text: '亮度', color: 0xf1c40f, size: 'small' },
+                            { text: '分辨率', color: 0xe74c3c, size: 'small' }
+                        ]
+                    },
+                    {
+                        text: '声音',
+                        color: 0x2ecc71,
+                        size: 'small',
+                        sideBubbles: [
+                            { text: '音量', color: 0xe67e22, size: 'small' },
+                            { text: '均衡器', color: 0x9b59b6, size: 'small' }
+                        ]
+                    }
+                ],
+                sideBubbles: [
+                    { text: '帮助', color: 0x1abc9c, size: 'small' },
+                    { text: '关于', color: 0x34495e, size: 'small' }
+                ]
+            });
+        }
+        
+        // ============ 创建图标函数 ============
+        function createIcon(emoji, color, x, y) {
+            const container = new PIXI.Container();
+            container.x = x;
+            container.y = y;
+            container.interactive = true;
+            container.cursor = 'pointer';
+            
+            // 背景圆圈
+            const bg = new PIXI.Graphics()
+                .circle(0, 0, 35)
+                .fill({ color: color, alpha: 0.9 })
+                .stroke({ width: 3, color: 0xFFFFFF, alpha: 0.7 });
+            container.addChild(bg);
+            
+            // 图标文字
+            const icon = new PIXI.Text({
+                text: emoji,
+                style: {
+                    fontSize: 28,
+                    align: 'center'
+                }
+            });
+            icon.anchor.set(0.5);
+            container.addChild(icon);
+            
+            // 悬停效果
+            container.on('pointerover', () => {
+                container.scale.set(1.1);
+                bg.alpha = 1.0;
+            });
+            
+            container.on('pointerout', () => {
+                container.scale.set(1.0);
+                bg.alpha = 0.9;
+            });
+            
+            // 脉冲动画
+            let pulsePhase = Math.random() * Math.PI * 2;
+            const pulse = () => {
+                if (container.parent) {
+                    pulsePhase += 0.02;
+                    const scale = 1.0 + Math.sin(pulsePhase) * 0.03;
+                    if (!container.scale.x.toString().includes('1.1')) { // 不在悬停状态
+                        container.scale.set(scale);
+                    }
+                    requestAnimationFrame(pulse);
+                }
+            };
+            pulse();
+            
+            return container;
+        }
+        
+        // ============ 窗口大小调整 ============
+        window.addEventListener('resize', () => {
+            if (window.app) {
+                window.app.renderer.resize(window.innerWidth, window.innerHeight);
+            }
+        });
+        
+        // ============ 启动应用 ============
+        window.addEventListener('DOMContentLoaded', () => {
+            initApp().catch(console.error);
+        });
+        
+    </script>
+</body>
+</html>

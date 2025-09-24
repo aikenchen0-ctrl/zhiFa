@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PixiJS连接线系统 - 快速验证测试</title>
+    <script src="https://pixijs.download/release/pixi.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #000;
+            color: #00ff00;
+            overflow: hidden;
+        }
+        
+        .test-panel {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 300px;
+        }
+        
+        .test-panel h3 {
+            color: #00ff00;
+            margin-bottom: 10px;
+        }
+        
+        .test-panel button {
+            display: block;
+            width: 100%;
+            margin: 5px 0;
+            padding: 10px;
+            background: #333;
+            color: #00ff00;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .test-panel button:hover {
+            background: #444;
+            border-color: #00ff00;
+        }
+        
+        .test-status {
+            margin-top: 10px;
+            padding: 10px;
+            background: #111;
+            border-radius: 4px;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .success { color: #00ff00; }
+        .error { color: #ff4444; }
+        .warning { color: #ff8800; }
+        
+        #pixiContainer {
+            width: 100vw;
+            height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div id="pixiContainer"></div>
+    
+    <div class="test-panel">
+        <h3>🔬 快速验证测试</h3>
+        <button onclick="quickTest()">⚡ 一键完整测试</button>
+        <button onclick="testPixiInit()">1. 测试PixiJS初始化</button>
+        <button onclick="testBasicShapes()">2. 测试基础形状</button>
+        <button onclick="testConnections()">3. 测试v8连接线</button>
+        <button onclick="testScrolling()">4. 测试滚动系统</button>
+        <button onclick="clearTest()">清除测试</button>
+        
+        <div class="test-status" id="testStatus">
+            等待测试开始...
+        </div>
+    </div>
+
+    <script>
+        let app = null;
+        let testContainer = null;
+        let testResults = [];
+        
+        function log(message, type = 'normal') {
+            const timestamp = new Date().toLocaleTimeString();
+            const statusDiv = document.getElementById('testStatus');
+            let className = type;
+            let prefix = type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : type === 'warning' ? '⚠️ ' : '📝 ';
+            
+            const logEntry = `<div class="${className}">[${timestamp}] ${prefix}${message}</div>`;
+            statusDiv.innerHTML = `${logEntry}${statusDiv.innerHTML}`;
+            
+            console.log(`[${timestamp}] ${prefix}${message}`);
+        }
+        
+        // 1. PixiJS初始化测试
+        async function testPixiInit() {
+            log('开始测试PixiJS初始化...', 'normal');
+            
+            try {
+                if (app) app.destroy();
+                
+                app = new PIXI.Application();
+                await app.init({
+                    width: window.innerWidth,
+                    height: window.innerHeight,
+                    backgroundColor: 0x000000,
+                    antialias: true
+                });
+                
+                const container = document.getElementById('pixiContainer');
+                container.innerHTML = '';
+                container.appendChild(app.canvas);
+                
+                testContainer = new PIXI.Container();
+                app.stage.addChild(testContainer);
+                
+                log(`PixiJS v${PIXI.VERSION} 初始化成功！`, 'success');
+                log(`Canvas: ${app.canvas.width}x${app.canvas.height}`, 'normal');
+                
+                testResults.push({ test: 'PixiJS初始化', result: 'PASS' });
+                
+            } catch (error) {
+                log(`PixiJS初始化失败: ${error.message}`, 'error');
+                testResults.push({ test: 'PixiJS初始化', result: 'FAIL', error: error.message });
+            }
+        }
+        
+        // 2. 基础形状测试
+        function testBasicShapes() {
+            if (!app || !testContainer) {
+                log('请先初始化PixiJS', 'error');
+                return;
+            }
+            
+            log('测试基础形状绘制...', 'normal');
+            
+            try {
+                // 清除之前的测试
+                testContainer.removeChildren();
+                
+                // 测试矩形
+                const rect = new PIXI.Graphics()
+                    .rect(50, 50, 100, 60)
+                    .fill(0xFF0000);
+                testContainer.addChild(rect);
+                
+                // 测试圆形
+                const circle = new PIXI.Graphics()
+                    .circle(250, 80, 30)
+                    .fill(0x00FF00);
+                testContainer.addChild(circle);
+                
+                // 测试文字
+                const text = new PIXI.Text({
+                    text: 'PixiJS v8 测试',
+                    style: { fontSize: 20, fill: 0xFFFFFF }
+                });
+                text.x = 50;
+                text.y = 150;
+                testContainer.addChild(text);
+                
+                log('基础形状绘制成功！', 'success');
+                testResults.push({ test: '基础形状绘制', result: 'PASS' });
+                
+            } catch (error) {
+                log(`基础形状测试失败: ${error.message}`, 'error');
+                testResults.push({ test: '基础形状绘制', result: 'FAIL', error: error.message });
+            }
+        }
+        
+        // 3. v8语法连接线测试
+        function testConnections() {
+            if (!app || !testContainer) {
+                log('请先初始化PixiJS', 'error');
+                return;
+            }
+            
+            log('测试PixiJS v8连接线语法...', 'normal');
+            
+            try {
+                // 创建两个元素
+                const avatar1 = new PIXI.Graphics()
+                    .roundRect(-20, -20, 40, 40, 8)
+                    .fill(0x007AFF);
+                avatar1.x = 100;
+                avatar1.y = 250;
+                testContainer.addChild(avatar1);
+                
+                const bubble = new PIXI.Graphics()
+                    .roundRect(-50, -20, 100, 40, 12)
+                    .fill(0xFF6B35);
+                bubble.x = 300;
+                bubble.y = 300;
+                testContainer.addChild(bubble);
+                
+                // 测试v8语法连接线
+                const connection = new PIXI.Graphics();
+                
+                // 直线连接
+                connection
+                    .moveTo(120, 250)  // 从avatar1右边缘
+                    .lineTo(180, 250)  // 水平段
+                    .lineTo(180, 300)  // 垂直段
+                    .lineTo(250, 300)  // 到bubble左边缘
+                    .stroke({ width: 4, color: 0x00FF00, alpha: 0.8 });
+                
+                testContainer.addChild(connection);
+                
+                // 圆角L型连接线
+                const roundConnection = new PIXI.Graphics();
+                roundConnection
+                    .moveTo(120, 280)
+                    .lineTo(160, 280)
+                    .quadraticCurveTo(170, 280, 170, 290)
+                    .lineTo(170, 320)
+                    .quadraticCurveTo(170, 330, 180, 330)
+                    .lineTo(250, 330)
+                    .stroke({ width: 3, color: 0xFFFF00, alpha: 0.8 });
+                
+                testContainer.addChild(roundConnection);
+                
+                log('v8语法连接线绘制成功！', 'success');
+                log('可以看到绿色直线和黄色圆角连接线', 'normal');
+                testResults.push({ test: 'v8连接线语法', result: 'PASS' });
+                
+            } catch (error) {
+                log(`连接线测试失败: ${error.message}`, 'error');
+                testResults.push({ test: 'v8连接线语法', result: 'FAIL', error: error.message });
+            }
+        }
+        
+        // 4. 滚动系统测试
+        function testScrolling() {
+            if (!app || !testContainer) {
+                log('请先初始化PixiJS', 'error');
+                return;
+            }
+            
+            log('测试滚动和交互...', 'normal');
+            
+            try {
+                // 创建可拖动的测试元素
+                const draggableElement = new PIXI.Graphics()
+                    .roundRect(-30, -30, 60, 60, 10)
+                    .fill(0xFF1493);
+                draggableElement.x = 400;
+                draggableElement.y = 200;
+                draggableElement.interactive = true;
+                draggableElement.eventMode = 'static';
+                
+                let isDragging = false;
+                let startPos = { x: 0, y: 0 };
+                
+                draggableElement.on('pointerdown', (event) => {
+                    isDragging = true;
+                    startPos.x = event.data.global.x - draggableElement.x;
+                    startPos.y = event.data.global.y - draggableElement.y;
+                    log('开始拖动元素', 'normal');
+                });
+                
+                draggableElement.on('pointermove', (event) => {
+                    if (isDragging) {
+                        draggableElement.x = event.data.global.x - startPos.x;
+                        draggableElement.y = event.data.global.y - startPos.y;
+                    }
+                });
+                
+                draggableElement.on('pointerup', () => {
+                    if (isDragging) {
+                        isDragging = false;
+                        log('结束拖动', 'normal');
+                    }
+                });
+                
+                testContainer.addChild(draggableElement);
+                
+                // 添加说明文字
+                const instruction = new PIXI.Text({
+                    text: '拖动粉色方块测试交互',
+                    style: { fontSize: 14, fill: 0xFFFFFF }
+                });
+                instruction.x = 400;
+                instruction.y = 100;
+                testContainer.addChild(instruction);
+                
+                log('交互测试设置完成！', 'success');
+                log('可以拖动粉色方块进行交互测试', 'normal');
+                testResults.push({ test: '滚动交互系统', result: 'PASS' });
+                
+            } catch (error) {
+                log(`滚动测试失败: ${error.message}`, 'error');
+                testResults.push({ test: '滚动交互系统', result: 'FAIL', error: error.message });
+            }
+        }
+        
+        // 一键完整测试
+        async function quickTest() {
+            log('=== 开始一键完整测试 ===', 'warning');
+            testResults = [];
+            
+            await testPixiInit();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            testBasicShapes();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            testConnections();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            testScrolling();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            // 测试结果总结
+            const passed = testResults.filter(t => t.result === 'PASS').length;
+            const failed = testResults.filter(t => t.result === 'FAIL').length;
+            
+            log(`=== 测试完成 ===`, 'warning');
+            log(`通过: ${passed} / 失败: ${failed} / 总计: ${testResults.length}`, 'normal');
+            
+            if (failed === 0) {
+                log('🎉 所有测试通过！系统运行正常！', 'success');
+            } else {
+                log(`⚠️ ${failed}个测试失败，请检查错误信息`, 'error');
+            }
+        }
+        
+        function clearTest() {
+            if (testContainer) {
+                testContainer.removeChildren();
+            }
+            document.getElementById('testStatus').innerHTML = '测试已清除，等待新测试...';
+            testResults = [];
+        }
+        
+        // 页面加载完成提示
+        window.addEventListener('DOMContentLoaded', () => {
+            log('🔬 快速验证系统已加载', 'normal');
+            log('点击 "⚡ 一键完整测试" 开始验证', 'normal');
+        });
+        
+        // 防止移动端页面滚动
+        document.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+        
+    </script>
+</body>
+</html>

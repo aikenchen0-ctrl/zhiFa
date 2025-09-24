@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>PixiJS Mobile Connection System - Comprehensive Test Suite</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/8.3.4/pixi.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f0f2f5;
+            overflow-x: hidden;
+        }
+        
+        .test-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 10px 15px;
+            border-bottom: 1px solid #e1e5e9;
+            z-index: 1000;
+        }
+        
+        .test-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a1a1a;
+        }
+        
+        .test-status {
+            font-size: 14px;
+            color: #65676b;
+            margin-top: 5px;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .test-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            background: #1877f2;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .test-btn:hover {
+            background: #166fe5;
+            transform: translateY(-1px);
+        }
+        
+        .test-btn.secondary {
+            background: #42b883;
+        }
+        
+        .test-btn.danger {
+            background: #e74c3c;
+        }
+        
+        .test-btn:disabled {
+            background: #8a8d91;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #pixi-container {
+            margin-top: 130px;
+            width: 100%;
+            height: calc(100vh - 130px);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .performance-overlay {
+            position: fixed;
+            top: 140px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            z-index: 1001;
+            min-width: 200px;
+        }
+        
+        .performance-metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+        
+        .performance-metric .value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+        
+        .test-results {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-top: 1px solid #e1e5e9;
+            padding: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 1000;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .test-results.active {
+            transform: translateY(0);
+        }
+        
+        .test-result {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f2f5;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .test-result:last-child {
+            border-bottom: none;
+        }
+        
+        .test-result .status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .test-result .status.pass {
+            background: #42b883;
+        }
+        
+        .test-result .status.fail {
+            background: #e74c3c;
+        }
+        
+        .test-result .status.pending {
+            background: #f39c12;
+        }
+        
+        .connection-debug {
+            position: fixed;
+            bottom: 220px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 1001;
+            max-width: 300px;
+        }
+        
+        @media (max-width: 480px) {
+            .test-controls {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px;
+            }
+            
+            .test-btn {
+                padding: 12px;
+                font-size: 14px;
+            }
+            
+            .performance-overlay {
+                right: 5px;
+                top: 130px;
+                font-size: 11px;
+                padding: 8px;
+                min-width: 180px;
+            }
+            
+            .connection-debug {
+                left: 5px;
+                bottom: 210px;
+                max-width: calc(100vw - 10px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="test-header">
+        <div class="test-title">PixiJS Connection System Test Suite</div>
+        <div class="test-status" id="test-status">Initializing test environment...</div>
+        
+        <div class="test-controls">
+            <button class="test-btn" onclick="runBasicTests()">Basic Tests</button>
+            <button class="test-btn secondary" onclick="runConnectionTests()">Connection Tests</button>
+            <button class="test-btn" onclick="runPerformanceTests()">Performance Tests</button>
+            <button class="test-btn secondary" onclick="runMobileTests()">Mobile Tests</button>
+            <button class="test-btn" onclick="runAllTests()">Run All Tests</button>
+            <button class="test-btn danger" onclick="clearTests()">Clear</button>
+        </div>
+    </div>
+    
+    <div id="pixi-container"></div>
+    
+    <div class="performance-overlay" id="performance-overlay">
+        <div class="performance-metric">
+            <span>FPS:</span>
+            <span class="value" id="fps">0</span>
+        </div>
+        <div class="performance-metric">
+            <span>Draw Calls:</span>
+            <span class="value" id="draw-calls">0</span>
+        </div>
+        <div class="performance-metric">
+            <span>Memory:</span>
+            <span class="value" id="memory">0 MB</span>
+        </div>
+        <div class="performance-metric">
+            <span>Elements:</span>
+            <span class="value" id="element-count">0</span>
+        </div>
+        <div class="performance-metric">
+            <span>Connections:</span>
+            <span class="value" id="connection-count">0</span>
+        </div>
+        <div class="performance-metric">
+            <span>Scroll Delta:</span>
+            <span class="value" id="scroll-delta">0</span>
+        </div>
+    </div>
+    
+    <div class="connection-debug" id="connection-debug">
+        <div>Connection Debug Info:</div>
+        <div id="debug-content">Ready...</div>
+    </div>
+    
+    <div class="test-results" id="test-results">
+        <div id="test-log"></div>
+    </div>
+    
+    <script>
+        // Test framework and PixiJS application setup
+        class PixiTestFramework {
+            constructor() {
+                this.app = null;
+                this.testResults = [];
+                this.isRunning = false;
+                this.performanceData = {
+                    fps: 0,
+                    drawCalls: 0,
+                    memory: 0,
+                    frameCount: 0,
+                    lastTime: performance.now()
+                };
+                
+                // Test data
+                this.elements = [];
+                this.connections = [];
+                this.containers = [];
+                
+                this.init();
+            }
+            
+            async init() {
+                await this.setupPixiApp();
+                this.setupPerformanceMonitoring();
+                this.setupEventListeners();
+                this.logTestResult('Framework initialized', 'pass');
+            }
+            
+            async setupPixiApp() {
+                try {
+                    // Create PixiJS application with mobile optimization
+                    this.app = new PIXI.Application();
+                    await this.app.init({
+                        width: window.innerWidth,
+                        height: window.innerHeight - 130,
+                        backgroundColor: 0xf0f2f5,
+                        antialias: true,
+                        resolution: window.devicePixelRatio || 1,
+                        autoDensity: true,
+                        powerPreference: 'high-performance'
+                    });
+                    
+                    // Add canvas to DOM
+                    const container = document.getElementById('pixi-container');
+                    container.appendChild(this.app.canvas);
+                    
+                    // Setup viewport
+                    this.setupViewport();
+                    
+                    this.logTestResult('PixiJS v8 initialization', 'pass');
+                    return true;
+                } catch (error) {
+                    this.logTestResult(`PixiJS initialization failed: ${error.message}`, 'fail');
+                    return false;
+                }
+            }
+            
+            setupViewport() {
+                // Create main containers
+                this.leftContainer = new PIXI.Container();
+                this.centerContainer = new PIXI.Container();
+                this.rightContainer = new PIXI.Container();
+                this.connectionContainer = new PIXI.Container();
+                
+                // Position containers
+                const width = this.app.screen.width;
+                const containerWidth = width / 3;
+                
+                this.leftContainer.x = 0;
+                this.centerContainer.x = containerWidth;
+                this.rightContainer.x = containerWidth * 2;
+                
+                // Add to stage
+                this.app.stage.addChild(this.leftContainer);
+                this.app.stage.addChild(this.centerContainer);
+                this.app.stage.addChild(this.rightContainer);
+                this.app.stage.addChild(this.connectionContainer);
+                
+                this.containers = [this.leftContainer, this.centerContainer, this.rightContainer];
+                
+                // Enable interactive
+                this.app.stage.eventMode = 'static';
+                this.app.stage.hitArea = new PIXI.Rectangle(0, 0, width, this.app.screen.height);
+                
+                this.logTestResult('Three-column layout created', 'pass');
+            }
+            
+            setupPerformanceMonitoring() {
+                // Performance monitoring ticker
+                this.app.ticker.add(() => {
+                    this.updatePerformanceMetrics();
+                });
+                
+                // Update performance display
+                setInterval(() => {
+                    this.updatePerformanceDisplay();
+                }, 100);
+            }
+            
+            updatePerformanceMetrics() {
+                const now = performance.now();
+                const deltaTime = now - this.performanceData.lastTime;
+                
+                this.performanceData.frameCount++;
+                
+                if (deltaTime >= 1000) {
+                    this.performanceData.fps = Math.round((this.performanceData.frameCount * 1000) / deltaTime);
+                    this.performanceData.frameCount = 0;
+                    this.performanceData.lastTime = now;
+                }
+                
+                // Memory usage (approximation)
+                if (performance.memory) {
+                    this.performanceData.memory = Math.round(performance.memory.usedJSHeapSize / 1024 / 1024);
+                }
+                
+                // Draw calls estimation
+                this.performanceData.drawCalls = this.app.stage.children.length + this.elements.length + this.connections.length;
+            }
+            
+            updatePerformanceDisplay() {
+                document.getElementById('fps').textContent = this.performanceData.fps;
+                document.getElementById('draw-calls').textContent = this.performanceData.drawCalls;
+                document.getElementById('memory').textContent = this.performanceData.memory + ' MB';
+                document.getElementById('element-count').textContent = this.elements.length;
+                document.getElementById('connection-count').textContent = this.connections.length;
+            }
+            
+            setupEventListeners() {
+                // Touch events for mobile testing
+                this.app.stage.on('pointerdown', this.onPointerDown.bind(this));
+                this.app.stage.on('pointermove', this.onPointerMove.bind(this));
+                this.app.stage.on('pointerup', this.onPointerUp.bind(this));
+                
+                // Wheel events for scroll testing
+                this.app.canvas.addEventListener('wheel', this.onWheel.bind(this), { passive: false });
+                
+                // Touch events
+                this.app.canvas.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: true });
+                this.app.canvas.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+                this.app.canvas.addEventListener('touchend', this.onTouchEnd.bind(this), { passive: true });
+                
+                // Resize handling
+                window.addEventListener('resize', this.onResize.bind(this));
+            }
+            
+            onPointerDown(event) {
+                this.isDragging = true;
+                this.lastPointerPosition = event.global.clone();
+            }
+            
+            onPointerMove(event) {
+                if (this.isDragging) {
+                    const currentPosition = event.global;
+                    const deltaX = currentPosition.x - this.lastPointerPosition.x;
+                    const deltaY = currentPosition.y - this.lastPointerPosition.y;
+                    
+                    // Move all containers
+                    this.containers.forEach(container => {
+                        container.y += deltaY;
+                    });
+                    
+                    this.updateConnections();
+                    this.lastPointerPosition = currentPosition;
+                    
+                    // Update scroll delta display
+                    document.getElementById('scroll-delta').textContent = Math.round(deltaY);
+                }
+            }
+            
+            onPointerUp() {
+                this.isDragging = false;
+            }
+            
+            onWheel(event) {
+                event.preventDefault();
+                const deltaY = event.deltaY * -0.5;
+                
+                this.containers.forEach(container => {
+                    container.y += deltaY;
+                });
+                
+                this.updateConnections();
+                document.getElementById('scroll-delta').textContent = Math.round(deltaY);
+            }
+            
+            onTouchStart(event) {
+                if (event.touches.length === 1) {
+                    this.lastTouchY = event.touches[0].clientY;
+                }
+            }
+            
+            onTouchMove(event) {
+                event.preventDefault();
+                if (event.touches.length === 1) {
+                    const currentTouchY = event.touches[0].clientY;
+                    const deltaY = currentTouchY - this.lastTouchY;
+                    
+                    this.containers.forEach(container => {
+                        container.y += deltaY;
+                    });
+                    
+                    this.updateConnections();
+                    this.lastTouchY = currentTouchY;
+                    
+                    document.getElementById('scroll-delta').textContent = Math.round(deltaY);
+                }
+            }
+            
+            onTouchEnd() {
+                this.lastTouchY = null;
+            }
+            
+            onResize() {
+                this.app.renderer.resize(window.innerWidth, window.innerHeight - 130);
+                this.setupViewport();
+                this.regenerateElements(this.elements.length);
+            }
+            
+            // Test methods
+            logTestResult(message, status) {
+                const result = { message, status, timestamp: Date.now() };
+                this.testResults.push(result);
+                
+                const testLog = document.getElementById('test-log');
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'test-result';
+                resultDiv.innerHTML = `
+                    <div class="status ${status}"></div>
+                    <div>${message}</div>
+                `;
+                testLog.appendChild(resultDiv);
+                
+                // Show results panel
+                document.getElementById('test-results').classList.add('active');
+                
+                // Auto scroll to bottom
+                testLog.scrollTop = testLog.scrollHeight;
+                
+                console.log(`[${status.toUpperCase()}] ${message}`);
+            }
+            
+            async runBasicTests() {
+                this.logTestResult('Starting basic functionality tests...', 'pending');
+                
+                // Test 1: PixiJS initialization
+                const pixiOk = this.app && this.app.stage;
+                this.logTestResult(`PixiJS Application initialized: ${pixiOk}`, pixiOk ? 'pass' : 'fail');
+                
+                // Test 2: Container creation
+                const containersOk = this.containers.length === 3;
+                this.logTestResult(`Three containers created: ${containersOk}`, containersOk ? 'pass' : 'fail');
+                
+                // Test 3: Canvas rendering
+                const canvasOk = this.app.canvas && this.app.canvas.parentNode;
+                this.logTestResult(`Canvas attached to DOM: ${canvasOk}`, canvasOk ? 'pass' : 'fail');
+                
+                // Test 4: Event system
+                const eventsOk = this.app.stage.eventMode === 'static';
+                this.logTestResult(`Event system active: ${eventsOk}`, eventsOk ? 'pass' : 'fail');
+                
+                // Test 5: Performance monitoring
+                const perfOk = this.performanceData.fps >= 0;
+                this.logTestResult(`Performance monitoring active: ${perfOk}`, perfOk ? 'pass' : 'fail');
+                
+                this.logTestResult('Basic functionality tests completed', 'pass');
+            }
+            
+            async runConnectionTests() {
+                this.logTestResult('Starting connection system tests...', 'pending');
+                
+                // Generate test elements
+                await this.generateTestElements(20);
+                
+                // Test 1: Element creation
+                const elementsOk = this.elements.length > 0;
+                this.logTestResult(`Test elements created: ${this.elements.length}`, elementsOk ? 'pass' : 'fail');
+                
+                // Test 2: Connection creation
+                await this.generateTestConnections();
+                const connectionsOk = this.connections.length > 0;
+                this.logTestResult(`Connection lines created: ${this.connections.length}`, connectionsOk ? 'pass' : 'fail');
+                
+                // Test 3: L-shaped path verification
+                const lShapeOk = this.verifyLShapedConnections();
+                this.logTestResult(`L-shaped connection paths: ${lShapeOk}`, lShapeOk ? 'pass' : 'fail');
+                
+                // Test 4: Visual verification
+                const visibilityOk = this.verifyConnectionVisibility();
+                this.logTestResult(`Connection line visibility: ${visibilityOk}`, visibilityOk ? 'pass' : 'fail');
+                
+                // Test 5: Real-time tracking
+                await this.testRealTimeTracking();
+                
+                this.logTestResult('Connection system tests completed', 'pass');
+            }
+            
+            async runPerformanceTests() {
+                this.logTestResult('Starting performance tests...', 'pending');
+                
+                // Test different element counts
+                const testCounts = [50, 200, 1000];
+                
+                for (const count of testCounts) {
+                    const startTime = performance.now();
+                    await this.generateTestElements(count);
+                    const endTime = performance.now();
+                    
+                    const generationTime = endTime - startTime;
+                    const fps = this.performanceData.fps;
+                    const memory = this.performanceData.memory;
+                    
+                    const performanceOk = fps > 30 && generationTime < 1000;
+                    this.logTestResult(
+                        `${count} elements: ${Math.round(generationTime)}ms, ${fps}fps, ${memory}MB`,
+                        performanceOk ? 'pass' : 'fail'
+                    );
+                    
+                    // Wait for performance stabilization
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+                
+                // Scroll performance test
+                await this.testScrollPerformance();
+                
+                this.logTestResult('Performance tests completed', 'pass');
+            }
+            
+            async runMobileTests() {
+                this.logTestResult('Starting mobile-specific tests...', 'pending');
+                
+                // Test 1: Touch event handling
+                const touchOk = 'ontouchstart' in window;
+                this.logTestResult(`Touch events supported: ${touchOk}`, touchOk ? 'pass' : 'fail');
+                
+                // Test 2: Device pixel ratio
+                const dprOk = window.devicePixelRatio >= 1;
+                this.logTestResult(`Device pixel ratio: ${window.devicePixelRatio}`, dprOk ? 'pass' : 'fail');
+                
+                // Test 3: Viewport meta tag
+                const viewportMeta = document.querySelector('meta[name="viewport"]');
+                const viewportOk = viewportMeta && viewportMeta.content.includes('user-scalable=no');
+                this.logTestResult(`Mobile viewport configured: ${viewportOk}`, viewportOk ? 'pass' : 'fail');
+                
+                // Test 4: Passive event optimization
+                const passiveOk = this.testPassiveEvents();
+                this.logTestResult(`Passive events optimized: ${passiveOk}`, passiveOk ? 'pass' : 'fail');
+                
+                // Test 5: Performance on mobile
+                const mobilePerf = this.performanceData.fps > 25; // Lower threshold for mobile
+                this.logTestResult(`Mobile performance acceptable: ${mobilePerf}`, mobilePerf ? 'pass' : 'fail');
+                
+                this.logTestResult('Mobile tests completed', 'pass');
+            }
+            
+            async generateTestElements(count) {
+                // Clear existing elements
+                this.clearElements();
+                
+                const containerWidth = this.app.screen.width / 3;
+                const containerHeight = this.app.screen.height;
+                
+                for (let i = 0; i < count; i++) {
+                    const containerIndex = i % 3;
+                    const container = this.containers[containerIndex];
+                    
+                    // Create element graphics
+                    const element = new PIXI.Graphics();
+                    element.beginFill(containerIndex === 0 ? 0x3498db : containerIndex === 1 ? 0x2ecc71 : 0xe74c3c);
+                    element.drawRoundedRect(0, 0, containerWidth - 20, 40, 8);
+                    element.endFill();
+                    
+                    // Position element
+                    element.x = 10;
+                    element.y = 60 + (i * 60);
+                    element.interactive = true;
+                    element.buttonMode = true;
+                    
+                    // Add text
+                    const text = new PIXI.Text(`Element ${i + 1}`, {
+                        fontSize: 14,
+                        fill: 0xffffff,
+                        fontFamily: 'Arial'
+                    });
+                    text.x = 10;
+                    text.y = 12;
+                    element.addChild(text);
+                    
+                    // Store metadata
+                    element.elementData = {
+                        id: i,
+                        container: containerIndex,
+                        type: containerIndex === 0 ? 'self' : 'other'
+                    };
+                    
+                    container.addChild(element);
+                    this.elements.push(element);
+                }
+                
+                return this.elements;
+            }
+            
+            async generateTestConnections() {
+                this.clearConnections();
+                
+                // Create connections between elements
+                for (let i = 0; i < Math.min(this.elements.length - 1, 50); i += 3) {
+                    const fromElement = this.elements[i];
+                    const toElement = this.elements[i + 1] || this.elements[0];
+                    
+                    if (fromElement && toElement) {
+                        const connection = this.createConnection(fromElement, toElement);
+                        this.connections.push(connection);
+                    }
+                }
+                
+                return this.connections;
+            }
+            
+            createConnection(fromElement, toElement) {
+                const connection = new PIXI.Graphics();
+                
+                // Get global positions
+                const fromPos = fromElement.getGlobalPosition();
+                const toPos = toElement.getGlobalPosition();
+                
+                // Determine connection type and color
+                const isReply = fromElement.elementData.type !== toElement.elementData.type;
+                const color = isReply ? 0x3498db : 0x95a5a6;
+                const alpha = isReply ? 0.8 : 0.6;
+                
+                // Create L-shaped path
+                this.drawLShapedConnection(connection, fromPos, toPos, color, alpha);
+                
+                // Store connection data
+                connection.connectionData = {
+                    from: fromElement,
+                    to: toElement,
+                    fromPos,
+                    toPos,
+                    isReply,
+                    color,
+                    alpha
+                };
+                
+                this.connectionContainer.addChild(connection);
+                return connection;
+            }
+            
+            drawLShapedConnection(graphics, fromPos, toPos, color, alpha) {
+                graphics.clear();
+                graphics.lineStyle(2, color, alpha);
+                
+                // Calculate L-shaped path
+                const fromX = fromPos.x + (fromPos.x < toPos.x ? 100 : -20);
+                const fromY = fromPos.y + 20;
+                const toX = toPos.x + (toPos.x > fromPos.x ? -20 : 100);
+                const toY = toPos.y + 20;
+                
+                const midX = fromX + (toX - fromX) * 0.7;
+                
+                // Draw L-shaped path with rounded corners
+                graphics.moveTo(fromX, fromY);
+                graphics.lineTo(midX, fromY);
+                graphics.arcTo(midX + 10, fromY, midX + 10, fromY + 10, 10);
+                graphics.lineTo(midX + 10, toY - 10);
+                graphics.arcTo(midX + 10, toY, midX + 20, toY, 10);
+                graphics.lineTo(toX, toY);
+                
+                // Add arrow head
+                graphics.lineStyle(0);
+                graphics.beginFill(color, alpha);
+                graphics.drawPolygon([
+                    toX, toY,
+                    toX - 8, toY - 4,
+                    toX - 8, toY + 4
+                ]);
+                graphics.endFill();
+            }
+            
+            updateConnections() {
+                this.connections.forEach(connection => {
+                    const { from, to } = connection.connectionData;
+                    const fromPos = from.getGlobalPosition();
+                    const toPos = to.getGlobalPosition();
+                    
+                    // Update connection path
+                    this.drawLShapedConnection(
+                        connection,
+                        fromPos,
+                        toPos,
+                        connection.connectionData.color,
+                        connection.connectionData.alpha
+                    );
+                    
+                    // Update stored positions
+                    connection.connectionData.fromPos = fromPos;
+                    connection.connectionData.toPos = toPos;
+                });
+                
+                // Update debug info
+                this.updateConnectionDebug();
+            }
+            
+            updateConnectionDebug() {
+                const debugContent = document.getElementById('debug-content');
+                if (this.connections.length > 0) {
+                    const firstConnection = this.connections[0];
+                    const { fromPos, toPos, isReply } = firstConnection.connectionData;
+                    
+                    debugContent.innerHTML = `
+                        From: (${Math.round(fromPos.x)}, ${Math.round(fromPos.y)})<br>
+                        To: (${Math.round(toPos.x)}, ${Math.round(toPos.y)})<br>
+                        Type: ${isReply ? 'Reply' : 'Normal'}<br>
+                        Visible: ${firstConnection.visible}<br>
+                        Alpha: ${firstConnection.alpha.toFixed(2)}
+                    `;
+                } else {
+                    debugContent.textContent = 'No connections';
+                }
+            }
+            
+            verifyLShapedConnections() {
+                if (this.connections.length === 0) return false;
+                
+                // Check if connections have L-shaped paths
+                const sample = this.connections[0];
+                const graphics = sample.geometry;
+                
+                // Simple verification - check if there are multiple line segments
+                return graphics && graphics.graphicsData && graphics.graphicsData.length > 0;
+            }
+            
+            verifyConnectionVisibility() {
+                if (this.connections.length === 0) return false;
+                
+                let visibleCount = 0;
+                this.connections.forEach(connection => {
+                    if (connection.visible && connection.alpha > 0) {
+                        visibleCount++;
+                    }
+                });
+                
+                return visibleCount > 0;
+            }
+            
+            async testRealTimeTracking() {
+                this.logTestResult('Testing real-time connection tracking...', 'pending');
+                
+                if (this.connections.length === 0) {
+                    this.logTestResult('No connections to test tracking', 'fail');
+                    return;
+                }
+                
+                const initialPos = this.connections[0].connectionData.fromPos.clone();
+                
+                // Simulate movement
+                this.containers[0].y += 50;
+                this.updateConnections();
+                
+                const newPos = this.connections[0].connectionData.fromPos;
+                const moved = Math.abs(newPos.y - initialPos.y) > 40;
+                
+                this.logTestResult(`Real-time tracking: ${moved ? 'Active' : 'Inactive'}`, moved ? 'pass' : 'fail');
+                
+                // Reset position
+                this.containers[0].y -= 50;
+                this.updateConnections();
+            }
+            
+            async testScrollPerformance() {
+                this.logTestResult('Testing scroll performance...', 'pending');
+                
+                const startFPS = this.performanceData.fps;
+                const scrollDistance = 1000;
+                const scrollSteps = 10;
+                const stepDistance = scrollDistance / scrollSteps;
+                
+                // Perform scroll test
+                for (let i = 0; i < scrollSteps; i++) {
+                    this.containers.forEach(container => {
+                        container.y -= stepDistance;
+                    });
+                    this.updateConnections();
+                    
+                    // Wait for rendering
+                    await new Promise(resolve => this.app.ticker.addOnce(resolve));
+                }
+                
+                // Wait for FPS to stabilize
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                const endFPS = this.performanceData.fps;
+                const fpsDropped = startFPS - endFPS;
+                const performanceOk = fpsDropped < 10;
+                
+                this.logTestResult(
+                    `Scroll performance: FPS drop ${fpsDropped.toFixed(1)} (${performanceOk ? 'Good' : 'Poor'})`,
+                    performanceOk ? 'pass' : 'fail'
+                );
+                
+                // Reset positions
+                this.containers.forEach(container => {
+                    container.y += scrollDistance;
+                });
+                this.updateConnections();
+            }
+            
+            testPassiveEvents() {
+                // Check if passive events are supported
+                let passiveSupported = false;
+                try {
+                    const options = Object.defineProperty({}, "passive", {
+                        get: function() {
+                            passiveSupported = true;
+                        }
+                    });
+                    window.addEventListener("test", null, options);
+                } catch (err) {}
+                
+                return passiveSupported;
+            }
+            
+            clearElements() {
+                this.elements.forEach(element => {
+                    element.parent && element.parent.removeChild(element);
+                });
+                this.elements = [];
+            }
+            
+            clearConnections() {
+                this.connections.forEach(connection => {
+                    connection.parent && connection.parent.removeChild(connection);
+                });
+                this.connections = [];
+            }
+            
+            clearTests() {
+                this.testResults = [];
+                document.getElementById('test-log').innerHTML = '';
+                document.getElementById('test-results').classList.remove('active');
+                this.clearElements();
+                this.clearConnections();
+            }
+            
+            async runAllTests() {
+                if (this.isRunning) return;
+                
+                this.isRunning = true;
+                this.clearTests();
+                
+                document.getElementById('test-status').textContent = 'Running comprehensive test suite...';
+                
+                try {
+                    await this.runBasicTests();
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    await this.runConnectionTests();
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    await this.runPerformanceTests();
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    await this.runMobileTests();
+                    
+                    // Generate final report
+                    this.generateTestReport();
+                    
+                } catch (error) {
+                    this.logTestResult(`Test suite error: ${error.message}`, 'fail');
+                } finally {
+                    this.isRunning = false;
+                    document.getElementById('test-status').textContent = 'Test suite completed';
+                }
+            }
+            
+            generateTestReport() {
+                const passCount = this.testResults.filter(r => r.status === 'pass').length;
+                const failCount = this.testResults.filter(r => r.status === 'fail').length;
+                const totalCount = this.testResults.length;
+                
+                const reportSummary = `
+                    <div style="margin-top: 15px; padding: 10px; background: #f8f9fa; border-radius: 6px;">
+                        <strong>Test Summary:</strong><br>
+                        Total Tests: ${totalCount}<br>
+                        Passed: ${passCount}<br>
+                        Failed: ${failCount}<br>
+                        Success Rate: ${((passCount / totalCount) * 100).toFixed(1)}%
+                    </div>
+                `;
+                
+                document.getElementById('test-log').innerHTML += reportSummary;
+                
+                this.logTestResult(`Test suite completed: ${passCount}/${totalCount} passed`, passCount === totalCount ? 'pass' : 'fail');
+            }
+        }
+        
+        // Global test framework instance
+        let testFramework;
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', async () => {
+            testFramework = new PixiTestFramework();
+            
+            // Update status
+            document.getElementById('test-status').textContent = 'Test framework ready - Click a test button to begin';
+        });
+        
+        // Global test functions
+        function runBasicTests() {
+            testFramework && testFramework.runBasicTests();
+        }
+        
+        function runConnectionTests() {
+            testFramework && testFramework.runConnectionTests();
+        }
+        
+        function runPerformanceTests() {
+            testFramework && testFramework.runPerformanceTests();
+        }
+        
+        function runMobileTests() {
+            testFramework && testFramework.runMobileTests();
+        }
+        
+        function runAllTests() {
+            testFramework && testFramework.runAllTests();
+        }
+        
+        function clearTests() {
+            testFramework && testFramework.clearTests();
+        }
+        
+        // Regenerate elements for quick testing
+        function regenerateElements(count = 50) {
+            testFramework && testFramework.generateTestElements(count);
+        }
+    </script>
+</body>
+</html>

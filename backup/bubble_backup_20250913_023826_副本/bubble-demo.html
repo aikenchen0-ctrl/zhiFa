@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>气泡样式演示 - 两种详细气泡</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* 自定义CSS样式 - 实现玻璃材质效果 */
+    .glass-effect {
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+    
+    .glass-self {
+      background: rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    
+    .glass-self-dark {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    
+    .glass-other {
+      background: transparent;
+      border: 1px solid rgba(156, 163, 175, 0.4);
+    }
+    
+    /* 更新的轻柔文本阴影效果 */
+    .text-shadow-enhanced {
+      text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 6px rgba(0, 0, 0, 0.4), 0 0 10px rgba(0, 0, 0, 0.25), 0 1px 1px rgba(0, 0, 0, 0.5);
+    }
+    
+    .sender-name-shadow {
+      text-shadow: 0 2px 6px rgba(0, 0, 0, 1), 0 0 16px rgba(255, 255, 255, 0.9), 0 0 8px rgba(0, 0, 0, 0.8);
+    }
+    
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+    }
+    
+    /* 操作菜单样式 */
+    .action-menu {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+  </style>
+</head>
+<body class="p-6">
+  <div class="max-w-4xl mx-auto">
+    <!-- 标题 -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-white mb-2" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        🎨 两种详细气泡样式演示
+      </h1>
+      <p class="text-white/80" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+        展示有头像详细气泡和无头像详细气泡，头像为圆角正方形与气泡圆角一致
+      </p>
+    </div>
+
+    <!-- 有头像详细气泡演示 -->
+    <div class="bg-white/10 rounded-2xl p-6 mb-8 glass-effect border border-white/20">
+      <h2 class="text-xl font-bold text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        👤 有头像详细气泡样式
+      </h2>
+      <p class="text-white/80 mb-4 text-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+        特点：圆角正方形头像、左上角发送者名字、强背景模糊效果、增强文本阴影
+      </p>
+
+      <div class="space-y-6">
+        <!-- 别人发送的有头像详细气泡 -->
+        <div class="flex items-start gap-3 max-w-full">
+          <!-- 头像 - 圆角正方形，与气泡圆角一致 -->
+          <div class="flex-shrink-0">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center overflow-hidden">
+              <span class="text-white text-sm sender-name-shadow">张</span>
+            </div>
+          </div>
+          
+          <!-- 消息内容 -->
+          <div class="flex flex-col">
+            <!-- 气泡和发送者名字容器 -->
+            <div class="relative">
+              <!-- 发送者名字 - 放在气泡容器外部 -->
+              <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                张三
+              </span>
+              
+              <!-- 主气泡 -->
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+                <!-- 背景模糊层 -->
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                
+                <!-- 内容区域 -->
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    这是有头像的详细气泡，注意头像是圆角正方形，圆角程度与气泡一致。发送者名字显示在左上角，文本有强化阴影效果。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自己发送的有头像详细气泡（通常不显示头像，但作为演示） -->
+        <div class="flex items-start gap-3 max-w-full flex-row-reverse ml-auto justify-start">          
+          <!-- 消息内容 -->
+          <div class="flex flex-col items-end">
+            <!-- 气泡和发送者名字容器 -->
+            <div class="relative">
+              <!-- 主气泡 -->
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+                <!-- 背景模糊层 -->
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                
+                <!-- 内容区域 -->
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    我发送的有头像详细气泡，透明度更低，玻璃效果更明显。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 无头像详细气泡演示 -->
+    <div class="bg-white/10 rounded-2xl p-6 mb-8 glass-effect border border-white/20">
+      <h2 class="text-xl font-bold text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        📝 无头像详细气泡样式
+      </h2>
+      <p class="text-white/80 mb-4 text-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+        特点：仅左上角发送者名字、强背景模糊效果、增强文本阴影、修复换行问题
+      </p>
+
+      <div class="space-y-6">
+        <!-- 别人发送的无头像详细气泡 -->
+        <div class="flex items-start gap-2 max-w-full">          
+          <!-- 消息内容 -->
+          <div class="flex flex-col">
+            <!-- 气泡和发送者名字容器 -->
+            <div class="relative">
+              <!-- 发送者名字 - 放在气泡容器外部 -->
+              <span class="absolute left-3 top-0 transform -translate-y-1/2 z-30 text-xs leading-none text-white sender-name-shadow" style="backdrop-filter: blur(24px);">
+                李四
+              </span>
+              
+              <!-- 主气泡 -->
+              <div class="relative glass-other glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+                <!-- 背景模糊层 -->
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                
+                <!-- 内容区域 -->
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    这是无头像的详细气泡样式，更加简洁，只显示发送者名字在左上角，没有头像占用空间。这种样式适合空间较小的场景或者不需要显示头像的群聊场景。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自己发送的无头像详细气泡 -->
+        <div class="flex items-start gap-2 max-w-full flex-row-reverse ml-auto justify-start">          
+          <!-- 消息内容 -->
+          <div class="flex flex-col items-end">
+            <!-- 气泡和发送者名字容器 -->
+            <div class="relative">
+              <!-- 主气泡 -->
+              <div class="relative glass-self glass-effect rounded-xl overflow-hidden shadow-lg max-w-full w-fit cursor-pointer hover:scale-[1.01] transition-transform duration-200" onclick="toggleMenu(this)">
+                <!-- 背景模糊层 -->
+                <div class="absolute inset-0 glass-effect opacity-50 overflow-hidden rounded-xl"></div>
+                
+                <!-- 内容区域 -->
+                <div class="relative z-10 px-2 py-1.5">
+                  <div class="text-white text-shadow-enhanced">
+                    我发送的无头像详细气泡，更紧凑的布局。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 简单气泡演示 -->
+    <div class="bg-white/10 rounded-2xl p-6 mb-8 glass-effect border border-white/20">
+      <h2 class="text-xl font-bold text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        💭 简单气泡样式
+      </h2>
+      <p class="text-white/80 mb-4 text-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+        特点：圆角边框、小尾巴、增强文本阴影、修复换行
+      </p>
+
+      <div class="space-y-6">
+        <!-- 别人发送的简单气泡 -->
+        <div class="flex items-end gap-2 relative max-w-full mr-auto justify-start">
+          <div class="relative flex flex-col">
+            <!-- 主气泡 -->
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-other max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-left-1 after:w-0 after:h-0 after:border-r-8 after:border-r-transparent after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleMenu(this)">
+              <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+              
+              <div class="relative z-10 px-2 py-1">
+                <div class="text-white text-shadow-enhanced">
+                  简单气泡样式，有左侧小尾巴
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 自己发送的简单气泡 -->
+        <div class="flex items-end gap-2 relative max-w-full flex-row-reverse ml-auto justify-start">
+          <div class="relative flex flex-col">
+            <!-- 主气泡 -->
+            <div class="relative rounded-xl overflow-hidden shadow-sm transition-transform duration-150 cursor-pointer glass-effect border glass-self max-w-full w-fit hover:scale-[1.01] after:absolute after:bottom-0 after:-right-1 after:w-0 after:h-0 after:border-l-8 after:border-l-white/25 after:border-t-8 after:border-t-transparent after:border-b-8 after:border-b-transparent" onclick="toggleMenu(this)" style="background: rgba(255, 255, 255, 0.25);">
+              <div class="absolute inset-0 backdrop-blur-sm opacity-40"></div>
+              
+              <div class="relative z-10 px-2 py-1">
+                <div class="text-white text-shadow-enhanced">
+                  我的简单气泡，更透明的白色玻璃材质，右侧小尾巴
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 样式对比 -->
+    <div class="bg-white/10 rounded-2xl p-6 mb-8 glass-effect border border-white/20">
+      <h2 class="text-xl font-bold text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        🔄 三种气泡样式对比
+      </h2>
+
+      <div class="space-y-4">
+        <!-- 有头像详细气泡 -->
+        <div class="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
+          <div class="flex items-start gap-3">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white text-xs">A</div>
+            <div class="relative">
+              <span class="absolute left-2 -top-2 text-xs text-white/80">用户名</span>
+              <div class="glass-other glass-effect rounded-lg px-2 py-1 text-white text-xs">有头像详细气泡</div>
+            </div>
+          </div>
+          <span class="text-white/60 text-sm">→ 适合重要对话、一对一聊天</span>
+        </div>
+
+        <!-- 无头像详细气泡 -->
+        <div class="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
+          <div class="flex items-start">
+            <div class="relative">
+              <span class="absolute left-2 -top-2 text-xs text-white/80">用户名</span>
+              <div class="glass-other glass-effect rounded-lg px-2 py-1 text-white text-xs">无头像详细气泡</div>
+            </div>
+          </div>
+          <span class="text-white/60 text-sm">→ 适合群聊、空间节省</span>
+        </div>
+
+        <!-- 简单气泡 -->
+        <div class="flex items-center gap-4 p-4 bg-white/5 rounded-lg">
+          <div class="flex items-start">
+            <div class="glass-other glass-effect rounded-lg px-2 py-1 text-white text-xs relative after:absolute after:bottom-0 after:-left-1 after:w-0 after:h-0 after:border-r-4 after:border-r-transparent after:border-t-4 after:border-t-transparent after:border-b-4 after:border-b-transparent">简单气泡</div>
+          </div>
+          <span class="text-white/60 text-sm">→ 适合快速聊天、简洁界面</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 操作菜单演示 -->
+    <div class="bg-white/10 rounded-2xl p-6 glass-effect border border-white/20">
+      <h2 class="text-xl font-bold text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
+        🎛️ 操作菜单演示
+      </h2>
+      <p class="text-white/80 mb-4 text-sm" style="text-shadow: 0 1px 2px rgba(0,0,0,0.3);">
+        点击任意气泡查看操作菜单（2行4列布局）
+      </p>
+      
+      <!-- 示例菜单 -->
+      <div class="relative inline-block">
+        <div class="action-menu absolute -top-2 transform -translate-y-full py-2 rounded-xl shadow-xl min-w-[280px] animate-in fade-in-0 zoom-in-95 duration-200">
+          <div class="grid grid-cols-4 grid-rows-2 gap-1 px-2">
+            <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+              <span>💬</span>
+              <span class="font-medium">话外音</span>
+            </button>
+            <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+              <span>📋</span>
+              <span class="font-medium">复制</span>
+            </button>
+            <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+              <span>📤</span>
+              <span class="font-medium">转发</span>
+            </button>
+            <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+              <span>⭐</span>
+              <span class="font-medium">收藏</span>
+            </button>
+            <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+              <span>✅</span>
+              <span class="font-medium">多选</span>
+            </button>
+            <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+              <span>💬</span>
+              <span class="font-medium">引用</span>
+            </button>
+            <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+              <span>🔍</span>
+              <span class="font-medium">放大</span>
+            </button>
+            <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-red-50/80 transition-all duration-150 text-red-600">
+              <span>🗑️</span>
+              <span class="font-medium">删除</span>
+            </button>
+          </div>
+          <div class="absolute top-full w-0 h-0 right-4 border-l-[8px] border-r-[8px] border-t-[8px] border-l-transparent border-r-transparent border-t-white/95"></div>
+        </div>
+        <div class="text-white/60 text-sm">⬆️ 操作菜单预览</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleMenu(element) {
+      // 隐藏所有其他菜单
+      document.querySelectorAll('.action-menu').forEach(menu => {
+        if (menu.parentNode !== element) {
+          menu.remove();
+        }
+      });
+      
+      // 检查是否已有菜单
+      const existingMenu = element.querySelector('.action-menu');
+      if (existingMenu) {
+        existingMenu.remove();
+        return;
+      }
+      
+      // 创建新菜单
+      const menu = document.createElement('div');
+      menu.className = 'action-menu absolute -top-2 transform -translate-y-full py-2 rounded-xl shadow-xl min-w-[280px] animate-in fade-in-0 zoom-in-95 duration-200 right-0';
+      menu.innerHTML = `
+        <div class="grid grid-cols-4 grid-rows-2 gap-1 px-2">
+          <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+            <span>💬</span>
+            <span class="font-medium">话外音</span>
+          </button>
+          <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+            <span>📋</span>
+            <span class="font-medium">复制</span>
+          </button>
+          <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+            <span>📤</span>
+            <span class="font-medium">转发</span>
+          </button>
+          <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+            <span>⭐</span>
+            <span class="font-medium">收藏</span>
+          </button>
+          <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+            <span>✅</span>
+            <span class="font-medium">多选</span>
+          </button>
+          <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+            <span>💬</span>
+            <span class="font-medium">引用</span>
+          </button>
+          <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-white/80 transition-all duration-150 text-gray-700">
+            <span>🔍</span>
+            <span class="font-medium">放大</span>
+          </button>
+          <button class="flex flex-col items-center justify-center gap-1 p-2 text-xs rounded-lg hover:bg-red-50/80 transition-all duration-150 text-red-600">
+            <span>🗑️</span>
+            <span class="font-medium">删除</span>
+          </button>
+        </div>
+        <div class="absolute top-full w-0 h-0 right-4 border-l-[8px] border-r-[8px] border-t-[8px] border-l-transparent border-r-transparent border-t-white/95"></div>
+      `;
+      
+      element.style.position = 'relative';
+      element.appendChild(menu);
+    }
+
+    // 点击外部关闭菜单
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('.cursor-pointer')) {
+        document.querySelectorAll('.action-menu').forEach(menu => menu.remove());
+      }
+    });
+  </script>
+</body>
+</html>

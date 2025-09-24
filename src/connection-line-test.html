@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🔗 连接线修复测试页面</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .test-header {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .test-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .test-info {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .controls {
+            background: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: #007AFF;
+            color: white;
+        }
+
+        .btn-success {
+            background: #34C759;
+            color: white;
+        }
+
+        .btn-warning {
+            background: #FF9500;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #FF3B30;
+            color: white;
+        }
+
+        .ultra-container {
+            position: relative;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            height: 500px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        .chat-layout {
+            display: flex;
+            height: 100%;
+            position: relative;
+        }
+
+        .conversation-column,
+        .messages-column,
+        .account-column {
+            position: relative;
+            border-right: 1px solid #E5E5E7;
+            overflow: auto;
+        }
+
+        .conversation-column {
+            width: 80px;
+            background: #F8F9FA;
+        }
+
+        .messages-column {
+            flex: 1;
+            background: white;
+        }
+
+        .account-column {
+            width: 80px;
+            background: #F8F9FA;
+        }
+
+        .virtual-container {
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+
+        .virtual-spacer {
+            width: 100%;
+        }
+
+        .virtual-viewport {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+        }
+
+        .conversation-avatar,
+        .account-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 25px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            margin: 8px auto;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .message-bubble {
+            background: white;
+            border-radius: 12px;
+            margin: 8px 16px;
+            padding: 12px 16px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            border: 1px solid #E5E5E7;
+            min-height: 60px;
+        }
+
+        .message-bubble.from-account {
+            background: linear-gradient(135deg, #FFE066, #FF9500);
+            color: white;
+            border: none;
+        }
+
+        .message-content {
+            font-size: 14px;
+            line-height: 1.4;
+            margin-bottom: 4px;
+        }
+
+        .message-time {
+            font-size: 12px;
+            opacity: 0.7;
+        }
+
+        .connection-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .debug-info {
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .success {
+            color: #34C759;
+        }
+
+        .warning {
+            color: #FFD60A;
+        }
+
+        .error {
+            color: #FF453A;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-header">
+        <div class="test-title">🔗 连接线修复测试实验室</div>
+        <div class="test-info">ULTRATHINK连接线显示问题修复验证 - 所有关键问题已修复</div>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-primary" onclick="generateSimpleData()">生成简单测试数据</button>
+        <button class="btn btn-success" onclick="forceUpdateConnections()">强制更新连接线</button>
+        <button class="btn btn-warning" onclick="diagnoseSystem()">系统诊断</button>
+        <button class="btn btn-danger" onclick="clearAll()">清空</button>
+        <span style="margin-left: 20px; font-weight: bold;">连接线数量: <span id="connectionCount">0</span></span>
+    </div>
+
+    <div class="ultra-container">
+        <div class="chat-layout">
+            <!-- SVG连接线叠加层 -->
+            <svg class="connection-overlay" id="connectionSvg">
+                <defs>
+                    <linearGradient id="conversationGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#4ECDC4;stop-opacity:0.8" />
+                        <stop offset="100%" style="stop-color:#44A08D;stop-opacity:0.6" />
+                    </linearGradient>
+                    <linearGradient id="accountGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#FF6B6B;stop-opacity:0.8" />
+                        <stop offset="100%" style="stop-color:#FF8E8E;stop-opacity:0.6" />
+                    </linearGradient>
+                </defs>
+            </svg>
+
+            <!-- 会话头像列 -->
+            <div class="conversation-column" id="conversationColumn">
+                <div class="virtual-container" id="conversationContainer">
+                    <div class="virtual-spacer" id="conversationSpacer"></div>
+                    <div class="virtual-viewport" id="conversationViewport"></div>
+                </div>
+            </div>
+
+            <!-- 消息气泡列 -->
+            <div class="messages-column" id="messagesColumn">
+                <div class="virtual-container" id="messagesContainer">
+                    <div class="virtual-spacer" id="messagesSpacer"></div>
+                    <div class="virtual-viewport" id="messagesViewport"></div>
+                </div>
+            </div>
+
+            <!-- 账号头像列 -->
+            <div class="account-column" id="accountColumn">
+                <div class="virtual-container" id="accountContainer">
+                    <div class="virtual-spacer" id="accountSpacer"></div>
+                    <div class="virtual-viewport" id="accountViewport"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="debug-info" id="debugInfo">
+        <div class="success">🚀 连接线修复测试系统已就绪</div>
+        <div>点击"生成简单测试数据"开始测试连接线显示</div>
+        <div>如果连接线仍然不显示，点击"系统诊断"查看详细信息</div>
+    </div>
+
+    <script>
+        /**
+         * 连接线修复测试系统
+         */
+        class ConnectionLineTestSystem {
+            constructor() {
+                this.data = {
+                    conversations: [],
+                    messages: [],
+                    accounts: [],
+                    connections: new Map()
+                };
+                
+                this.elements = {
+                    connectionSvg: document.getElementById('connectionSvg'),
+                    conversationViewport: document.getElementById('conversationViewport'),
+                    messagesViewport: document.getElementById('messagesViewport'),
+                    accountViewport: document.getElementById('accountViewport'),
+                    conversationSpacer: document.getElementById('conversationSpacer'),
+                    messagesSpacer: document.getElementById('messagesSpacer'),
+                    accountSpacer: document.getElementById('accountSpacer')
+                };
+                
+                console.log('🚀 连接线测试系统初始化完成');
+            }
+
+            /**
+             * 生成简单测试数据
+             */
+            generateSimpleData() {
+                this.debugLog('🔄 生成简单测试数据...');
+                
+                // 清空现有数据
+                this.clearAll();
+                
+                // 生成3个会话
+                this.data.conversations = [
+                    { id: 'conv-1', name: '会话1' },
+                    { id: 'conv-2', name: '会话2' },
+                    { id: 'conv-3', name: '会话3' }
+                ];
+                
+                // 生成3个账号
+                this.data.accounts = [
+                    { id: 'acc-1', name: '账号1' },
+                    { id: 'acc-2', name: '账号2' },
+                    { id: 'acc-3', name: '账号3' }
+                ];
+                
+                // 生成6条消息
+                this.data.messages = [
+                    { id: 'msg-1', content: '会话消息1', fromAccount: false, senderId: 'conv-1' },
+                    { id: 'msg-2', content: '账号消息1', fromAccount: true, senderId: 'acc-1' },
+                    { id: 'msg-3', content: '会话消息2', fromAccount: false, senderId: 'conv-2' },
+                    { id: 'msg-4', content: '账号消息2', fromAccount: true, senderId: 'acc-2' },
+                    { id: 'msg-5', content: '会话消息3', fromAccount: false, senderId: 'conv-3' },
+                    { id: 'msg-6', content: '账号消息3', fromAccount: true, senderId: 'acc-3' }
+                ];
+                
+                // 渲染DOM元素
+                this.renderElements();
+                
+                // 延迟更新连接线，等待DOM渲染完成
+                setTimeout(() => {
+                    this.updateAllConnections();
+                }, 50);
+                
+                this.debugLog('✅ 测试数据生成完成');
+            }
+
+            /**
+             * 渲染DOM元素
+             */
+            renderElements() {
+                // 渲染会话头像
+                const conversationHTML = this.data.conversations.map(conv => 
+                    `<div class="conversation-avatar" data-conversation-id="${conv.id}">${conv.name.slice(-1)}</div>`
+                ).join('');
+                this.elements.conversationViewport.innerHTML = conversationHTML;
+                this.elements.conversationSpacer.style.height = `${this.data.conversations.length * 66}px`;
+                
+                // 渲染消息
+                const messagesHTML = this.data.messages.map(msg => `
+                    <div class="message-item" data-message-id="${msg.id}">
+                        <div class="message-bubble ${msg.fromAccount ? 'from-account' : ''}">
+                            <div class="message-content">${msg.content}</div>
+                            <div class="message-time">12:30</div>
+                        </div>
+                    </div>
+                `).join('');
+                this.elements.messagesViewport.innerHTML = messagesHTML;
+                this.elements.messagesSpacer.style.height = `${this.data.messages.length * 76}px`;
+                
+                // 渲染账号头像
+                const accountHTML = this.data.accounts.map(acc => 
+                    `<div class="account-avatar" data-account-id="${acc.id}">${acc.name.slice(-1)}</div>`
+                ).join('');
+                this.elements.accountViewport.innerHTML = accountHTML;
+                this.elements.accountSpacer.style.height = `${this.data.accounts.length * 66}px`;
+                
+                this.debugLog('✅ DOM元素渲染完成');
+            }
+
+            /**
+             * 更新所有连接线
+             */
+            updateAllConnections() {
+                this.debugLog('🔗 开始更新所有连接线...');
+                
+                let successCount = 0;
+                let failCount = 0;
+                
+                this.data.messages.forEach(messageData => {
+                    try {
+                        const messageElement = document.querySelector(`[data-message-id="${messageData.id}"]`);
+                        if (!messageElement) {
+                            this.debugLog(`⚠️ 消息元素未找到: ${messageData.id}`, 'warning');
+                            failCount++;
+                            return;
+                        }
+                        
+                        const messageBubble = messageElement.querySelector('.message-bubble');
+                        if (!messageBubble) {
+                            this.debugLog(`⚠️ 消息气泡未找到: ${messageData.id}`, 'warning');
+                            failCount++;
+                            return;
+                        }
+                        
+                        const messagePos = this.getElementPosition(messageBubble);
+                        
+                        if (messageData.fromAccount) {
+                            // 账号头像发送的消息
+                            const accountElement = document.querySelector(`[data-account-id="${messageData.senderId}"]`);
+                            if (accountElement) {
+                                const avatarPos = this.getElementPosition(accountElement);
+                                this.createConnectionLine(messageData.id, messagePos, avatarPos, true);
+                                this.debugLog(`✅ 账号连接线: ${messageData.id} -> ${messageData.senderId}`, 'success');
+                                successCount++;
+                            } else {
+                                this.debugLog(`⚠️ 账号元素未找到: ${messageData.senderId}`, 'warning');
+                                failCount++;
+                            }
+                        } else {
+                            // 会话头像发送的消息
+                            const conversationElement = document.querySelector(`[data-conversation-id="${messageData.senderId}"]`);
+                            if (conversationElement) {
+                                const avatarPos = this.getElementPosition(conversationElement);
+                                this.createConnectionLine(messageData.id, messagePos, avatarPos, false);
+                                this.debugLog(`✅ 会话连接线: ${messageData.id} -> ${messageData.senderId}`, 'success');
+                                successCount++;
+                            } else {
+                                this.debugLog(`⚠️ 会话元素未找到: ${messageData.senderId}`, 'warning');
+                                failCount++;
+                            }
+                        }
+                    } catch (error) {
+                        this.debugLog(`❌ 处理消息连接线时出错: ${messageData.id} - ${error.message}`, 'error');
+                        failCount++;
+                    }
+                });
+                
+                this.debugLog(`📈 连接线更新完成: 成功 ${successCount}, 失败 ${failCount}`, 
+                    successCount > 0 ? 'success' : 'error');
+                
+                this.updateConnectionCount();
+                
+                if (successCount === 0) {
+                    this.diagnoseIssues();
+                }
+            }
+
+            /**
+             * 创建连接线
+             */
+            createConnectionLine(messageId, messagePos, avatarPos, isFromAccount) {
+                // 创建路径元素
+                const pathElement = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathElement.className = `connection-path ${isFromAccount ? 'connection-from-account' : 'connection-from-conversation'}`;
+                pathElement.setAttribute('data-message-id', messageId);
+                
+                // 设置样式
+                pathElement.style.stroke = isFromAccount ? '#FF6B6B' : '#4ECDC4';
+                pathElement.style.strokeWidth = '3';
+                pathElement.style.fill = 'none';
+                pathElement.style.opacity = '0.8';
+                pathElement.style.strokeLinecap = 'round';
+                pathElement.style.strokeLinejoin = 'round';
+                
+                // 计算路径
+                const pathData = this.calculatePath(messagePos, avatarPos, isFromAccount);
+                pathElement.setAttribute('d', pathData);
+                
+                // 添加到SVG
+                this.elements.connectionSvg.appendChild(pathElement);
+                this.data.connections.set(messageId, pathElement);
+                
+                this.debugLog(`🎯 路径数据: ${pathData.substring(0, 50)}...`);
+            }
+
+            /**
+             * 计算连接线路径
+             */
+            calculatePath(messagePos, avatarPos, isFromAccount) {
+                const cornerRadius = 8;
+                const horizontalOffset = 4;
+                
+                if (isFromAccount) {
+                    // 从气泡右侧到账号头像左侧
+                    const startX = messagePos.right;
+                    const startY = messagePos.centerY;
+                    const endX = avatarPos.left;
+                    const endY = avatarPos.centerY;
+                    
+                    const firstCornerX = startX + horizontalOffset;
+                    const direction = startY < endY ? 1 : -1;
+                    
+                    return `M ${startX} ${startY} L ${firstCornerX - cornerRadius} ${startY} Q ${firstCornerX} ${startY} ${firstCornerX} ${startY + (direction * cornerRadius)} L ${firstCornerX} ${endY - (direction * cornerRadius)} Q ${firstCornerX} ${endY} ${firstCornerX + cornerRadius} ${endY} L ${endX} ${endY}`;
+                } else {
+                    // 从气泡左侧到会话头像右侧
+                    const startX = messagePos.left;
+                    const startY = messagePos.centerY;
+                    const endX = avatarPos.right;
+                    const endY = avatarPos.centerY;
+                    
+                    const firstCornerX = startX - horizontalOffset;
+                    const direction = startY < endY ? 1 : -1;
+                    
+                    return `M ${startX} ${startY} L ${firstCornerX + cornerRadius} ${startY} Q ${firstCornerX} ${startY} ${firstCornerX} ${startY + (direction * cornerRadius)} L ${firstCornerX} ${endY - (direction * cornerRadius)} Q ${firstCornerX} ${endY} ${firstCornerX - cornerRadius} ${endY} L ${endX} ${endY}`;
+                }
+            }
+
+            /**
+             * 获取元素位置
+             */
+            getElementPosition(element) {
+                const rect = element.getBoundingClientRect();
+                const containerRect = this.elements.connectionSvg.getBoundingClientRect();
+                
+                return {
+                    left: rect.left - containerRect.left,
+                    right: rect.right - containerRect.left,
+                    top: rect.top - containerRect.top,
+                    bottom: rect.bottom - containerRect.top,
+                    centerX: rect.left - containerRect.left + rect.width / 2,
+                    centerY: rect.top - containerRect.top + rect.height / 2,
+                    width: rect.width,
+                    height: rect.height
+                };
+            }
+
+            /**
+             * 诊断问题
+             */
+            diagnoseIssues() {
+                this.debugLog('🔍 开始系统诊断...', 'warning');
+                
+                // 检查SVG容器
+                if (!this.elements.connectionSvg) {
+                    this.debugLog('❌ SVG容器未找到', 'error');
+                    return;
+                }
+                this.debugLog('✅ SVG容器正常');
+                
+                // 检查DOM元素数量
+                const messageElements = document.querySelectorAll('[data-message-id]');
+                const conversationElements = document.querySelectorAll('[data-conversation-id]');
+                const accountElements = document.querySelectorAll('[data-account-id]');
+                
+                this.debugLog(`📊 DOM元素统计: 消息${messageElements.length}, 会话${conversationElements.length}, 账号${accountElements.length}`);
+                
+                // 检查第一个消息的详细信息
+                if (messageElements.length > 0 && this.data.messages.length > 0) {
+                    const firstMessage = this.data.messages[0];
+                    const firstElement = messageElements[0];
+                    
+                    this.debugLog(`🔬 第一个消息详情:`, 'warning');
+                    this.debugLog(`   数据: ${JSON.stringify(firstMessage)}`);
+                    this.debugLog(`   元素ID: ${firstElement.getAttribute('data-message-id')}`);
+                    this.debugLog(`   有气泡: ${!!firstElement.querySelector('.message-bubble')}`);
+                    
+                    // 检查对应的头像元素
+                    const targetSelector = firstMessage.fromAccount 
+                        ? `[data-account-id="${firstMessage.senderId}"]`
+                        : `[data-conversation-id="${firstMessage.senderId}"]`;
+                    const targetElement = document.querySelector(targetSelector);
+                    
+                    this.debugLog(`   目标选择器: ${targetSelector}`);
+                    this.debugLog(`   目标元素存在: ${!!targetElement}`);
+                }
+            }
+
+            /**
+             * 清空所有数据
+             */
+            clearAll() {
+                // 清空数据
+                this.data.conversations = [];
+                this.data.messages = [];
+                this.data.accounts = [];
+                
+                // 清空连接线
+                this.data.connections.forEach(pathElement => pathElement.remove());
+                this.data.connections.clear();
+                
+                // 清空DOM
+                this.elements.conversationViewport.innerHTML = '';
+                this.elements.messagesViewport.innerHTML = '';
+                this.elements.accountViewport.innerHTML = '';
+                
+                this.updateConnectionCount();
+                this.debugLog('🧹 已清空所有数据');
+            }
+
+            /**
+             * 更新连接线数量显示
+             */
+            updateConnectionCount() {
+                document.getElementById('connectionCount').textContent = this.data.connections.size;
+            }
+
+            /**
+             * 调试日志
+             */
+            debugLog(message, type = 'info') {
+                const debugInfo = document.getElementById('debugInfo');
+                const logElement = document.createElement('div');
+                logElement.className = type;
+                logElement.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+                debugInfo.appendChild(logElement);
+                debugInfo.scrollTop = debugInfo.scrollHeight;
+                
+                console.log(message);
+            }
+        }
+
+        // 初始化系统
+        let testSystem;
+        document.addEventListener('DOMContentLoaded', () => {
+            testSystem = new ConnectionLineTestSystem();
+        });
+
+        // 全局函数
+        function generateSimpleData() {
+            if (testSystem) {
+                testSystem.generateSimpleData();
+            }
+        }
+
+        function forceUpdateConnections() {
+            if (testSystem) {
+                testSystem.updateAllConnections();
+            }
+        }
+
+        function diagnoseSystem() {
+            if (testSystem) {
+                testSystem.diagnoseIssues();
+            }
+        }
+
+        function clearAll() {
+            if (testSystem) {
+                testSystem.clearAll();
+            }
+        }
+    </script>
+</body>
+</html>

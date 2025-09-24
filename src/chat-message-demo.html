@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatMessageArea Demo - Vision UI Chat Component</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .header h1 {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .header .status {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .chat-container {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .chat-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .input-area {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(10px);
+            padding: 15px 20px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .message-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 10px 15px;
+            color: white;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .message-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .send-button, .action-button {
+            background: rgba(26, 115, 232, 0.8);
+            border: none;
+            border-radius: 20px;
+            padding: 10px 15px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .send-button:hover, .action-button:hover {
+            background: rgba(26, 115, 232, 1);
+            transform: translateY(-1px);
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .debug-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            max-width: 200px;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .debug-info {
+            margin-bottom: 5px;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 14px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 16px;
+            }
+            
+            .input-area {
+                padding: 10px 15px;
+            }
+            
+            .debug-panel {
+                font-size: 10px;
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>💬 ChatMessageArea Demo</h1>
+            <div class="status">Vision UI • PIXI.js v8 • Virtual Scrolling</div>
+        </div>
+        <div class="status" id="messageCount">0 messages</div>
+    </div>
+
+    <div class="chat-container">
+        <canvas class="chat-canvas" id="chatCanvas"></canvas>
+        
+        <div class="debug-panel" id="debugPanel">
+            <div class="debug-info">FPS: <span id="fps">0</span></div>
+            <div class="debug-info">Messages: <span id="totalMessages">0</span></div>
+            <div class="debug-info">Rendered: <span id="renderedMessages">0</span></div>
+            <div class="debug-info">Scroll: <span id="scrollPosition">0</span></div>
+            <div class="debug-info">Mode: <span id="currentMode">Normal</span></div>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" class="message-input" id="messageInput" placeholder="Type a message...">
+        <div class="controls">
+            <button class="action-button" onclick="addRandomMessage()">Random</button>
+            <button class="action-button" onclick="addSystemMessage()">System</button>
+            <button class="action-button" onclick="clearMessages()">Clear</button>
+            <button class="send-button" onclick="sendMessage()">Send</button>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script type="module">
+        import * as PIXI from 'https://cdn.skypack.dev/pixi.js@8.0.0';
+        import ChatMessageArea from './components/ChatMessageArea.js';
+
+        let chatArea;
+        let debugInfo = {
+            fps: 0,
+            frameCount: 0,
+            lastTime: 0
+        };
+
+        // Initialize chat area
+        async function initChatArea() {
+            console.log('Initializing chat area...');
+            
+            const canvas = document.getElementById('chatCanvas');
+            const rect = canvas.parentElement.getBoundingClientRect();
+            
+            chatArea = new ChatMessageArea(rect.width, rect.height);
+            await chatArea.init();
+            
+            // Replace canvas
+            canvas.parentElement.replaceChild(chatArea.getView(), canvas);
+            
+            console.log('Chat area initialized');
+            
+            // Add some sample messages
+            addSampleMessages();
+            
+            // Start debug update loop
+            updateDebugInfo();
+        }
+
+        function addSampleMessages() {
+            const sampleMessages = [
+                {
+                    type: 'system',
+                    content: 'Welcome to the chat room!'
+                },
+                {
+                    type: 'text',
+                    content: 'Hello everyone! This is a test message.',
+                    sender: 'other',
+                    senderName: 'Alice',
+                    bubbleType: 'detailed'
+                },
+                {
+                    type: 'text',
+                    content: 'Hi there! How are you doing?',
+                    sender: 'self',
+                    bubbleType: 'simple'
+                },
+                {
+                    type: 'image',
+                    content: 'shared an image',
+                    sender: 'other',
+                    senderName: 'Bob',
+                    bubbleType: 'detailed'
+                },
+                {
+                    type: 'voice',
+                    content: 'voice message',
+                    sender: 'self',
+                    bubbleType: 'simple',
+                    duration: '0:15'
+                },
+                {
+                    type: 'video',
+                    content: 'shared a video',
+                    sender: 'other',
+                    senderName: 'Charlie',
+                    bubbleType: 'detailed'
+                },
+                {
+                    type: 'link',
+                    content: 'Check out this website',
+                    sender: 'self',
+                    bubbleType: 'simple',
+                    title: 'Amazing Website',
+                    url: 'https://example.com',
+                    description: 'This is an amazing website with lots of cool features!'
+                },
+                {
+                    type: 'system',
+                    content: 'Alice joined the chat'
+                }
+            ];
+
+            sampleMessages.forEach(message => {
+                chatArea.addMessage(message);
+            });
+
+            showToast('Sample messages added!');
+        }
+
+        // Public functions for buttons
+        window.sendMessage = function() {
+            const input = document.getElementById('messageInput');
+            const content = input.value.trim();
+            
+            if (content) {
+                chatArea.addMessage({
+                    type: 'text',
+                    content: content,
+                    sender: 'self',
+                    bubbleType: 'simple'
+                });
+                
+                input.value = '';
+                showToast('Message sent!');
+            }
+        };
+
+        window.addRandomMessage = function() {
+            const messageTypes = ['text', 'image', 'voice', 'video', 'link'];
+            const senders = ['self', 'other'];
+            const names = ['Alice', 'Bob', 'Charlie', 'Diana', 'Eve'];
+            
+            const type = messageTypes[Math.floor(Math.random() * messageTypes.length)];
+            const sender = senders[Math.floor(Math.random() * senders.length)];
+            const name = names[Math.floor(Math.random() * names.length)];
+            
+            let content = 'Random message content';
+            const messageData = {
+                type: type,
+                sender: sender,
+                bubbleType: Math.random() > 0.5 ? 'detailed' : 'simple'
+            };
+            
+            if (sender === 'other') {
+                messageData.senderName = name;
+            }
+            
+            switch (type) {
+                case 'text':
+                    content = `This is a random text message ${Math.floor(Math.random() * 1000)}`;
+                    break;
+                case 'image':
+                    content = 'shared an image';
+                    break;
+                case 'voice':
+                    content = 'voice message';
+                    messageData.duration = `0:${Math.floor(Math.random() * 60).toString().padStart(2, '0')}`;
+                    break;
+                case 'video':
+                    content = 'shared a video';
+                    break;
+                case 'link':
+                    content = 'Check out this link';
+                    messageData.title = 'Random Link';
+                    messageData.url = 'https://example.com';
+                    messageData.description = 'This is a random link description';
+                    break;
+            }
+            
+            messageData.content = content;
+            chatArea.addMessage(messageData);
+            
+            showToast(`Added ${type} message!`);
+        };
+
+        window.addSystemMessage = function() {
+            const systemMessages = [
+                'System maintenance in 5 minutes',
+                'New user joined the chat',
+                'Chat history cleared',
+                'Voice calls are now available',
+                'File sharing enabled'
+            ];
+            
+            const content = systemMessages[Math.floor(Math.random() * systemMessages.length)];
+            
+            chatArea.addMessage({
+                type: 'system',
+                content: content
+            });
+            
+            showToast('System message added!');
+        };
+
+        window.clearMessages = function() {
+            chatArea.messages = [];
+            chatArea.virtualScroll.totalHeight = 0;
+            chatArea.updateVirtualScroll();
+            showToast('Messages cleared!');
+        };
+
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        function updateDebugInfo() {
+            const now = performance.now();
+            debugInfo.frameCount++;
+            
+            if (now - debugInfo.lastTime >= 1000) {
+                debugInfo.fps = Math.round(debugInfo.frameCount * 1000 / (now - debugInfo.lastTime));
+                debugInfo.frameCount = 0;
+                debugInfo.lastTime = now;
+            }
+            
+            if (chatArea) {
+                document.getElementById('fps').textContent = debugInfo.fps;
+                document.getElementById('totalMessages').textContent = chatArea.messages.length;
+                document.getElementById('renderedMessages').textContent = chatArea.renderedMessages.size;
+                document.getElementById('scrollPosition').textContent = Math.round(chatArea.virtualScroll.scrollY);
+                document.getElementById('currentMode').textContent = chatArea.multiSelectMode ? 'Multi-Select' : 'Normal';
+                document.getElementById('messageCount').textContent = `${chatArea.messages.length} messages`;
+            }
+            
+            requestAnimationFrame(updateDebugInfo);
+        }
+
+        // Handle input enter key
+        document.getElementById('messageInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (chatArea) {
+                const container = chatArea.getView().parentElement;
+                const rect = container.getBoundingClientRect();
+                chatArea.resize(rect.width, rect.height);
+            }
+        });
+
+        // Handle outside clicks to close action menus
+        document.addEventListener('click', function(e) {
+            if (chatArea && !chatArea.getView().contains(e.target)) {
+                chatArea.hideActionButtons();
+            }
+        });
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initChatArea);
+
+        console.log('ChatMessageArea demo script loaded');
+    </script>
+</body>
+</html>
