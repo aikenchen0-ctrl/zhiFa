@@ -9,8 +9,9 @@
     /* ============= CSS变量定义 ============= */
     :root {
       --message-border-radius: 6px;
-      --message-padding: 8px 8px;
-      --message-gap: 12px;
+      --message-padding: 7px 7px;
+      --message-vertical-gap: 9px;
+      --message-horizontal-gap: 7px;
       --avatar-size: 37px;
       --bubble-height: 37px;
       --text-line-height: 1.2;
@@ -61,13 +62,13 @@
     /* ============= 消息基础Block ============= */
     .message {
       width: 100%;
-      margin-bottom: var(--message-gap);
+      margin-bottom: var(--message-vertical-gap);
     }
 
     .message__container {
       display: flex;
       align-items: flex-start;
-      gap: var(--message-gap);
+      gap: var(--message-horizontal-gap);
       max-width: 100%;
     }
 
@@ -234,10 +235,9 @@
       border: 1px solid var(--voice-message-border);
       cursor: pointer;
       transition: all 0.3s ease;
-      min-height: 48px;
       display: flex;
       align-items: center;
-      padding: 8px 12px;
+      padding: var(--message-padding);
     }
     
     .message--voice-message .message__bubble:hover {
@@ -255,20 +255,20 @@
     .voice-message__compact {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       width: 100%;
     }
     
     .voice-message__icon {
-      width: 32px;
-      height: 32px;
+      width: 20px;
+      height: 20px;
       background: linear-gradient(135deg, var(--voice-playing-color), #8b5cf6);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
-      font-size: 16px;
+      font-size: 12px;
       flex-shrink: 0;
     }
     
@@ -499,7 +499,7 @@
     .demo-container {
       max-width: 800px;
       margin: 0 auto;
-      padding: 40px 20px;
+      padding: 40px 0;
     }
 
     .demo-section {
@@ -535,16 +535,17 @@
       :root {
         --avatar-size: 33px;
         --bubble-height: 33px;
-        --message-gap: 8px;
+        --message-vertical-gap: 6px;
+        --message-horizontal-gap: 5px;
         --message-padding: 6px 6px;
       }
       
       body {
-        padding: 10px;
+        padding: 10px 0;
       }
       
       .demo-container {
-        padding: 20px 12px;
+        padding: 20px 0;
       }
 
       .demo-section {

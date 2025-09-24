@@ -81,7 +81,6 @@
         .column {
             height: 100%;
             overflow-y: auto;
-            border-right: 1px solid #e0e0e0;
             position: relative;
         }
 
@@ -110,7 +109,6 @@
             height: var(--account-section-height);
             overflow-y: auto;
             padding: 0 7px;
-            border-right: 1px solid #e0e0e0;
             background: transparent;
             transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             flex-shrink: 0;
@@ -127,7 +125,6 @@
                 rgba(128, 128, 128, 0.12) 0%, 
                 rgba(128, 128, 128, 0.08) 100%);
             backdrop-filter: blur(10px) saturate(120%);
-            border: 1px solid rgba(128, 128, 128, 0.2);
             display: flex;
             flex-direction: column;
             align-items: flex-start;
@@ -516,7 +513,7 @@
         :root {
             --message-border-radius: 6px;
             --message-padding: 7px 7px;
-            --message-gap: 7px;
+            --message-gap: 9px;
             --avatar-size: 37px;
             --bubble-height: 37px;
             --text-line-height: 1.2;
