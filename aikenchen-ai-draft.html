@@ -1630,14 +1630,32 @@
             constructor(toolsColumn, accountColumn) {
                 this.toolsColumn = toolsColumn;
                 this.accountColumn = accountColumn;
+                this.wheelDebounceTimer = null;
                 this.setupEventListeners();
+            }
+            
+            // 防抖函数 - 优化wheel事件触发频率
+            debounce(func, delay) {
+                return (...args) => {
+                    clearTimeout(this.wheelDebounceTimer);
+                    this.wheelDebounceTimer = setTimeout(() => func.apply(this, args), delay);
+                };
             }
 
             setupEventListeners() {
+                // 方案1：使用wheel事件检测滚动意图（解决column-reverse单向触发问题）
+                const wheelExpandHandler = this.debounce(() => {
+                    this.toolsColumn.expand();
+                }, 100);
+                
+                this.toolsColumn.element.addEventListener('wheel', wheelExpandHandler);
+                
+                // 保持scroll事件作为备用触发机制（兼容性）
                 this.toolsColumn.element.addEventListener('scroll', () => {
                     this.toolsColumn.expand();
                 });
 
+                // 账号列滚动时收起工具列（保持不变）
                 this.accountColumn.element.addEventListener('scroll', () => {
                     this.toolsColumn.collapse();
                 });
