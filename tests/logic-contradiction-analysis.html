@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第二转折逻辑矛盾分析</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+        }
+        .analysis-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+        .title {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            color: #ff6b35;
+        }
+        .logic-section {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .section-title {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #00ff88;
+        }
+        .svg-container {
+            width: 100%;
+            height: 300px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+        .current-path { stroke: #ff6b35; stroke-width: 3; fill: transparent; }
+        .expected-path { stroke: #00ff88; stroke-width: 3; fill: transparent; stroke-dasharray: 5,5; }
+        .base-grid { stroke: #333; stroke-width: 0.5; }
+        .point-current { fill: #ff6b35; stroke: #fff; stroke-width: 2; r: 6; }
+        .point-expected { fill: #00ff88; stroke: #fff; stroke-width: 2; r: 6; }
+        .control-point { fill: #ffaa00; stroke: #fff; stroke-width: 2; r: 5; }
+        .distance-line { stroke: #ccc; stroke-width: 1; stroke-dasharray: 2,2; }
+        .analysis-text {
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-top: 15px;
+        }
+        .error { color: #ff6b35; }
+        .correct { color: #00ff88; }
+        .neutral { color: #ccc; }
+        .highlight { background: rgba(255, 107, 53, 0.2); padding: 2px 4px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="analysis-container">
+        <h1 class="title">🔍 第二转折逻辑矛盾分析</h1>
+
+        <!-- 当前实现的逻辑矛盾 -->
+        <div class="logic-section">
+            <div class="section-title">❌ 当前实现的逻辑矛盾</div>
+            <svg class="svg-container" xmlns="http://www.w3.org/2000/svg">
+                <!-- 网格 -->
+                <defs>
+                    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <path d="M 20 0 L 0 0 0 20" fill="none" class="base-grid"/>
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)" opacity="0.3"/>
+                
+                <!-- 当前实现路径 -->
+                <path id="current-bezier" class="current-path"></path>
+                
+                <!-- 关键点标记 -->
+                <circle id="p0-current" class="point-current"></circle>
+                <circle id="p1-control" class="control-point"></circle>
+                <circle id="p2-current" class="point-current"></circle>
+                
+                <!-- 距离标记线 -->
+                <line id="dist-p0p1" class="distance-line"></line>
+                <line id="dist-p1p2" class="distance-line"></line>
+                
+                <!-- 标签 -->
+                <text id="label-p0" x="0" y="0" fill="white" font-size="12">P₀(endY+radius)</text>
+                <text id="label-p1" x="0" y="0" fill="white" font-size="12">P₁(endY)</text>
+                <text id="label-p2" x="0" y="0" fill="white" font-size="12">P₂(endY)</text>
+                <text id="dist-p0p1-label" x="0" y="0" fill="#ff6b35" font-size="11">垂直=100px</text>
+                <text id="dist-p1p2-label" x="0" y="0" fill="#ff6b35" font-size="11">水平=100px</text>
+            </svg>
+            
+            <div class="analysis-text">
+                <div class="error">🚨 逻辑矛盾发现：</div>
+                <div class="neutral">
+                • P₀（垂直段终点）: (centerX, <span class="highlight">endY + radius</span>)<br>
+                • P₁（L型控制点）: (centerX, <span class="highlight">endY</span>)<br>
+                • P₂（水平延伸起点）: (centerX + extend, <span class="highlight">endY</span>)<br>
+                <br>
+                <span class="error">关键问题</span>：P₁和P₂的Y坐标相同，都是endY！<br>
+                这意味着<span class="highlight">控制点和目标点在同一水平线上</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 几何后果分析 -->
+        <div class="logic-section">
+            <div class="section-title">⚠️ 几何后果分析</div>
+            <svg class="svg-container" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100%" height="100%" fill="url(#grid)" opacity="0.3"/>
+                
+                <!-- 控制向量可视化 -->
+                <path id="control-vector1" stroke="#ff6b35" stroke-width="2" marker-end="url(#arrowhead)"></path>
+                <path id="control-vector2" stroke="#ff6b35" stroke-width="2" marker-end="url(#arrowhead)"></path>
+                
+                <!-- 箭头标记定义 -->
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+                        <polygon points="0 0, 10 3.5, 0 7" fill="#ff6b35"/>
+                    </marker>
+                </defs>
+                
+                <!-- 贝塞尔曲线 -->
+                <path id="bezier-analysis" class="current-path"></path>
+                
+                <!-- 关键点 -->
+                <circle id="analysis-p0" class="point-current"></circle>
+                <circle id="analysis-p1" class="control-point"></circle>
+                <circle id="analysis-p2" class="point-current"></circle>
+                
+                <!-- 角度标记 -->
+                <path id="angle-arc1" stroke="#ffaa00" stroke-width="2" fill="none"></path>
+                <path id="angle-arc2" stroke="#ffaa00" stroke-width="2" fill="none"></path>
+                
+                <text id="angle1-label" x="0" y="0" fill="#ffaa00" font-size="11">入射角</text>
+                <text id="angle2-label" x="0" y="0" fill="#ffaa00" font-size="11">出射角</text>
+            </svg>
+            
+            <div class="analysis-text">
+                <div class="error">🔍 几何分析结果：</div>
+                <div class="neutral">
+                • <span class="error">入射向量</span>：P₀→P₁ = (0, -100) = 垂直向下100px<br>
+                • <span class="error">出射向量</span>：P₁→P₂ = (100, 0) = 水平向右100px<br>
+                • <span class="error">向量长度比</span>：|水平| / |垂直| = 100 / 100 = 1:1<br>
+                <br>
+                <span class="highlight">结论</span>：当前示例看起来是对称的！<br>
+                但实际代码中radius=5px, extend=10px，造成2:1的不对称
+                </div>
+            </div>
+        </div>
+
+        <!-- 正确的实现方案 -->
+        <div class="logic-section">
+            <div class="section-title">✅ 正确实现方案</div>
+            <svg class="svg-container" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100%" height="100%" fill="url(#grid)" opacity="0.3"/>
+                
+                <!-- 正确的路径 -->
+                <path id="correct-bezier" class="expected-path"></path>
+                <path id="wrong-bezier-comparison" class="current-path" opacity="0.3"></path>
+                
+                <!-- 点标记 -->
+                <circle id="correct-p0" class="point-expected"></circle>
+                <circle id="correct-p1" class="control-point"></circle>
+                <circle id="correct-p2" class="point-expected"></circle>
+                
+                <!-- 对称距离线 -->
+                <line id="correct-dist1" stroke="#00ff88" stroke-width="2"></line>
+                <line id="correct-dist2" stroke="#00ff88" stroke-width="2"></line>
+                
+                <text id="correct-label1" x="0" y="0" fill="#00ff88" font-size="11">垂直=100px</text>
+                <text id="correct-label2" x="0" y="0" fill="#00ff88" font-size="11">水平=50px</text>
+                <text id="solution-title" x="250" y="30" fill="#00ff88" font-size="14" text-anchor="middle">对称解决方案</text>
+            </svg>
+            
+            <div class="analysis-text">
+                <div class="correct">✅ 修正方案：</div>
+                <div class="neutral">
+                • P₀（垂直段终点）: (200, 100) = 垂直起点<br>
+                • P₁（L型控制点）: (200, 200) = 转折点<br>
+                • P₂（水平延伸起点）: (250, 200) = 水平终点 ← 50px距离<br>
+                <br>
+                <span class="correct">对称验证</span>：<br>
+                • 入射向量：(0, -100) → 长度 = 100px<br>
+                • 出射向量：(50, 0) → 长度 = 50px<br>
+                • <span class="highlight">比例 = 50:100 = 1:2，仍然不完全对称</span><br>
+                • <span class="correct">真正的对称需要：水平距离 = 垂直距离 = 100px</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 当前实现的坐标 - 延长线段便于观察
+        const current = {
+            p0: { x: 200, y: 100 },      // 垂直段起点（向上延长）
+            p1: { x: 200, y: 200 },      // L型控制点 (centerX, endY) 
+            p2: { x: 300, y: 200 }       // 水平延伸终点（向右延长）
+        };
+
+        // 修正后的坐标 - 延长线段便于对比
+        const correct = {
+            p0: { x: 200, y: 100 },      // 垂直段起点
+            p1: { x: 200, y: 200 },      // L型控制点
+            p2: { x: 250, y: 200 }       // 水平延伸终点 (使用相等距离)
+        };
+
+        // 渲染当前实现
+        function renderCurrent() {
+            // 贝塞尔路径
+            const path = `M ${current.p0.x} ${current.p0.y} Q ${current.p1.x} ${current.p1.y} ${current.p2.x} ${current.p2.y}`;
+            document.getElementById('current-bezier').setAttribute('d', path);
+            
+            // 点位置
+            document.getElementById('p0-current').setAttribute('cx', current.p0.x);
+            document.getElementById('p0-current').setAttribute('cy', current.p0.y);
+            document.getElementById('p1-control').setAttribute('cx', current.p1.x);
+            document.getElementById('p1-control').setAttribute('cy', current.p1.y);
+            document.getElementById('p2-current').setAttribute('cx', current.p2.x);
+            document.getElementById('p2-current').setAttribute('cy', current.p2.y);
+            
+            // 距离线
+            document.getElementById('dist-p0p1').setAttribute('x1', current.p0.x);
+            document.getElementById('dist-p0p1').setAttribute('y1', current.p0.y);
+            document.getElementById('dist-p0p1').setAttribute('x2', current.p1.x);
+            document.getElementById('dist-p0p1').setAttribute('y2', current.p1.y);
+            
+            document.getElementById('dist-p1p2').setAttribute('x1', current.p1.x);
+            document.getElementById('dist-p1p2').setAttribute('y1', current.p1.y);
+            document.getElementById('dist-p1p2').setAttribute('x2', current.p2.x);
+            document.getElementById('dist-p1p2').setAttribute('y2', current.p2.y);
+            
+            // 标签位置
+            document.getElementById('label-p0').setAttribute('x', current.p0.x + 10);
+            document.getElementById('label-p0').setAttribute('y', current.p0.y - 5);
+            document.getElementById('label-p1').setAttribute('x', current.p1.x - 60);
+            document.getElementById('label-p1').setAttribute('y', current.p1.y + 5);
+            document.getElementById('label-p2').setAttribute('x', current.p2.x + 10);
+            document.getElementById('label-p2').setAttribute('y', current.p2.y + 15);
+            
+            document.getElementById('dist-p0p1-label').setAttribute('x', current.p0.x + 15);
+            document.getElementById('dist-p0p1-label').setAttribute('y', (current.p0.y + current.p1.y) / 2);
+            document.getElementById('dist-p1p2-label').setAttribute('x', (current.p1.x + current.p2.x) / 2);
+            document.getElementById('dist-p1p2-label').setAttribute('y', current.p1.y - 10);
+        }
+
+        // 渲染几何分析
+        function renderAnalysis() {
+            // 使用相同的坐标但在不同的SVG中
+            const analysisPath = `M ${current.p0.x} ${current.p0.y} Q ${current.p1.x} ${current.p1.y} ${current.p2.x} ${current.p2.y}`;
+            document.getElementById('bezier-analysis').setAttribute('d', analysisPath);
+            
+            document.getElementById('analysis-p0').setAttribute('cx', current.p0.x);
+            document.getElementById('analysis-p0').setAttribute('cy', current.p0.y);
+            document.getElementById('analysis-p1').setAttribute('cx', current.p1.x);
+            document.getElementById('analysis-p1').setAttribute('cy', current.p1.y);
+            document.getElementById('analysis-p2').setAttribute('cx', current.p2.x);
+            document.getElementById('analysis-p2').setAttribute('cy', current.p2.y);
+            
+            // 控制向量
+            document.getElementById('control-vector1').setAttribute('d', 
+                `M ${current.p0.x} ${current.p0.y} L ${current.p1.x} ${current.p1.y}`);
+            document.getElementById('control-vector2').setAttribute('d',
+                `M ${current.p1.x} ${current.p1.y} L ${current.p2.x} ${current.p2.y}`);
+        }
+
+        // 渲染正确方案
+        function renderCorrect() {
+            // 正确路径
+            const correctPath = `M ${correct.p0.x} ${correct.p0.y} Q ${correct.p1.x} ${correct.p1.y} ${correct.p2.x} ${correct.p2.y}`;
+            document.getElementById('correct-bezier').setAttribute('d', correctPath);
+            
+            // 错误路径对比（半透明）
+            const wrongPath = `M ${current.p0.x} ${current.p0.y} Q ${current.p1.x} ${current.p1.y} ${current.p2.x} ${current.p2.y}`;
+            document.getElementById('wrong-bezier-comparison').setAttribute('d', wrongPath);
+            
+            // 点位置
+            document.getElementById('correct-p0').setAttribute('cx', correct.p0.x);
+            document.getElementById('correct-p0').setAttribute('cy', correct.p0.y);
+            document.getElementById('correct-p1').setAttribute('cx', correct.p1.x);
+            document.getElementById('correct-p1').setAttribute('cy', correct.p1.y);
+            document.getElementById('correct-p2').setAttribute('cx', correct.p2.x);
+            document.getElementById('correct-p2').setAttribute('cy', correct.p2.y);
+            
+            // 对称距离线
+            document.getElementById('correct-dist1').setAttribute('x1', correct.p0.x);
+            document.getElementById('correct-dist1').setAttribute('y1', correct.p0.y);
+            document.getElementById('correct-dist1').setAttribute('x2', correct.p1.x);
+            document.getElementById('correct-dist1').setAttribute('y2', correct.p1.y);
+            
+            document.getElementById('correct-dist2').setAttribute('x1', correct.p1.x);
+            document.getElementById('correct-dist2').setAttribute('y1', correct.p1.y);
+            document.getElementById('correct-dist2').setAttribute('x2', correct.p2.x);
+            document.getElementById('correct-dist2').setAttribute('y2', correct.p2.y);
+            
+            // 距离标签
+            document.getElementById('correct-label1').setAttribute('x', correct.p0.x + 15);
+            document.getElementById('correct-label1').setAttribute('y', (correct.p0.y + correct.p1.y) / 2);
+            document.getElementById('correct-label2').setAttribute('x', (correct.p1.x + correct.p2.x) / 2);
+            document.getElementById('correct-label2').setAttribute('y', correct.p1.y - 10);
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            renderCurrent();
+            renderAnalysis();
+            renderCorrect();
+        });
+    </script>
+</body>
+</html>

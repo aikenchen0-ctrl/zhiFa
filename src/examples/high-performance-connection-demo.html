@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高性能连接线系统演示 - High Performance Connection System Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            overflow: hidden;
+        }
+        
+        .demo-container {
+            display: flex;
+            height: 100vh;
+            position: relative;
+        }
+        
+        /* Left Sidebar - Avatar List */
+        .left-sidebar {
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.8);
+        }
+        
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+        
+        .sidebar-subtitle {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        .avatar-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        .avatar-item {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 12px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+        }
+        
+        .avatar-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+        }
+        
+        .avatar-item.active {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+        }
+        
+        .avatar-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 18px;
+            margin-right: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .avatar-circle::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: conic-gradient(from 0deg, #667eea, #764ba2, #667eea);
+            border-radius: 50%;
+            z-index: -1;
+        }
+        
+        .avatar-info {
+            flex: 1;
+        }
+        
+        .avatar-name {
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+        
+        .avatar-status {
+            font-size: 13px;
+            color: #6b7280;
+        }
+        
+        /* Middle Content - Message Area */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+        }
+        
+        .content-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.9);
+        }
+        
+        .content-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+            margin-bottom: 8px;
+        }
+        
+        .content-subtitle {
+            color: #6b7280;
+            font-size: 16px;
+        }
+        
+        .message-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            background: rgba(248, 250, 252, 0.8);
+        }
+        
+        .message-item {
+            background: white;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+            transition: all 0.2s ease;
+            border: 2px solid transparent;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .message-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+        
+        .message-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.15);
+            border-color: rgba(103, 126, 234, 0.3);
+        }
+        
+        .message-item:hover::before {
+            width: 6px;
+        }
+        
+        .message-item.connected {
+            border-color: #10b981;
+            background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        }
+        
+        .message-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .message-sender {
+            font-weight: 600;
+            color: #1f2937;
+            margin-right: 12px;
+        }
+        
+        .message-time {
+            color: #6b7280;
+            font-size: 13px;
+        }
+        
+        .message-content {
+            color: #374151;
+            line-height: 1.6;
+            margin-bottom: 8px;
+        }
+        
+        .message-meta {
+            font-size: 12px;
+            color: #9ca3af;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        /* Right Sidebar - Tools & Controls */
+        .right-sidebar {
+            width: 320px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-left: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .tools-section {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .tool-group {
+            margin-bottom: 25px;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        }
+        
+        .tool-group-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #f3f4f6;
+        }
+        
+        /* Performance Monitor */
+        .performance-monitor {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            border: 2px solid #0ea5e9;
+        }
+        
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 8px;
+        }
+        
+        .metric-label {
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .metric-value {
+            font-family: 'SF Mono', Consolas, monospace;
+            font-weight: 600;
+            color: #059669;
+            background: #ecfdf5;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        
+        .metric-value.warning {
+            color: #d97706;
+            background: #fef3c7;
+        }
+        
+        .metric-value.danger {
+            color: #dc2626;
+            background: #fee2e2;
+        }
+        
+        /* Control Panel */
+        .control-panel {
+            background: linear-gradient(135deg, #fefbff 0%, #f3e8ff 100%);
+            border: 2px solid #8b5cf6;
+        }
+        
+        .control-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .control-label {
+            font-weight: 500;
+            color: #374151;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 28px;
+            background: #d1d5db;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+        
+        .toggle-switch.active {
+            background: #10b981;
+        }
+        
+        .toggle-switch::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .toggle-switch.active::before {
+            transform: translateX(22px);
+        }
+        
+        .action-button {
+            width: 100%;
+            padding: 12px 16px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        .action-button:active {
+            transform: translateY(0);
+        }
+        
+        .action-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .action-button:hover::before {
+            left: 100%;
+        }
+        
+        /* Statistics */
+        .statistics {
+            background: linear-gradient(135deg, #fef7ed 0%, #fed7aa 100%);
+            border: 2px solid #ea580c;
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+        }
+        
+        .stat-number {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ea580c;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #9ca3af;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Connection Status Indicator */
+        .connection-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #10b981;
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.5);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .connection-indicator.inactive {
+            background: #ef4444;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 1200px) {
+            .left-sidebar, .right-sidebar {
+                width: 250px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .demo-container {
+                flex-direction: column;
+            }
+            
+            .left-sidebar, .right-sidebar {
+                width: 100%;
+                height: 200px;
+            }
+            
+            .main-content {
+                height: calc(100vh - 400px);
+            }
+        }
+        
+        /* Loading Animation */
+        .loading-spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <!-- Left Sidebar - Avatar List -->
+        <div class="left-sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-title">会话头像</div>
+                <div class="sidebar-subtitle">Conversation Avatars</div>
+            </div>
+            <div class="avatar-list" id="avatarList">
+                <!-- Avatars will be dynamically generated -->
+            </div>
+        </div>
+        
+        <!-- Main Content - Message Area -->
+        <div class="main-content">
+            <div class="content-header">
+                <div class="content-title">高性能连接线系统演示</div>
+                <div class="content-subtitle">High Performance Connection System Demo - 120fps @ 1000+ connections</div>
+            </div>
+            <div class="message-area" id="messageArea">
+                <!-- Messages will be dynamically generated -->
+            </div>
+        </div>
+        
+        <!-- Right Sidebar - Tools & Controls -->
+        <div class="right-sidebar">
+            <div class="tools-section">
+                <!-- Performance Monitor -->
+                <div class="tool-group performance-monitor">
+                    <div class="tool-group-title">🚀 性能监控</div>
+                    <div class="metric-row">
+                        <span class="metric-label">FPS</span>
+                        <span class="metric-value" id="fpsValue">60</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">计算时间</span>
+                        <span class="metric-value" id="computeTime">0.10ms</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">缓存命中率</span>
+                        <span class="metric-value" id="cacheHitRate">85.5%</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">内存使用</span>
+                        <span class="metric-value" id="memoryUsage">12.5MB</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">活跃连接</span>
+                        <span class="metric-value" id="activeConnections">0</span>
+                    </div>
+                </div>
+                
+                <!-- Control Panel -->
+                <div class="tool-group control-panel">
+                    <div class="tool-group-title">⚙️ 控制面板</div>
+                    <div class="control-item">
+                        <span class="control-label">动画效果</span>
+                        <div class="toggle-switch active" id="animationToggle"></div>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-label">调试模式</span>
+                        <div class="toggle-switch" id="debugToggle"></div>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-label">高性能模式</span>
+                        <div class="toggle-switch active" id="performanceToggle"></div>
+                    </div>
+                    
+                    <button class="action-button" id="generateDataBtn">生成测试数据</button>
+                    <button class="action-button" id="clearConnectionsBtn">清除所有连接</button>
+                    <button class="action-button" id="stressTestBtn">压力测试</button>
+                </div>
+                
+                <!-- Statistics -->
+                <div class="tool-group statistics">
+                    <div class="tool-group-title">📊 统计数据</div>
+                    <div class="stat-grid">
+                        <div class="stat-item">
+                            <span class="stat-number" id="totalMessages">0</span>
+                            <span class="stat-label">消息总数</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="totalAvatars">0</span>
+                            <span class="stat-label">头像总数</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="connectionCount">0</span>
+                            <span class="stat-label">连接线数</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number" id="renderTime">0</span>
+                            <span class="stat-label">渲染时间</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- System Info -->
+                <div class="tool-group">
+                    <div class="tool-group-title">ℹ️ 系统信息</div>
+                    <div class="metric-row">
+                        <span class="metric-label">版本</span>
+                        <span class="metric-value">v2.0.0</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">最大连接数</span>
+                        <span class="metric-value">1000+</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">目标帧率</span>
+                        <span class="metric-value">120fps</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Connection Status Indicator -->
+        <div class="connection-indicator" id="connectionStatus"></div>
+    </div>
+    
+    <!-- Connection System Container -->
+    <div id="connection-container"></div>
+    
+    <script type="module">
+        import HighPerformanceConnectionSystem from '../systems/high-performance-connection-system.js';
+        
+        class ConnectionSystemDemo {
+            constructor() {
+                this.connectionSystem = null;
+                this.avatars = [];
+                this.messages = [];
+                this.connections = new Map();
+                this.isGeneratingData = false;
+                this.performanceMonitor = null;
+                
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    // Initialize connection system
+                    this.initConnectionSystem();
+                    
+                    // Initialize UI
+                    this.initUI();
+                    
+                    // Generate initial test data
+                    await this.generateTestData();
+                    
+                    // Start performance monitoring
+                    this.startPerformanceMonitoring();
+                    
+                    // Setup event listeners
+                    this.setupEventListeners();
+                    
+                    console.log('Connection System Demo initialized successfully');
+                } catch (error) {
+                    console.error('Failed to initialize Connection System Demo:', error);
+                    this.showError('系统初始化失败: ' + error.message);
+                }
+            }
+            
+            initConnectionSystem() {
+                const container = document.body;
+                
+                this.connectionSystem = new HighPerformanceConnectionSystem({
+                    container: container,
+                    maxConnections: 1000,
+                    cacheSize: 500,
+                    targetFPS: 120,
+                    computeTimeThreshold: 0.2,
+                    memoryOptimization: true,
+                    
+                    // Geometry settings
+                    baseOffset: 15,
+                    extensionDistance: 25,
+                    borderRadius: 12,
+                    strokeWidth: 2,
+                    
+                    // Animation settings
+                    animationEnabled: true,
+                    animationSpeed: 2,
+                    dashLength: 8,
+                    
+                    // Color settings
+                    baseColor: '#374151',
+                    senderColors: [
+                        '#3B82F6', '#EF4444', '#10B981', '#F59E0B',
+                        '#8B5CF6', '#EC4899', '#06B6D4', '#84CC16'
+                    ]
+                });
+                
+                console.log('High Performance Connection System initialized');
+            }
+            
+            initUI() {
+                // Initialize toggle switches
+                this.setupToggleSwitches();
+                
+                // Set initial status
+                this.updateConnectionStatus(true);
+            }
+            
+            setupToggleSwitches() {
+                const toggles = ['animationToggle', 'debugToggle', 'performanceToggle'];
+                
+                toggles.forEach(toggleId => {
+                    const toggle = document.getElementById(toggleId);
+                    if (toggle) {
+                        toggle.addEventListener('click', () => {
+                            toggle.classList.toggle('active');
+                            this.handleToggleChange(toggleId, toggle.classList.contains('active'));
+                        });
+                    }
+                });
+            }
+            
+            handleToggleChange(toggleId, isActive) {
+                switch(toggleId) {
+                    case 'animationToggle':
+                        this.connectionSystem.setAnimationState(isActive);
+                        console.log(`Animation ${isActive ? 'enabled' : 'disabled'}`);
+                        break;
+                        
+                    case 'debugToggle':
+                        this.toggleDebugMode(isActive);
+                        console.log(`Debug mode ${isActive ? 'enabled' : 'disabled'}`);
+                        break;
+                        
+                    case 'performanceToggle':
+                        this.togglePerformanceMode(isActive);
+                        console.log(`Performance mode ${isActive ? 'enabled' : 'disabled'}`);
+                        break;
+                }
+            }
+            
+            toggleDebugMode(enabled) {
+                if (enabled) {
+                    // Add debug overlays
+                    document.body.classList.add('debug-mode');
+                    console.log('Debug mode enabled - showing connection metrics');
+                } else {
+                    document.body.classList.remove('debug-mode');
+                }
+            }
+            
+            togglePerformanceMode(enabled) {
+                if (enabled) {
+                    this.connectionSystem.config.targetFPS = 120;
+                    this.connectionSystem.config.memoryOptimization = true;
+                } else {
+                    this.connectionSystem.config.targetFPS = 60;
+                    this.connectionSystem.config.memoryOptimization = false;
+                }
+            }
+            
+            async generateTestData() {
+                if (this.isGeneratingData) return;
+                this.isGeneratingData = true;
+                
+                const generateBtn = document.getElementById('generateDataBtn');
+                if (generateBtn) {
+                    generateBtn.innerHTML = '<span class="loading-spinner"></span> 生成中...';
+                    generateBtn.disabled = true;
+                }
+                
+                try {
+                    // Generate avatars
+                    await this.generateAvatars(20);
+                    
+                    // Generate messages
+                    await this.generateMessages(80);
+                    
+                    // Create connections
+                    await this.createConnections();
+                    
+                    // Update statistics
+                    this.updateStatistics();
+                    
+                    console.log('Test data generated successfully');
+                } catch (error) {
+                    console.error('Error generating test data:', error);
+                    this.showError('生成测试数据失败: ' + error.message);
+                } finally {
+                    if (generateBtn) {
+                        generateBtn.innerHTML = '生成测试数据';
+                        generateBtn.disabled = false;
+                    }
+                    this.isGeneratingData = false;
+                }
+            }
+            
+            async generateAvatars(count) {
+                const avatarList = document.getElementById('avatarList');
+                if (!avatarList) return;
+                
+                avatarList.innerHTML = '';
+                this.avatars = [];
+                
+                const senderNames = [
+                    'Alice', 'Bob', 'Charlie', 'Diana', 'Eve', 'Frank', 'Grace', 'Henry',
+                    'Ivy', 'Jack', 'Kate', 'Leo', 'Maya', 'Noah', 'Olivia', 'Paul',
+                    'Quinn', 'Rachel', 'Sam', 'Tina'
+                ];
+                
+                const statuses = ['在线', '离线', '忙碌', '离开', '免打扰'];
+                
+                for (let i = 0; i < count; i++) {
+                    const avatar = {
+                        id: `avatar_${i}`,
+                        name: senderNames[i % senderNames.length],
+                        status: statuses[Math.floor(Math.random() * statuses.length)],
+                        element: null
+                    };
+                    
+                    const avatarElement = this.createAvatarElement(avatar);
+                    avatarList.appendChild(avatarElement);
+                    avatar.element = avatarElement;
+                    this.avatars.push(avatar);
+                    
+                    // Add small delay for smooth animation
+                    await new Promise(resolve => setTimeout(resolve, 50));
+                }
+            }
+            
+            createAvatarElement(avatar) {
+                const element = document.createElement('div');
+                element.className = 'avatar-item';
+                element.id = avatar.id;
+                
+                const initial = avatar.name.charAt(0).toUpperCase();
+                const colors = ['#667eea', '#764ba2', '#f093fb', '#f5576c', '#4facfe', '#00f2fe'];
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                
+                element.innerHTML = `
+                    <div class="avatar-circle" style="background: linear-gradient(135deg, ${color} 0%, ${this.adjustColor(color, -20)} 100%);">
+                        ${initial}
+                    </div>
+                    <div class="avatar-info">
+                        <div class="avatar-name">${avatar.name}</div>
+                        <div class="avatar-status">${avatar.status}</div>
+                    </div>
+                `;
+                
+                // Add click handler
+                element.addEventListener('click', () => {
+                    this.selectAvatar(avatar);
+                });
+                
+                return element;
+            }
+            
+            adjustColor(hex, percent) {
+                const num = parseInt(hex.replace("#", ""), 16);
+                const amt = Math.round(2.55 * percent);
+                const R = (num >> 16) + amt;
+                const G = (num >> 8 & 0x00FF) + amt;
+                const B = (num & 0x0000FF) + amt;
+                
+                return "#" + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 +
+                    (G < 255 ? G < 1 ? 0 : G : 255) * 0x100 +
+                    (B < 255 ? B < 1 ? 0 : B : 255)).toString(16).slice(1);
+            }
+            
+            async generateMessages(count) {
+                const messageArea = document.getElementById('messageArea');
+                if (!messageArea) return;
+                
+                messageArea.innerHTML = '';
+                this.messages = [];
+                
+                const sampleMessages = [
+                    "今天的天气真不错，适合出去走走。",
+                    "新的项目进展如何？有什么需要帮助的吗？",
+                    "刚刚看到你分享的文章，很有意思！",
+                    "晚上一起去看电影怎么样？",
+                    "工作效率提升的方法有很多，关键是要找到适合自己的。",
+                    "这个连接线系统的性能表现真是令人惊叹！",
+                    "120fps的渲染确实很流畅，用户体验很棒。",
+                    "缓存优化做得不错，命中率很高。",
+                    "响应式设计让移动端体验也很好。",
+                    "代码架构很清晰，维护起来应该不难。"
+                ];
+                
+                for (let i = 0; i < count; i++) {
+                    const message = {
+                        id: `message_${i}`,
+                        sender: this.avatars.length > 0 ? this.avatars[Math.floor(Math.random() * this.avatars.length)].name : 'Unknown',
+                        content: sampleMessages[Math.floor(Math.random() * sampleMessages.length)],
+                        time: this.formatTime(new Date(Date.now() - Math.random() * 86400000)),
+                        element: null,
+                        connected: false
+                    };
+                    
+                    const messageElement = this.createMessageElement(message);
+                    messageArea.appendChild(messageElement);
+                    message.element = messageElement;
+                    this.messages.push(message);
+                    
+                    // Add small delay for smooth animation
+                    await new Promise(resolve => setTimeout(resolve, 30));
+                }
+            }
+            
+            createMessageElement(message) {
+                const element = document.createElement('div');
+                element.className = 'message-item';
+                element.id = message.id;
+                
+                element.innerHTML = `
+                    <div class="message-header">
+                        <span class="message-sender">${message.sender}</span>
+                        <span class="message-time">${message.time}</span>
+                    </div>
+                    <div class="message-content">${message.content}</div>
+                    <div class="message-meta">
+                        <span>ID: ${message.id}</span>
+                        <span class="connection-status">未连接</span>
+                    </div>
+                `;
+                
+                // Add click handler
+                element.addEventListener('click', () => {
+                    this.selectMessage(message);
+                });
+                
+                return element;
+            }
+            
+            formatTime(date) {
+                const hours = date.getHours().toString().padStart(2, '0');
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                return `${hours}:${minutes}`;
+            }
+            
+            async createConnections() {
+                console.log('Creating connections between avatars and messages...');
+                
+                // Clear existing connections
+                this.clearAllConnections();
+                
+                if (!this.connectionSystem) {
+                    console.error('Connection system not initialized');
+                    return;
+                }
+                
+                // Create connections between messages and corresponding avatars
+                for (const message of this.messages) {
+                    const avatar = this.avatars.find(a => a.name === message.sender);
+                    if (avatar && avatar.element && message.element) {
+                        try {
+                            const connectionId = this.connectionSystem.addConnection(
+                                avatar.element,
+                                message.element,
+                                {
+                                    sender: message.sender,
+                                    type: 'message',
+                                    animated: true
+                                }
+                            );
+                            
+                            if (connectionId) {
+                                this.connections.set(connectionId, {
+                                    avatar: avatar,
+                                    message: message,
+                                    connectionId: connectionId
+                                });
+                                
+                                // Update message status
+                                message.connected = true;
+                                message.element.classList.add('connected');
+                                const statusElement = message.element.querySelector('.connection-status');
+                                if (statusElement) {
+                                    statusElement.textContent = '已连接';
+                                    statusElement.style.color = '#10b981';
+                                }
+                            }
+                        } catch (error) {
+                            console.error('Error creating connection:', error);
+                        }
+                    }
+                    
+                    // Add small delay to prevent UI blocking
+                    if (this.messages.indexOf(message) % 10 === 0) {
+                        await new Promise(resolve => setTimeout(resolve, 10));
+                    }
+                }
+                
+                console.log(`Created ${this.connections.size} connections`);
+            }
+            
+            selectAvatar(avatar) {
+                // Remove previous selections
+                document.querySelectorAll('.avatar-item.active').forEach(el => {
+                    el.classList.remove('active');
+                });
+                
+                // Add selection
+                avatar.element.classList.add('active');
+                
+                console.log(`Selected avatar: ${avatar.name}`);
+            }
+            
+            selectMessage(message) {
+                console.log(`Selected message: ${message.id} from ${message.sender}`);
+            }
+            
+            clearAllConnections() {
+                for (const [connectionId, connection] of this.connections) {
+                    if (this.connectionSystem) {
+                        this.connectionSystem.removeConnection(connectionId);
+                    }
+                    
+                    // Update message status
+                    if (connection.message) {
+                        connection.message.connected = false;
+                        connection.message.element.classList.remove('connected');
+                        const statusElement = connection.message.element.querySelector('.connection-status');
+                        if (statusElement) {
+                            statusElement.textContent = '未连接';
+                            statusElement.style.color = '#6b7280';
+                        }
+                    }
+                }
+                
+                this.connections.clear();
+                console.log('All connections cleared');
+            }
+            
+            async performStressTest() {
+                console.log('Starting stress test...');
+                
+                const stressBtn = document.getElementById('stressTestBtn');
+                if (stressBtn) {
+                    stressBtn.innerHTML = '<span class="loading-spinner"></span> 压力测试中...';
+                    stressBtn.disabled = true;
+                }
+                
+                try {
+                    // Generate more test data
+                    await this.generateAvatars(30);
+                    await this.generateMessages(200);
+                    await this.createConnections();
+                    
+                    // Monitor performance during stress test
+                    let testDuration = 30; // seconds
+                    const testInterval = setInterval(() => {
+                        const metrics = this.connectionSystem.getPerformanceMetrics();
+                        console.log(`Stress test - FPS: ${metrics.fps}, Connections: ${metrics.activeConnections}`);
+                        
+                        testDuration--;
+                        if (testDuration <= 0) {
+                            clearInterval(testInterval);
+                            console.log('Stress test completed');
+                        }
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('Stress test failed:', error);
+                } finally {
+                    if (stressBtn) {
+                        stressBtn.innerHTML = '压力测试';
+                        stressBtn.disabled = false;
+                    }
+                }
+            }
+            
+            startPerformanceMonitoring() {
+                this.performanceMonitor = setInterval(() => {
+                    this.updatePerformanceMetrics();
+                }, 100); // Update every 100ms for real-time feel
+            }
+            
+            updatePerformanceMetrics() {
+                if (!this.connectionSystem) return;
+                
+                try {
+                    const metrics = this.connectionSystem.getPerformanceMetrics();
+                    
+                    // Update FPS
+                    const fpsElement = document.getElementById('fpsValue');
+                    if (fpsElement) {
+                        fpsElement.textContent = `${metrics.fps}fps`;
+                        fpsElement.className = 'metric-value';
+                        if (metrics.fps < 30) fpsElement.classList.add('danger');
+                        else if (metrics.fps < 60) fpsElement.classList.add('warning');
+                    }
+                    
+                    // Update compute time
+                    const computeTimeElement = document.getElementById('computeTime');
+                    if (computeTimeElement) {
+                        computeTimeElement.textContent = `${metrics.avgComputeTime}ms`;
+                    }
+                    
+                    // Update cache hit rate
+                    const cacheHitRateElement = document.getElementById('cacheHitRate');
+                    if (cacheHitRateElement) {
+                        cacheHitRateElement.textContent = `${metrics.cacheHitRate}%`;
+                    }
+                    
+                    // Update memory usage
+                    const memoryUsageElement = document.getElementById('memoryUsage');
+                    if (memoryUsageElement) {
+                        const memoryUsage = this.estimateMemoryUsage();
+                        memoryUsageElement.textContent = `${memoryUsage}MB`;
+                    }
+                    
+                    // Update active connections
+                    const activeConnectionsElement = document.getElementById('activeConnections');
+                    if (activeConnectionsElement) {
+                        activeConnectionsElement.textContent = metrics.activeConnections;
+                    }
+                } catch (error) {
+                    console.error('Error updating performance metrics:', error);
+                }
+            }
+            
+            estimateMemoryUsage() {
+                // Rough estimation based on active elements
+                const baseMemory = 2.5; // Base system memory
+                const connectionMemory = this.connections.size * 0.01; // ~0.01MB per connection
+                const elementMemory = (this.avatars.length + this.messages.length) * 0.005; // ~0.005MB per element
+                
+                return (baseMemory + connectionMemory + elementMemory).toFixed(1);
+            }
+            
+            updateStatistics() {
+                const totalMessagesElement = document.getElementById('totalMessages');
+                if (totalMessagesElement) {
+                    totalMessagesElement.textContent = this.messages.length;
+                }
+                
+                const totalAvatarsElement = document.getElementById('totalAvatars');
+                if (totalAvatarsElement) {
+                    totalAvatarsElement.textContent = this.avatars.length;
+                }
+                
+                const connectionCountElement = document.getElementById('connectionCount');
+                if (connectionCountElement) {
+                    connectionCountElement.textContent = this.connections.size;
+                }
+                
+                // Update render time (approximate)
+                const renderTimeElement = document.getElementById('renderTime');
+                if (renderTimeElement) {
+                    const renderTime = this.connections.size * 0.01; // Estimated
+                    renderTimeElement.textContent = `${renderTime.toFixed(2)}ms`;
+                }
+            }
+            
+            updateConnectionStatus(isConnected) {
+                const indicator = document.getElementById('connectionStatus');
+                if (indicator) {
+                    indicator.className = isConnected ? 'connection-indicator' : 'connection-indicator inactive';
+                }
+            }
+            
+            setupEventListeners() {
+                // Generate data button
+                const generateBtn = document.getElementById('generateDataBtn');
+                if (generateBtn) {
+                    generateBtn.addEventListener('click', () => {
+                        this.generateTestData();
+                    });
+                }
+                
+                // Clear connections button
+                const clearBtn = document.getElementById('clearConnectionsBtn');
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', () => {
+                        this.clearAllConnections();
+                        this.updateStatistics();
+                    });
+                }
+                
+                // Stress test button
+                const stressBtn = document.getElementById('stressTestBtn');
+                if (stressBtn) {
+                    stressBtn.addEventListener('click', () => {
+                        this.performStressTest();
+                    });
+                }
+                
+                // Window resize handler
+                let resizeTimeout;
+                window.addEventListener('resize', () => {
+                    clearTimeout(resizeTimeout);
+                    resizeTimeout = setTimeout(() => {
+                        if (this.connectionSystem) {
+                            this.connectionSystem.updateConnections();
+                        }
+                        console.log('Connections updated after resize');
+                    }, 100);
+                });
+                
+                // Scroll handlers for real-time following
+                const messageArea = document.getElementById('messageArea');
+                const avatarList = document.getElementById('avatarList');
+                
+                [messageArea, avatarList].forEach(element => {
+                    if (element) {
+                        element.addEventListener('scroll', () => {
+                            if (this.connectionSystem) {
+                                this.connectionSystem.updateConnections();
+                            }
+                        });
+                    }
+                });
+            }
+            
+            showError(message) {
+                // Simple error display
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: #fee2e2;
+                    color: #dc2626;
+                    padding: 15px 20px;
+                    border-radius: 8px;
+                    border: 1px solid #fca5a5;
+                    z-index: 9999;
+                    font-family: inherit;
+                    font-size: 14px;
+                `;
+                errorDiv.textContent = message;
+                document.body.appendChild(errorDiv);
+                
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.parentNode.removeChild(errorDiv);
+                    }
+                }, 5000);
+            }
+        }
+        
+        // Initialize demo when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const demo = new ConnectionSystemDemo();
+            
+            // Make demo available globally for debugging
+            window.connectionDemo = demo;
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,169 @@
+# 连接线系统数学建模与同类项合并分析
+
+## 📐 数学建模转换
+
+### 1. 参数多项式化表示
+
+**基础常数项：**
+```math
+R = 5  // 圆角半径常数项
+```
+
+**偏移量多项式：**
+```math
+C(t) = -15δ₁(t) + 20δ₂(t) + 15δ₃(t)
+```
+其中：
+- δ₁(t) = 1 当 t = "left-to-right"，否则为 0
+- δ₂(t) = 1 当 t = "right-to-left"，否则为 0  
+- δ₃(t) = 1 当 t = "right-to-right"，否则为 0
+
+**延伸距离多项式：**
+```math
+E(t) = |C(t)| - R = |C(t)| - 5
+```
+
+### 2. 坐标计算多项式系统
+
+**中轴线X坐标：**
+```math
+X_c = X_s + C(t) = X_s + (-15δ₁ + 20δ₂ + 15δ₃)
+```
+
+**方向系数：**
+```math
+D_v = sign(Y_e - Y_s)  // 垂直方向系数：{-1, 1}
+D_h = sign(X_e - X_c)  // 水平方向系数：{-1, 1}
+```
+
+### 3. 路径坐标多项式矩阵
+
+**7段路径坐标系统：**
+```math
+Path = [
+    (X_s, Y_s),                                    // P₁: 起点
+    (X_s + E(t)·D_h, Y_s),                        // P₂: 第一水平延伸
+    (X_c, Y_s + R·D_v),                           // P₃: 第一转折后
+    (X_c, Y_e + R),                               // P₄: 垂直延伸  
+    (X_c + E(t)·D_h, Y_e),                        // P₅: 第二转折后
+    (X_e, Y_e)                                     // P₆: 终点
+]
+```
+
+## 🔄 同类项合并优化
+
+### 合并发现的模式：
+
+**1. 偏移量模式合并：**
+```math
+原式：centerOffset ∈ {-15, 20, 15}
+合并：C(t) = 15(δ₃ - δ₁) + 20δ₂ = 15(δ₃ - δ₁ + 4δ₂/3)
+```
+
+**2. 延伸距离模式合并：**
+```math
+原式：extend ∈ {10, 15, 10}  
+合并：E(t) = 10(δ₁ + δ₃) + 15δ₂ = 10 + 5δ₂
+```
+
+**3. 水平方向模式合并：**
+```math
+left-to-right: D_h = -1 (向左)
+right-to-left, right-to-right: D_h = +1 (向右)
+合并：D_h(t) = -δ₁ + δ₂ + δ₃ = 1 - 2δ₁
+```
+
+## 📊 优化后的需求表述
+
+基于数学建模分析，将需求重新组织为：
+
+### 核心算法公式：
+
+```javascript
+// 统一参数计算
+const RADIUS = 5;
+const OFFSET_COEFFS = [-15, 20, 15]; // [left-to-right, right-to-left, right-to-right]
+const typeIndex = getTypeIndex(connectionType); // 0, 1, 2
+
+// 一元化参数计算
+const centerOffset = OFFSET_COEFFS[typeIndex];
+const extend = Math.abs(centerOffset) - RADIUS;
+const centerX = startX + centerOffset;
+
+// 方向向量计算
+const directions = {
+    vertical: Math.sign(endY - startY),
+    horizontal: Math.sign(endX - centerX)
+};
+```
+
+### 路径生成标准化：
+
+```javascript
+// 统一路径计算矩阵
+const pathPoints = [
+    [startX, startY],                                           // 起点
+    [startX + extend * directions.horizontal, startY],         // 水平延伸
+    [centerX, startY + RADIUS * directions.vertical],          // 转折1后
+    [centerX, endY + RADIUS],                                  // 垂直延伸
+    [centerX + extend * directions.horizontal, endY],          // 转折2后  
+    [endX, endY]                                               // 终点
+];
+```
+
+### 连接类型枚举优化：
+
+```javascript
+const CONNECTION_TYPES = {
+    LEFT_TO_RIGHT: { index: 0, offset: -15, name: '消息→发送者头像' },
+    RIGHT_TO_LEFT: { index: 1, offset: 20,  name: '消息→接收者头像' },
+    RIGHT_TO_RIGHT: { index: 2, offset: 15, name: '消息→工具图标' }
+};
+```
+
+## 🎯 合并后的系统优势：
+
+1. **代码复用性**：三种连接类型共享同一套计算公式
+2. **参数统一性**：所有魔法数字集中在常数数组中
+3. **算法一致性**：路径生成逻辑完全一致，只有参数不同
+4. **维护便利性**：修改任意连接类型只需调整对应的常数值
+5. **扩展性**：添加新连接类型只需扩展常数数组
+
+通过数学建模和同类项合并，原本三套独立的算法合并为一套参数化的统一算法，大幅提升了代码的简洁性和可维护性。
+
+---
+
+## 📋 连接线系统完整技术规范
+
+### 算法要求：
+- 实现三种连接类型的智能路径生成
+- 支持120fps渲染性能(8.33ms间隔)
+- 使用虚拟滚动优化处理数千个元素
+- 仅监听容器级滚动事件，避免元素级监听
+
+### 核心数值参数：
+- 圆角半径: 5px (固定值)
+- 偏移量: [-15, 20, 15]px (按类型索引)
+- 延伸距离: [10, 15, 10]px (动态计算)
+
+### 路径类型规范：
+1. left-to-right: 左侧消息 → 对应会话头像(发送者)
+2. right-to-left: 右侧消息 → 左侧账号头像(接收者)  
+3. right-to-right: 右侧消息 → 右侧工具图标
+
+### SVG路径生成：
+- 7段式路径结构：起点→水平延伸→转折1→垂直延伸→转折2→水平延伸→终点
+- 使用Q指令实现圆角转折效果
+- 支持L形角点的平滑几何变换
+
+### 视觉效果：
+- 虚线路径动画效果
+- 阴影增强视觉层次感
+- 支持跨屏幕宽度连接
+- 实时跟随元素位置变化
+
+### 性能优化策略：
+- 批量更新策略在RAF周期内执行
+- 位置缓存机制减少重复计算  
+- 内存管理及时清理连接线实例
+- 边界处理元素进出可视区域场景

@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>聊天界面连接线光线动画 - 正确版本（只改控制点不改终点）</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            overflow: hidden;
+        }
+
+        /* 聊天界面容器 */
+        .chat-container {
+            position: relative;
+            width: 90vw;
+            max-width: 1200px;
+            height: 80vh;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部标题栏 */
+        .chat-header {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        /* 主聊天区域 */
+        .chat-main {
+            flex: 1;
+            position: relative;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* 左侧会话列表 */
+        .conversation-sidebar {
+            width: 200px;
+            background: rgba(102, 126, 234, 0.1);
+            border-right: 1px solid rgba(102, 126, 234, 0.2);
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        /* 会话头像 */
+        .conversation-avatar {
+            position: relative;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            margin: 0 auto;
+            background: linear-gradient(45deg, #00ff88, #00bcd4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .conversation-avatar:hover {
+            transform: scale(1.1);
+        }
+
+        /* 中间消息区域 */
+        .message-area {
+            flex: 1;
+            position: relative;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            /* 添加滚动功能 - 使用flex:1自适应高度并启用滚动 */
+            overflow-y: auto;
+            min-height: 0; /* 重要：允许flex子项缩小 */
+            /* 移除justify-content: center，让消息从上开始排列 */
+        }
+
+        /* 消息气泡 */
+        .message-bubble {
+            position: relative;
+            max-width: 350px;
+            padding: 15px 20px;
+            border-radius: 20px;
+            font-size: 1rem;
+            line-height: 1.5;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        /* 左侧发送的消息 */
+        .message-left {
+            background: linear-gradient(45deg, #00ff88, #00bcd4);
+            color: white;
+            align-self: flex-start;
+            margin-left: 0;
+            border-bottom-left-radius: 5px;
+        }
+
+        /* 右侧发送的消息 */
+        .message-right {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            color: white;
+            align-self: flex-end;
+            margin-right: 0;
+            border-bottom-right-radius: 5px;
+        }
+
+        /* 右侧工具和账号区域 */
+        .right-sidebar {
+            width: 180px;
+            background: rgba(118, 75, 162, 0.1);
+            border-left: 1px solid rgba(118, 75, 162, 0.2);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+        }
+
+        /* 账号头像区域 */
+        .account-section {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .account-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.5rem;
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+        }
+
+        /* 工具列区域 */
+        .tools-section {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .tool-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            background: linear-gradient(45deg, #9c27b0, #e91e63);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 15px rgba(156, 39, 176, 0.3);
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .tool-icon:hover {
+            transform: scale(1.1);
+        }
+
+        /* SVG连接线容器 */
+        .connection-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .connection-svg {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* 基础连接线样式 */
+        .base-connection {
+            stroke: rgba(102, 126, 234, 0.3);
+            stroke-width: 2;
+            fill: transparent;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+        
+        /* 调试点样式 */
+        .debug-point {
+            opacity: 0.9;
+            transition: opacity 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .debug-point:hover {
+            opacity: 1;
+            stroke-width: 2;
+        }
+        
+        /* 调试标签样式 */
+        .debug-label {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            fill: #333;
+            pointer-events: none;
+            text-shadow: 1px 1px 0 rgba(255,255,255,0.8);
+        }
+
+        /* 左侧会话连接线 - 绿色光线 */
+        .left-connection {
+            stroke: #00ff88;
+            stroke-width: 3;
+            fill: transparent;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 60, 300;
+            stroke-dashoffset: 0;
+            animation: light-flow-left 4s infinite linear;
+            filter: drop-shadow(0 0 8px #00ff88) drop-shadow(0 0 16px rgba(0, 255, 136, 0.6));
+        }
+
+        /* 右侧账号连接线 - 橙色光线 */
+        .right-connection {
+            stroke: #ff6b35;
+            stroke-width: 3;
+            fill: transparent;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 50, 280;
+            stroke-dashoffset: 0;
+            animation: light-flow-right 3.5s infinite linear;
+            animation-delay: -1s;
+            filter: drop-shadow(0 0 8px #ff6b35) drop-shadow(0 0 16px rgba(255, 107, 53, 0.6));
+        }
+
+        /* 右侧工具连接线 - 紫色光线 */
+        .tool-connection {
+            stroke: #9c27b0;
+            stroke-width: 2.5;
+            fill: transparent;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 40, 250;
+            stroke-dashoffset: 0;
+            animation: light-flow-tool 3s infinite linear;
+            animation-delay: -2s;
+            filter: drop-shadow(0 0 6px #9c27b0) drop-shadow(0 0 12px rgba(156, 39, 176, 0.6));
+        }
+
+        /* 左侧连接线动画 */
+        @keyframes light-flow-left {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -360; }
+        }
+
+        /* 右侧账号连接线动画 */
+        @keyframes light-flow-right {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -330; }
+        }
+
+        /* 工具连接线动画 */
+        @keyframes light-flow-tool {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -290; }
+        }
+
+        /* 控制面板 */
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+        }
+
+        .control-btn {
+            padding: 8px 16px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 20px;
+            color: white;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+        }
+
+        /* 技术信息面板 */
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 280px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 15px;
+            color: white;
+            font-size: 0.85rem;
+            line-height: 1.4;
+            backdrop-filter: blur(10px);
+        }
+
+        .info-panel h4 {
+            color: #00ff88;
+            margin-bottom: 10px;
+        }
+
+        .path-info {
+            margin-bottom: 8px;
+        }
+
+        .path-info .label {
+            color: #ff6b35;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <!-- 顶部标题 -->
+        <div class="chat-header">
+            聊天界面连接线光线动画 - 正确版本（只改控制点不改终点）
+        </div>
+
+        <div class="chat-main">
+            <!-- 左侧会话列表 -->
+            <div class="conversation-sidebar">
+                <div class="conversation-avatar" id="conversation-avatar-1" data-connection="left-1">A</div>
+                <div class="conversation-avatar" id="conversation-avatar-2" data-connection="left-2">B</div>
+                <div class="conversation-avatar" id="conversation-avatar-3" data-connection="left-3">C</div>
+            </div>
+
+            <!-- 中间消息区域 -->
+            <div class="message-area" id="message-area">
+                <!-- 50个测试消息 -->
+            </div>
+
+            <!-- 右侧账号和工具区域 -->
+            <div class="right-sidebar">
+                <!-- 账号头像区域 -->
+                <div class="account-section">
+                    <div class="account-avatar" id="account-avatar">U</div>
+                    <div style="font-size: 0.9rem; color: #666;">账号头像</div>
+                </div>
+
+                <!-- 工具列区域 -->
+                <div class="tools-section">
+                    <div class="tool-icon" id="tool-1">🔧</div>
+                    <div class="tool-icon" id="tool-2">📊</div>
+                    <div class="tool-icon" id="tool-3">⚙️</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SVG连接线覆盖层 -->
+        <div class="connection-overlay">
+            <svg class="connection-svg" xmlns="http://www.w3.org/2000/svg" id="connection-svg">
+                <!-- 动态生成的连接路径将插入这里 -->
+            </svg>
+        </div>
+
+        <!-- 技术信息面板 -->
+        <div class="info-panel">
+            <h4>🔧 正确的连接路径规范（只改控制点，不改终点）</h4>
+            <div class="path-info">
+                <span class="label">核心原则:</span> 保持路径结构，调整SVG控制点实现朝向目标的转折
+            </div>
+            <div class="path-info">
+                <span class="label">左侧连接:</span> 从左侧消息连接到对应的会话头像(发送者)
+            </div>
+            <div class="path-info">
+                <span class="label">右侧到账号:</span> 终点(startX+10) + 控制点(startX) = 向左弯曲效果
+            </div>
+            <div class="path-info">
+                <span class="label">右侧到工具:</span> 终点(startX+10) + 控制点(startX+10) = 向右弯曲效果
+            </div>
+            <div class="path-info">
+                <span class="label">L形角点修正:</span> 控制点位于(中轴线X, 终点Y)实现向内弯曲，中轴线终点统一为endY+radius
+            </div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <button class="control-btn" onclick="toggleAnimation()">暂停/播放</button>
+            <button class="control-btn" onclick="changeSpeed()">调速</button>
+            <button class="control-btn" onclick="highlightPath()">高亮路径</button>
+            <button class="control-btn" onclick="toggleDebugPoints()">调试点</button>
+        </div>
+        
+        <!-- 调试参数面板 -->
+        <div class="debug-panel" style="position: fixed; bottom: 80px; right: 20px; background: rgba(0,0,0,0.8); color: white; padding: 15px; border-radius: 8px; font-size: 12px;">
+            <h4 style="margin-bottom: 10px; color: #00ff88;">参数设置</h4>
+            <div class="param-list">
+                <div>圆角半径 (radius): <span style="color: #ff6600;">5px</span></div>
+                <div>中轴线偏移量 (centerOffset): <span style="color: #0088ff;">按类型动态</span></div>
+                <div>水平延伸距离 (extend): <span style="color: #aa00ff;">动态计算</span></div>
+                <div style="margin-top: 8px; color: #ffaa00;">公式: extend = |centerOffset| - radius</div>
+                <div style="color: #00ff88;">left-to-right: centerOffset = -15</div>
+                <div style="color: #ff6600;">right-to-left: centerOffset = 20</div>
+                <div style="color: #0088ff;">right-to-right: centerOffset = 15</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let animationPaused = false;
+        let currentSpeed = 1;
+        let pathHighlighted = false;
+        let connections = [];
+
+        // 获取元素相对于SVG容器的精确位置
+        function getElementPosition(element) {
+            const svgContainer = document.querySelector('.connection-overlay');
+            const containerRect = svgContainer.getBoundingClientRect();
+            const elementRect = element.getBoundingClientRect();
+            
+            return {
+                left: elementRect.left - containerRect.left,
+                top: elementRect.top - containerRect.top,
+                right: elementRect.right - containerRect.left,
+                bottom: elementRect.bottom - containerRect.top,
+                centerX: (elementRect.left + elementRect.right) / 2 - containerRect.left,
+                centerY: (elementRect.top + elementRect.bottom) / 2 - containerRect.top,
+                width: elementRect.width,
+                height: elementRect.height
+            };
+        }
+
+        // 连接路径生成（包含调试点信息）
+        function createConnectionPath(startX, startY, endX, endY, type) {
+            const radius = 5; // 圆角半径
+            
+            // 根据连接类型设置不同的中轴线偏移量
+            let centerOffset;
+            if (type === 'left-to-right') {
+                centerOffset = -15; // 左侧消息向左偏移
+            } else if (type === 'right-to-left') {
+                centerOffset = 20;  // 右侧消息到左侧账号，增加偏移
+            } else if (type === 'right-to-right') {
+                centerOffset = 15;  // 右侧消息到右侧工具，保持原值
+            }
+            
+            const extend = Math.abs(centerOffset) - radius; // 水平延伸距离 = |中轴线偏移量| - 圆角半径
+            
+            // 计算中轴线位置
+            const centerX = startX + centerOffset;
+            
+            // 垂直方向判断
+            const isDownward = endY > startY; // 向下延伸为true，向上延伸为false
+            const verticalDirection = isDownward ? 1 : -1; // 1表示向下，-1表示向上
+            
+            // 水平延伸方向自适应判断（基于中轴线位置）
+            const horizontalDirection = endX > centerX ? 1 : -1; // 1向右，-1向左
+            
+            let path = '';
+            
+            if (type === 'left-to-right') {
+                // 左侧会话头像发送的消息路径规范
+                // 1. 起点：消息气泡左侧边框垂直中点
+                const step1X = startX;
+                const step1Y = startY;
+                
+                // 2. 水平延伸段：向左水平延伸10px至
+                const step2X = startX - extend;
+                const step2Y = startY;
+                
+                // 3. 第一个圆角转折区域（L型角点）
+                // 控制点：L型角点 = (中轴线横坐标, 起点纵坐标)
+                const turn1CenterX = centerX;
+                const turn1CenterY = startY;
+                // 转折后实际位置：到达中轴线
+                const step3X = centerX;
+                const step3Y = startY + (verticalDirection * radius);
+                
+                // 4. 垂直延伸段：沿中轴线垂直延伸至目标Y坐标附近
+                const step4X = centerX; // X坐标保持在中轴线
+                const step4Y = endY + radius; // 统一使用endY+radius，正确的中轴线终点
+                
+                // 5. 第二个圆角转折区域（L形角点45度对称圆角）
+                // 第二水平延伸起点：使用radius确保45度对称圆角
+                const step5X = centerX + (horizontalDirection * radius);
+                const step5Y = endY;
+                // L形角点控制点：实现向内弯曲的正确圆角效果
+                const turn2CenterX = centerX; // 垂直段X坐标（中轴线）
+                const turn2CenterY = endY; // 水平段Y坐标（终点高度）
+                
+                // 6. 最终水平延伸段：从第二转折后水平延伸至终点
+                const step6X = endX;
+                const step6Y = endY;
+                
+                path = `M ${step1X} ${step1Y} 
+                        L ${step2X} ${step2Y} 
+                        Q ${turn1CenterX} ${turn1CenterY} ${step3X} ${step3Y}
+                        L ${step4X} ${step4Y}
+                        Q ${turn2CenterX} ${turn2CenterY} ${step5X} ${step5Y}
+                        L ${step6X} ${step6Y}`;
+                        
+            } else if (type === 'right-to-left') {
+                // 右侧消息连接到左侧账号的路径规范（目标在左边）
+                // 1. 起点：消息气泡右侧边框垂直中点
+                const step1X = startX;
+                const step1Y = startY;
+                
+                // 2. 水平延伸段：向右水平延伸10px至
+                const step2X = startX + extend;
+                const step2Y = startY;
+                
+                // 3. 第一个圆角转折区域（L型角点）
+                // 控制点：L型角点 = (中轴线横坐标, 起点纵坐标)
+                const turn1CenterX = centerX;
+                const turn1CenterY = startY;
+                // 转折后实际位置：到达中轴线
+                const step3X = centerX;
+                const step3Y = startY + (verticalDirection * radius);
+                
+                // 4. 垂直延伸段：沿中轴线垂直延伸至目标Y坐标附近
+                const step4X = centerX; // X坐标保持在中轴线
+                const step4Y = endY + radius; // 统一使用endY+radius，正确的中轴线终点
+                
+                // 5. 第二个圆角转折区域（L形角点45度对称圆角）
+                // 第二水平延伸起点：使用radius确保45度对称圆角
+                const step5X = centerX + (horizontalDirection * radius);
+                const step5Y = endY;
+                // L形角点控制点：实现向内弯曲的正确圆角效果
+                const turn2CenterX = centerX; // 垂直段X坐标（中轴线）
+                const turn2CenterY = endY; // 水平段Y坐标（终点高度）
+                
+                // 6. 最终水平延伸段：从第二转折后水平延伸至终点
+                const step6X = endX;
+                const step6Y = endY;
+                
+                path = `M ${step1X} ${step1Y} 
+                        L ${step2X} ${step2Y} 
+                        Q ${turn1CenterX} ${turn1CenterY} ${step3X} ${step3Y}
+                        L ${step4X} ${step4Y}
+                        Q ${turn2CenterX} ${turn2CenterY} ${step5X} ${step5Y}
+                        L ${step6X} ${step6Y}`;
+                        
+            } else if (type === 'right-to-right') {
+                // 右侧消息连接到右侧工具的路径规范（目标在右边）
+                // 1. 起点：消息气泡右侧边框垂直中点
+                const step1X = startX;
+                const step1Y = startY;
+                
+                // 2. 水平延伸段：向右水平延伸10px至
+                const step2X = startX + extend;
+                const step2Y = startY;
+                
+                // 3. 第一个圆角转折区域（L型角点）
+                // 控制点：L型角点 = (中轴线横坐标, 起点纵坐标)
+                const turn1CenterX = centerX;
+                const turn1CenterY = startY;
+                // 转折后实际位置：到达中轴线
+                const step3X = centerX;
+                const step3Y = startY + (verticalDirection * radius);
+                
+                // 4. 垂直延伸段：沿中轴线垂直延伸至目标Y坐标附近
+                const step4X = centerX; // X坐标保持在中轴线
+                const step4Y = endY + radius; // 统一使用endY+radius，正确的中轴线终点
+                
+                // 5. 第二个圆角转折区域（L形角点45度对称圆角）
+                // 第二水平延伸起点：使用radius确保45度对称圆角
+                const step5X = centerX + (horizontalDirection * radius);
+                const step5Y = endY;
+                // L形角点控制点：实现向内弯曲的正确圆角效果
+                const turn2CenterX = centerX; // 垂直段X坐标（中轴线）
+                const turn2CenterY = endY; // 水平段Y坐标（终点高度）
+                
+                // 6. 最终水平延伸段：从第二转折后水平延伸至终点
+                const step6X = endX;
+                const step6Y = endY;
+                
+                path = `M ${step1X} ${step1Y} 
+                        L ${step2X} ${step2Y} 
+                        Q ${turn1CenterX} ${turn1CenterY} ${step3X} ${step3Y}
+                        L ${step4X} ${step4Y}
+                        Q ${turn2CenterX} ${turn2CenterY} ${step5X} ${step5Y}
+                        L ${step6X} ${step6Y}`;
+            }
+            
+            // 收集所有调试点（基于新的L形角点45度对称圆角算法）
+            const debugPoints = {
+                start: { x: startX, y: startY, label: '起点', color: '#ff0000' },
+                extend: { x: startX + (type.includes('left') ? -extend : extend), y: startY, label: '水平延伸', color: '#ff6600' },
+                turn1Control: { x: centerX, y: startY, label: '转折1控制点', color: '#ffaa00' },
+                turn1End: { x: centerX, y: startY + (verticalDirection * radius), label: '转折1终点', color: '#00ff00' },
+                verticalStart: { x: centerX, y: startY + (verticalDirection * radius), label: '垂直段起点', color: '#00aa00' },
+                centerAxis: { x: centerX, y: (startY + endY) / 2, label: '中轴线中心', color: '#0088ff' },
+                verticalEnd: { x: centerX, y: endY + radius, label: '垂直段终点', color: '#0066aa' },
+                turn2Control: { x: centerX, y: endY, label: 'L形角点控制点', color: '#8800ff' },
+                turn2End: { x: centerX + (horizontalDirection * radius), y: endY, label: '第二水平延伸起点(对称)', color: '#aa00ff' },
+                end: { x: endX, y: endY, label: '终点', color: '#ff00aa' }
+            };
+            
+            return { path, debugPoints, type };
+        }
+
+        // 创建SVG路径元素
+        function createPathElement(pathData, className, animationClass) {
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('d', pathData);
+            path.setAttribute('class', className);
+            if (animationClass) {
+                path.classList.add(animationClass);
+            }
+            return path;
+        }
+
+        // 生成所有连接线
+        function generateConnections() {
+            const svg = document.getElementById('connection-svg');
+            svg.innerHTML = ''; // 清空现有路径
+            connections = [];
+            
+            // 动态获取所有消息元素
+            const leftMessages = document.querySelectorAll('.message-left');
+            const rightMessages = document.querySelectorAll('.message-right'); 
+            const conversationAvatars = document.querySelectorAll('.conversation-avatar');
+            const accountAvatar = document.getElementById('account-avatar');
+            const tools = document.querySelectorAll('.tool-icon');
+            
+            const connectionConfigs = [];
+            
+            // 为每个左侧消息创建连接到会话头像
+            leftMessages.forEach((leftMsg, index) => {
+                const avatarIndex = index % conversationAvatars.length; // 循环使用会话头像
+                const avatar = conversationAvatars[avatarIndex];
+                
+                if (avatar) {
+                    const msgPos = getElementPosition(leftMsg);
+                    const avatarPos = getElementPosition(avatar);
+                    
+                    connectionConfigs.push({
+                        name: `左侧消息${index + 1}到会话头像${String.fromCharCode(65 + avatarIndex)}`,
+                        start: { x: msgPos.left, y: msgPos.centerY },
+                        end: { x: avatarPos.right, y: avatarPos.centerY },
+                        type: 'left-to-right',
+                        animationClass: 'left-connection',
+                        startElement: leftMsg,  // 保存DOM元素引用
+                        endElement: avatar      // 保存DOM元素引用
+                    });
+                }
+            });
+            
+            // 为每个右侧消息创建连接
+            rightMessages.forEach((rightMsg, index) => {
+                const msgPos = getElementPosition(rightMsg);
+                
+                // 奇数右侧消息连接到账号头像，偶数连接到工具
+                if (index % 2 === 0 && accountAvatar) {
+                    // 连接到账号头像
+                    const avatarPos = getElementPosition(accountAvatar);
+                    connectionConfigs.push({
+                        name: `右侧消息${index + 1}到账号头像`,
+                        start: { x: msgPos.right, y: msgPos.centerY },
+                        end: { x: avatarPos.left, y: avatarPos.centerY },
+                        type: 'right-to-left',
+                        animationClass: 'right-connection',
+                        startElement: rightMsg,      // 保存DOM元素引用
+                        endElement: accountAvatar    // 保存DOM元素引用
+                    });
+                } else {
+                    // 连接到工具
+                    const toolIndex = index % tools.length;
+                    const tool = tools[toolIndex];
+                    
+                    if (tool) {
+                        const toolPos = getElementPosition(tool);
+                        connectionConfigs.push({
+                            name: `右侧消息${index + 1}到工具${toolIndex + 1}`,
+                            start: { x: msgPos.right, y: msgPos.centerY },
+                            end: { x: toolPos.left, y: toolPos.centerY },
+                            type: 'right-to-right',
+                            animationClass: 'tool-connection',
+                            startElement: rightMsg,  // 保存DOM元素引用
+                            endElement: tool         // 保存DOM元素引用
+                        });
+                    }
+                }
+            });
+
+            // 保存连接配置以便后续更新
+            storedConnectionConfigs = [...connectionConfigs];
+            
+            // 生成所有连接线
+            connectionConfigs.forEach((config, index) => {
+                const result = createConnectionPath(
+                    config.start.x, config.start.y,
+                    config.end.x, config.end.y,
+                    config.type
+                );
+                
+                // 创建基础路径
+                const basePath = createPathElement(result.path, 'base-connection');
+                svg.appendChild(basePath);
+                
+                // 创建动画路径
+                const animatedPath = createPathElement(result.path, 'base-connection', config.animationClass);
+                svg.appendChild(animatedPath);
+                
+                // 创建调试点
+                Object.entries(result.debugPoints).forEach(([key, point]) => {
+                    // 创建圆点
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', point.x);
+                    circle.setAttribute('cy', point.y);
+                    circle.setAttribute('r', key.includes('Control') ? '6' : '4');
+                    circle.setAttribute('fill', point.color);
+                    circle.setAttribute('stroke', '#ffffff');
+                    circle.setAttribute('stroke-width', '1');
+                    circle.setAttribute('class', 'debug-point');
+                    svg.appendChild(circle);
+                    
+                    // 创建文字标签
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', point.x + 8);
+                    text.setAttribute('y', point.y - 8);
+                    text.setAttribute('class', 'debug-label');
+                    text.textContent = `${point.label}(${Math.round(point.x)},${Math.round(point.y)})`;
+                    svg.appendChild(text);
+                });
+                
+                connections.push({
+                    name: config.name,
+                    basePath: basePath,
+                    animatedPath: animatedPath,
+                    pathData: result.path
+                });
+                
+                console.log(`✅ 创建连接线: ${config.name}`);
+                console.log(`   起点: (${config.start.x.toFixed(1)}, ${config.start.y.toFixed(1)})`);
+                console.log(`   终点: (${config.end.x.toFixed(1)}, ${config.end.y.toFixed(1)})`);
+                console.log(`   类型: ${config.type}`);
+                
+                // 计算关键转折点用于调试（正确版本：只改控制点）
+                const extend = 10;
+                const radius = 5;
+                const isDownward = config.end.y > config.start.y;
+                const verticalDirection = isDownward ? 1 : -1;
+                const targetDirection = config.end.x > config.start.x ? 1 : -1; // 目标方向判断
+                
+                console.log(`   垂直方向: ${isDownward ? '向下' : '向上'} (${verticalDirection > 0 ? '+' : '-'})`);
+                console.log(`   目标方向: ${targetDirection > 0 ? '右侧' : '左侧'} (${targetDirection > 0 ? '→' : '←'})`);
+                
+                if (config.type === 'left-to-right') {
+                    const turn1Center = { x: config.start.x - extend, y: config.start.y };
+                    const turn1After = { 
+                        x: config.start.x - extend + radius, // 第一转折向内偏移
+                        y: config.start.y + (verticalDirection * radius) 
+                    };
+                    const turn2Control = { 
+                        x: config.start.x - extend + radius + (targetDirection * radius), // ✨新控制点：朝向目标
+                        y: config.end.y 
+                    };
+                    const turn2After = { 
+                        x: config.start.x - extend, // 保持原有终点
+                        y: config.end.y 
+                    };
+                    
+                    console.log(`   ✨ 正确修正: 第二转折控制点朝向目标 ${targetDirection > 0 ? '→' : '←'}`);
+                    console.log(`   第一转折中心: (${turn1Center.x.toFixed(1)}, ${turn1Center.y.toFixed(1)})`);
+                    console.log(`   第一转折后位置: (${turn1After.x.toFixed(1)}, ${turn1After.y.toFixed(1)})`);
+                    console.log(`   第二转折控制点: (${turn2Control.x.toFixed(1)}, ${turn2Control.y.toFixed(1)}) [朝向目标]`);
+                    console.log(`   第二转折后位置: (${turn2After.x.toFixed(1)}, ${turn2After.y.toFixed(1)}) [保持主轴]`);
+                    
+                } else if (config.type === 'right-to-left' || config.type === 'right-to-right') {
+                    const turn1Center = { x: config.start.x + extend, y: config.start.y };
+                    const turn1After = { 
+                        x: config.start.x + extend - radius, // 第一转折向内偏移
+                        y: config.start.y + (verticalDirection * radius) 
+                    };
+                    const turn2Control = { 
+                        x: config.start.x + extend - radius + (targetDirection * radius), // ✨新控制点：朝向目标
+                        y: config.end.y 
+                    };
+                    const turn2After = { 
+                        x: config.start.x + extend, // 保持原有终点
+                        y: config.end.y 
+                    };
+                    
+                    console.log(`   ✨ 正确修正: 第二转折控制点朝向目标 ${targetDirection > 0 ? '→' : '←'}`);
+                    console.log(`   第一转折中心: (${turn1Center.x.toFixed(1)}, ${turn1Center.y.toFixed(1)})`);
+                    console.log(`   第一转折后位置: (${turn1After.x.toFixed(1)}, ${turn1After.y.toFixed(1)})`);
+                    console.log(`   第二转折控制点: (${turn2Control.x.toFixed(1)}, ${turn2Control.y.toFixed(1)}) [朝向目标]`);
+                    console.log(`   第二转折后位置: (${turn2After.x.toFixed(1)}, ${turn2After.y.toFixed(1)}) [保持主轴]`);
+                }
+            });
+        }
+
+        // 暂停/播放所有连接线动画
+        function toggleAnimation() {
+            const animatedPaths = document.querySelectorAll('.left-connection, .right-connection, .tool-connection');
+            
+            if (animationPaused) {
+                animatedPaths.forEach(path => {
+                    path.style.animationPlayState = 'running';
+                });
+                animationPaused = false;
+                console.log('✅ 动画已恢复播放');
+            } else {
+                animatedPaths.forEach(path => {
+                    path.style.animationPlayState = 'paused';
+                });
+                animationPaused = true;
+                console.log('⏸️ 动画已暂停');
+            }
+        }
+
+        // 调整动画速度
+        function changeSpeed() {
+            const speeds = [0.5, 1, 1.5, 2];
+            currentSpeed = speeds[(speeds.indexOf(currentSpeed) + 1) % speeds.length];
+            
+            const animatedPaths = document.querySelectorAll('.left-connection, .right-connection, .tool-connection');
+            animatedPaths.forEach(path => {
+                // 获取原始动画时长并调整
+                const computedStyle = getComputedStyle(path);
+                const currentDuration = parseFloat(computedStyle.animationDuration);
+                path.style.animationDuration = (4 / currentSpeed) + 's'; // 基础4秒调整
+            });
+
+            console.log(`🔄 动画速度调整为: ${currentSpeed}x`);
+        }
+
+        // 高亮显示路径
+        function highlightPath() {
+            const basePaths = document.querySelectorAll('.base-connection:not(.left-connection):not(.right-connection):not(.tool-connection)');
+            
+            if (pathHighlighted) {
+                basePaths.forEach(path => {
+                    path.style.stroke = 'rgba(102, 126, 234, 0.3)';
+                    path.style.strokeWidth = '2';
+                });
+                pathHighlighted = false;
+                console.log('❌ 取消路径高亮');
+            } else {
+                basePaths.forEach(path => {
+                    path.style.stroke = 'rgba(255, 255, 255, 0.8)';
+                    path.style.strokeWidth = '3';
+                });
+                pathHighlighted = true;
+                console.log('✨ 路径已高亮显示');
+            }
+        }
+
+        // 生扐50个测试消息
+        function generateTestMessages() {
+            const messageArea = document.getElementById('message-area');
+            messageArea.innerHTML = ''; // 清空现有消息
+            
+            // 消息模板
+            const leftMessages = [
+                '来自会话A的消息',
+                '会话B发送的内容', 
+                '会话C的聊天消息',
+                'A用户的新消息',
+                'B用户的回复'
+            ];
+            
+            const rightMessages = [
+                '账号回复的消息', 
+                '智能助手生成内容',
+                '工具处理的结果',
+                'AI生成的回应', 
+                '系统自动回复'
+            ];
+            
+            // 生扐50个消息
+            for (let i = 1; i <= 50; i++) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message-bubble';
+                
+                if (i % 2 === 1) {
+                    // 奇数消息为左侧消息
+                    messageDiv.classList.add('message-left');
+                    messageDiv.id = `msg-left-${Math.ceil(i/2)}`;
+                    const template = leftMessages[(i-1) % leftMessages.length];
+                    messageDiv.textContent = `${template} #${Math.ceil(i/2)}`;
+                } else {
+                    // 偶数消息为右侧消息
+                    messageDiv.classList.add('message-right'); 
+                    messageDiv.id = `msg-right-${i/2}`;
+                    const template = rightMessages[(i-2) % rightMessages.length];
+                    messageDiv.textContent = `${template} #${i/2}`;
+                }
+                
+                messageArea.appendChild(messageDiv);
+            }
+        }
+        
+        // 页面加载和窗口大小变化时重新计算连接线
+        function initializeConnections() {
+            // 首先生成测试消息
+            generateTestMessages();
+            
+            setTimeout(() => {
+                generateConnections();
+                
+                // 添加滚动监听器
+                const messageArea = document.getElementById('message-area');
+                if (messageArea) {
+                    messageArea.addEventListener('scroll', throttledUpdateConnections);
+                    console.log('\ud83d\udd04 滚动监听器已添加，连接线将实时更新');
+                }
+                console.log(`
+                    🌟 聊天界面连接线动画系统已初始化：
+                    
+                    📐 路径计算方式：
+                    • 动态获取每个UI元素的实际位置
+                    • 精确计算消息气泡边缘中点作为起点
+                    • 精确计算头像和工具中心作为终点
+                    • 自动生成符合规范的圆角连接路径
+                    
+                    🎯 简洁完整版规范实现：
+                    • 左侧会话: 消息左边 → 左延伸10px → 圆角转折(+5px偏移) → 垂直延伸 → 圆角转折(回主轴) → 头像右边
+                    • 右侧账号: 消息右边 → 右延伸10px → 圆角转折(-5px偏移) → 垂直延伸 → 圆角转折(回主轴) → 头像左边  
+                    • 工具连接: 消息右边 → 右延伸10px → 圆角转折(-5px偏移) → 垂直延伸 → 圆角转折(回主轴) → 工具左边
+                    
+                    🔑 紧凑参数规范：
+                    • 垂直方向: endY > startY 为向下(+)，endY < startY 为向上(-)
+                    • 转折方向: 左侧连接向右偏移(+radius)，右侧连接向左偏移(-radius)
+                    • 参数设定: extend = 10px，radius = 5px（更精细紧凑）
+                    • 路径公式: 水平延伸 → 第一转折 → 垂直延伸 → 第二转折 → 终点延伸
+                    
+                    ⚡ 动画效果：
+                    • 绿色光线: 左侧会话连接
+                    • 橙色光线: 右侧账号连接  
+                    • 紫色光线: 工具连接
+                    • 每条线都有独立的动画周期和延迟
+                    
+                    生成了 ${connections.length} 条连接线
+                `);
+            }, 100); // 等待DOM完全渲染
+        }
+
+        // 页面加载完成后初始化
+        // 节流函数 - 防止过度频繁的更新
+        function throttle(func, limit) {
+            let inThrottle;
+            return function() {
+                const args = arguments;
+                const context = this;
+                if (!inThrottle) {
+                    func.apply(context, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            }
+        }
+        
+        // 存储连接配置，避免重复扫描DOM
+        let storedConnectionConfigs = [];
+        
+        // 实时更新连接线位置
+        function updateConnectionPositions() {
+            if (storedConnectionConfigs.length === 0) return;
+            
+            const svg = document.getElementById('connection-svg');
+            const paths = svg.querySelectorAll('path');
+            const debugPoints = svg.querySelectorAll('.debug-point, .debug-label');
+            
+            // 清空现有路径和调试点
+            paths.forEach(path => path.remove());
+            debugPoints.forEach(point => point.remove());
+            
+            // 重新生成连接线
+            storedConnectionConfigs.forEach((config, index) => {
+                // 重新获取起点和终点位置
+                const startElement = config.startElement;
+                const endElement = config.endElement;
+                
+                if (startElement && endElement) {
+                    const startPos = getElementPosition(startElement);
+                    const endPos = getElementPosition(endElement);
+                    
+                    // 根据连接类型确定正确的起点和终点
+                    let startX, startY, endX, endY;
+                    
+                    if (config.type === 'left-to-right') {
+                        startX = startPos.left;
+                        startY = startPos.centerY;
+                        endX = endPos.right;
+                        endY = endPos.centerY;
+                    } else if (config.type === 'right-to-left') {
+                        startX = startPos.right;
+                        startY = startPos.centerY;
+                        endX = endPos.left;
+                        endY = endPos.centerY;
+                    } else { // right-to-right
+                        startX = startPos.right;
+                        startY = startPos.centerY;
+                        endX = endPos.left;
+                        endY = endPos.centerY;
+                    }
+                    
+                    // 生成新路径
+                    const result = createConnectionPath(startX, startY, endX, endY, config.type);
+                    
+                    // 创建基础路径
+                    const basePath = createPathElement(result.path, 'base-connection');
+                    svg.appendChild(basePath);
+                    
+                    // 创建动画路径
+                    const animatedPath = createPathElement(result.path, 'base-connection', config.animationClass);
+                    svg.appendChild(animatedPath);
+                    
+                    // 创建调试点
+                    Object.entries(result.debugPoints).forEach(([key, point]) => {
+                        // 创建圆点
+                        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                        circle.setAttribute('cx', point.x);
+                        circle.setAttribute('cy', point.y);
+                        circle.setAttribute('r', key.includes('Control') ? '6' : '4');
+                        circle.setAttribute('fill', point.color);
+                        circle.setAttribute('stroke', '#ffffff');
+                        circle.setAttribute('stroke-width', '1');
+                        circle.setAttribute('class', 'debug-point');
+                        svg.appendChild(circle);
+                        
+                        // 创建文字标签
+                        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                        text.setAttribute('x', point.x + 8);
+                        text.setAttribute('y', point.y - 8);
+                        text.setAttribute('class', 'debug-label');
+                        text.textContent = `${point.label}(${Math.round(point.x)},${Math.round(point.y)})`;
+                        svg.appendChild(text);
+                    });
+                }
+            });
+        }
+        
+        // 节流版本的更新函数
+        const throttledUpdateConnections = throttle(updateConnectionPositions, 16); // 约60FPS
+        
+        document.addEventListener('DOMContentLoaded', initializeConnections);
+        
+        // 切换调试点显示
+        function toggleDebugPoints() {
+            const debugPoints = document.querySelectorAll('.debug-point, .debug-label');
+            const isVisible = debugPoints.length > 0 && debugPoints[0].style.display !== 'none';
+            
+            debugPoints.forEach(element => {
+                element.style.display = isVisible ? 'none' : '';
+            });
+        }
+        
+        // 窗口大小变化时重新计算
+        window.addEventListener('resize', () => {
+            clearTimeout(window.resizeTimer);
+            window.resizeTimer = setTimeout(initializeConnections, 200);
+        });
+
+        // 添加交互效果
+        document.addEventListener('DOMContentLoaded', function() {
+            const avatars = document.querySelectorAll('.conversation-avatar, .account-avatar, .tool-icon');
+            avatars.forEach(avatar => {
+                avatar.addEventListener('mouseenter', function() {
+                    this.style.boxShadow = '0 8px 30px rgba(255, 255, 255, 0.5)';
+                    this.style.transform = 'scale(1.1)';
+                });
+                
+                avatar.addEventListener('mouseleave', function() {
+                    this.style.boxShadow = '';
+                    this.style.transform = 'scale(1)';
+                });
+            });
+        });
+    </script>
+</body>
+</html>

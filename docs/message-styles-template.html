@@ -48,6 +48,26 @@
       --chat-record-bg: rgba(34, 197, 94, 0.1);
       --chat-record-border: rgba(34, 197, 94, 0.3);
       --chat-record-color: #22c55e;
+      
+      /* ============= 2025 SVG图标系统增强变量 ============= */
+      /* 描边宽度标准 (基于最佳实践) */
+      --stroke-thin: 1px;       /* 小尺寸图标 (16px-20px) */
+      --stroke-regular: 2px;    /* 标准尺寸图标 (24px-32px) */
+      --stroke-bold: 3px;       /* 大尺寸图标 (48px+) */
+      
+      /* 语义化色彩变量 */
+      --icon-color-default: currentColor;
+      --icon-color-muted: #666666;
+      --icon-color-interactive: var(--voice-playing-color);
+      --icon-color-success: var(--chat-record-color);
+      --icon-color-warning: #ffc107;
+      --icon-color-error: #dc3545;
+      
+      /* 阴影效果变量 */
+      --icon-shadow-subtle: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.2));
+      --icon-shadow-medium: drop-shadow(2px 2px 4px rgba(0, 0, 0, 0.3));
+      --icon-shadow-strong: drop-shadow(4px 4px 8px rgba(0, 0, 0, 0.4));
+      --icon-shadow-hover: drop-shadow(4px 4px 12px rgba(0, 0, 0, 0.4));
     }
 
     /* ============= 基础样式 ============= */
@@ -260,16 +280,235 @@
     }
     
     .voice-message__icon {
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
       background: linear-gradient(135deg, var(--voice-playing-color), #8b5cf6);
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       color: white;
-      font-size: 12px;
+      font-size: 14px;
       flex-shrink: 0;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    
+    /* ============= SVG图标系统 ============= */
+    .svg-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      /* 2025默认设置：无描边 + 白色填充 + strong阴影 */
+      fill: white;
+      stroke: none;
+      filter: var(--icon-shadow-strong);
+      
+      /* 消除毛刺优化 (2025反锯齿增强) */
+      shape-rendering: geometricPrecision;    /* 几何精度优先 */
+      image-rendering: -webkit-optimize-contrast; /* WebKit优化 */
+      image-rendering: crisp-edges;           /* 边缘锐化 */
+      backface-visibility: hidden;           /* 消除变换毛刺 */
+      transform: translateZ(0);              /* 硬件加速 */
+      will-change: transform;                /* 性能提示 */
+      
+      /* 像素对齐 */
+      position: relative;
+      transform-origin: center;
+    }
+    
+    /* 图标尺寸系统 */
+    .svg-icon--xs { 
+      width: 12px; 
+      height: 12px; 
+      --current-stroke-width: var(--stroke-thin);
+    }
+    .svg-icon--sm { 
+      width: 14px; 
+      height: 14px; 
+      --current-stroke-width: var(--stroke-thin);
+    }
+    .svg-icon--md { 
+      width: 16px; 
+      height: 16px; 
+      --current-stroke-width: var(--stroke-regular);
+    }
+    .svg-icon--lg { 
+      width: 20px; 
+      height: 20px; 
+      --current-stroke-width: var(--stroke-regular);
+    }
+    .svg-icon--xl { 
+      width: 24px; 
+      height: 24px; 
+      --current-stroke-width: var(--stroke-regular);
+    }
+    
+    /* 图标主题系统 - 2025增强版本 */
+    .svg-icon--primary { 
+      fill: var(--icon-color-interactive); 
+      stroke: var(--icon-color-interactive);
+    }
+    .svg-icon--white { 
+      fill: white; 
+      stroke: white;
+    }
+    .svg-icon--gray { 
+      fill: var(--icon-color-muted); 
+      stroke: var(--icon-color-muted);
+    }
+    .svg-icon--success { 
+      fill: var(--icon-color-success); 
+      stroke: var(--icon-color-success);
+    }
+    .svg-icon--danger { 
+      fill: var(--icon-color-error); 
+      stroke: var(--icon-color-error);
+    }
+    .svg-icon--warning { 
+      fill: var(--icon-color-warning); 
+      stroke: var(--icon-color-warning);
+    }
+    .svg-icon--default { 
+      fill: var(--icon-color-default); 
+      stroke: var(--icon-color-default);
+    }
+    
+    /* 图标状态系统 */
+    .svg-icon--clickable {
+      cursor: pointer;
+    }
+    
+    .svg-icon--clickable:hover {
+      transform: scale(1.1);
+      filter: var(--icon-shadow-hover);
+      transition: all 0.3s ease;
+    }
+    
+    .svg-icon--disabled {
+      opacity: 0.4;
+      pointer-events: none;
+      filter: grayscale(1);
+    }
+    
+    .svg-icon--spinning {
+      animation: icon-spin 1s linear infinite;
+    }
+    
+    @keyframes icon-spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    
+    /* 阴影效果系统 - 基于2025最佳实践 */
+    .svg-icon--shadow-subtle {
+      filter: var(--icon-shadow-subtle);
+    }
+    
+    .svg-icon--shadow-medium {
+      filter: var(--icon-shadow-medium);
+    }
+    
+    .svg-icon--shadow-strong {
+      filter: var(--icon-shadow-strong);
+    }
+    
+    /* 响应式描边控制 - 防止描边随缩放变化 */
+    .svg-icon path {
+      stroke-width: var(--current-stroke-width, 0); /* 默认无描边 */
+      vector-effect: non-scaling-stroke;
+      
+      /* 路径优化 - 消除毛刺 */
+      shape-rendering: geometricPrecision;
+      stroke-linecap: round;                /* 圆形线帽 */
+      stroke-linejoin: round;               /* 圆形连接 */
+      fill-rule: evenodd;                   /* 偶奇填充规则 */
+    }
+    
+    /* 需要描边的图标专用类 */
+    .svg-icon--with-stroke path {
+      stroke-width: var(--current-stroke-width, var(--stroke-regular));
+    }
+    
+    /* 高DPI屏幕优化 */
+    @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+      .svg-icon {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: optimize-contrast;
+      }
+    }
+    
+    /* 无障碍访问增强 */
+    .svg-icon[aria-hidden="false"] {
+      speak: auto;
+    }
+    
+    .svg-icon:focus {
+      outline: 2px solid var(--icon-color-interactive);
+      outline-offset: 2px;
+    }
+    
+    /* 高对比度模式支持 */
+    @media (prefers-contrast: high) {
+      .svg-icon--primary {
+        fill: #000000;
+        stroke: #000000;
+      }
+      .svg-icon--white {
+        fill: #ffffff;
+        stroke: #ffffff;
+      }
+    }
+    
+    /* 图标容器系统 */
+    .icon-container {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.2s ease;
+    }
+    
+    .icon-container--sm {
+      width: 24px;
+      height: 24px;
+      padding: 4px;
+    }
+    
+    .icon-container--md {
+      width: 32px;
+      height: 32px;
+      padding: 6px;
+    }
+    
+    .icon-container--lg {
+      width: 40px;
+      height: 40px;
+      padding: 8px;
+    }
+    
+    .icon-container--primary {
+      background: linear-gradient(135deg, var(--voice-playing-color), #8b5cf6);
+    }
+    
+    .icon-container--success {
+      background: linear-gradient(135deg, var(--chat-record-color), #10b981);
+    }
+    
+    /* 语音消息专用样式（向后兼容） */
+    .voice-icon-svg {
+      width: 14px;
+      height: 14px;
+      fill: white;
+    }
+    
+    .voice-pause-svg {
+      width: 14px;
+      height: 14px;
+      fill: white;
     }
     
     .voice-message__icon.playing {
@@ -282,13 +521,11 @@
     }
     
     .voice-message__duration {
-      background: rgba(108, 99, 255, 0.2);
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 12px;
+      font-size: 14px;
       font-weight: 500;
-      color: var(--voice-playing-color);
+      color: rgba(255, 255, 255, 0.8);
       flex-shrink: 0;
+      margin-right: 8px;
     }
     
     .voice-message__preview {
@@ -933,9 +1170,14 @@
                 <div class="message__bubble" onclick="toggleVoiceMessage(this)">
                   <div class="voice-message__container">
                     <div class="voice-message__compact">
-                      <div class="voice-message__icon">🎤</div>
-                      <div class="voice-message__duration">15s</div>
-                      <div class="voice-message__preview">今天的会议讨论了项目的下一步计划，我觉得这个方案很有前景...</div>
+                      <div class="voice-message__icon" onclick="playVoice(this)">
+                        <svg class="voice-icon-svg" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                          <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+                        </svg>
+                      </div>
+                      <div class="voice-message__duration">15"</div>
+                      <div class="voice-message__click-hint">点击查看转文字</div>
                     </div>
                     <div class="voice-message__expanded">
                       今天的会议讨论了项目的下一步计划，我觉得这个方案很有前景。特别是在用户体验方面，我们可以进一步优化界面设计，提升整体的交互效果。同时，技术架构也需要考虑可扩展性和性能优化。
@@ -959,9 +1201,14 @@
                 <div class="message__bubble" onclick="toggleVoiceMessage(this)">
                   <div class="voice-message__container">
                     <div class="voice-message__compact">
-                      <div class="voice-message__icon">🎤</div>
-                      <div class="voice-message__duration">8s</div>
-                      <div class="voice-message__preview">好的，我同意你的观点，让我们先做一个原型测试一下...</div>
+                      <div class="voice-message__icon" onclick="playVoice(this)">
+                        <svg class="voice-icon-svg" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                          <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+                        </svg>
+                      </div>
+                      <div class="voice-message__duration">8"</div>
+                      <div class="voice-message__click-hint">点击查看转文字</div>
                     </div>
                     <div class="voice-message__expanded">
                       好的，我同意你的观点，让我们先做一个原型测试一下，看看用户的反馈如何。这样我们可以在实际开发前及时调整方向。
@@ -1083,6 +1330,341 @@
       </div>
     </div>
 
+    <!-- SVG图标系统演示 -->
+    <div class="demo-section">
+      <h2 class="demo-title">🎨 SVG图标系统</h2>
+      <p class="demo-description">解耦的SVG图标系统，支持多种尺寸、主题和状态，可供其他系统复用</p>
+      
+      <div class="space-y-8">
+        
+        <!-- 默认效果展示 (2025新增) -->
+        <div class="bg-gradient-to-r from-purple-600/20 to-blue-600/20 rounded-lg p-6 border border-white/10">
+          <h3 class="text-white font-medium mb-3 flex items-center gap-2">
+            <span class="text-yellow-400">🌟</span> 2025默认效果展示
+            <span class="px-2 py-1 text-xs bg-green-500 text-white rounded-full">无描边 + 白色 + Strong阴影</span>
+          </h3>
+          <p class="text-gray-300 text-sm mb-4">使用 iconManager.createIcon() 时的默认效果</p>
+          
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Voice 图标默认效果 -->
+            <div class="flex flex-col items-center gap-3 bg-black/20 rounded-lg p-4">
+              <div id="default-voice-icon"></div>
+              <div class="text-center">
+                <div class="text-white text-sm font-medium">Voice</div>
+                <div class="text-gray-400 text-xs">createIcon('voice')</div>
+              </div>
+            </div>
+            
+            <!-- Pause 图标默认效果 -->
+            <div class="flex flex-col items-center gap-3 bg-black/20 rounded-lg p-4">
+              <div id="default-pause-icon"></div>
+              <div class="text-center">
+                <div class="text-white text-sm font-medium">Pause</div>
+                <div class="text-gray-400 text-xs">createIcon('pause')</div>
+              </div>
+            </div>
+            
+            <!-- Play 图标默认效果 -->
+            <div class="flex flex-col items-center gap-3 bg-black/20 rounded-lg p-4">
+              <div id="default-play-icon"></div>
+              <div class="text-center">
+                <div class="text-white text-sm font-medium">Play</div>
+                <div class="text-gray-400 text-xs">createIcon('play')</div>
+              </div>
+            </div>
+            
+            <!-- Document 图标默认效果 -->
+            <div class="flex flex-col items-center gap-3 bg-black/20 rounded-lg p-4">
+              <div id="default-document-icon"></div>
+              <div class="text-center">
+                <div class="text-white text-sm font-medium">Document</div>
+                <div class="text-gray-400 text-xs">createIcon('document')</div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-4 p-3 bg-blue-500/10 border border-blue-400/20 rounded-lg">
+            <div class="text-blue-300 text-sm font-medium mb-1">💡 默认设置说明</div>
+            <ul class="text-blue-200 text-xs space-y-1">
+              <li>• <strong>描边：</strong>无描边 (stroke: none)</li>
+              <li>• <strong>颜色：</strong>白色填充 (theme: 'white')</li>
+              <li>• <strong>阴影：</strong>Strong级别 (shadow: 'strong')</li>
+              <li>• <strong>尺寸：</strong>中等 16px (size: 'md')</li>
+              <li>• <strong>渲染：</strong>几何精度优化，消除毛刺锯齿</li>
+            </ul>
+          </div>
+          
+          <!-- 反锯齿测试区域 - 新旧图标对比 -->
+          <div class="mt-4 p-3 bg-yellow-500/10 border border-yellow-400/20 rounded-lg">
+            <div class="text-yellow-300 text-sm font-medium mb-3">🔍 毛刺问题测试 - 新增图标</div>
+            
+            <!-- 新图标测试展示 -->
+            <div class="mb-4">
+              <div class="text-yellow-200 text-xs mb-2">新添加的8个图标（测试渲染质量）：</div>
+              <div class="grid grid-cols-4 sm:grid-cols-8 gap-3">
+                <!-- 十字准心 -->
+                <div class="text-center">
+                  <div class="w-8 h-8 mx-auto mb-1 flex items-center justify-center bg-gray-700 rounded" id="crosshair-test"></div>
+                  <div class="text-yellow-200 text-xs">准心</div>
+                </div>
+                
+                <!-- 定位 -->
+                <div class="text-center">
+                  <div class="w-8 h-8 mx-auto mb-1 flex items-center justify-center bg-gray-700 rounded" id="location-test"></div>
+                  <div class="text-yellow-200 text-xs">定位</div>
+                </div>
+                
+                <!-- 麦克风关闭 -->
+                <div class="text-center">
+                  <div class="w-8 h-8 mx-auto mb-1 flex items-center justify-center bg-gray-700 rounded" id="mic-off-test"></div>
+                  <div class="text-yellow-200 text-xs">静音</div>
+                </div>
+                
+                <!-- 三点菜单 -->
+                <div class="text-center">
+                  <div class="w-8 h-8 mx-auto mb-1 flex items-center justify-center bg-gray-700 rounded" id="menu-dots-test"></div>
+                  <div class="text-yellow-200 text-xs">菜单</div>
+                </div>
+                
+                <!-- 添加用户 -->
+                <div class="text-center">
+                  <div class="w-8 h-8 mx-auto mb-1 flex items-center justify-center bg-gray-700 rounded" id="add-user-test"></div>
+                  <div class="text-yellow-200 text-xs">加人</div>
+                </div>
+                
+                <!-- 眼睛 -->
+                <div class="text-center">
+                  <div class="w-8 h-8 mx-auto mb-1 flex items-center justify-center bg-gray-700 rounded" id="eye-test"></div>
+                  <div class="text-yellow-200 text-xs">查看</div>
+                </div>
+                
+                <!-- 主页复杂版 -->
+                <div class="text-center">
+                  <div class="w-8 h-8 mx-auto mb-1 flex items-center justify-center bg-gray-700 rounded" id="home-complex-test"></div>
+                  <div class="text-yellow-200 text-xs">主页+</div>
+                </div>
+                
+                <!-- 主页简单版 -->
+                <div class="text-center">
+                  <div class="w-8 h-8 mx-auto mb-1 flex items-center justify-center bg-gray-700 rounded" id="home-test"></div>
+                  <div class="text-yellow-200 text-xs">主页</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 对比测试说明 -->
+            <div class="flex gap-4 items-start">
+              <div class="text-center">
+                <div id="antialiasing-test-icon" class="mb-1"></div>
+                <div class="text-yellow-200 text-xs">原有图标</div>
+              </div>
+              <div class="text-yellow-200 text-xs">
+                <div class="font-medium mb-1">检查毛刺方法：</div>
+                • 浏览器缩放至200%检查边缘<br>
+                • 对比新旧图标渲染清晰度<br>
+                • 注意细节线条是否平滑<br>
+                • 特别检查复杂路径图标
+              </div>
+            </div>
+            
+            <!-- 优化建议 -->
+            <div class="mt-3 text-yellow-200 text-xs bg-yellow-400/5 p-2 rounded">
+              <strong>如仍有毛刺问题：</strong><br>
+              • 调整浏览器缩放至100%<br>
+              • 检查显示器DPI设置<br>
+              • 使用Chrome/Safari最新版本<br>
+              • 尝试不同的shape-rendering值
+            </div>
+          </div>
+        </div>
+        <!-- 基础图标展示 -->
+        <div class="bg-white/5 rounded-lg p-4">
+          <h3 class="text-white font-medium mb-4">基础图标库</h3>
+          <div class="flex flex-wrap gap-4 items-center">
+            <!-- 语音图标 -->
+            <div class="flex flex-col items-center gap-2">
+              <div class="icon-container icon-container--sm icon-container--primary">
+                <svg class="svg-icon svg-icon--sm svg-icon--white" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                  <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+                </svg>
+              </div>
+              <span class="text-white text-xs">语音</span>
+            </div>
+            
+            <!-- 暂停图标 -->
+            <div class="flex flex-col items-center gap-2">
+              <div class="icon-container icon-container--sm icon-container--primary">
+                <svg class="svg-icon svg-icon--sm svg-icon--white" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M209.645253 863.934444l201.049992 0 0-703.866842L209.645253 160.067602 209.645253 863.934444zM611.804588 863.934444l201.113437 0 0-703.866842L611.804588 160.067602 611.804588 863.934444z"></path>
+                </svg>
+              </div>
+              <span class="text-white text-xs">暂停</span>
+            </div>
+            
+            <!-- 播放图标 -->
+            <div class="flex flex-col items-center gap-2">
+              <div class="icon-container icon-container--sm icon-container--success">
+                <svg class="svg-icon svg-icon--sm svg-icon--white" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M192 128l640 384L192 896V128z"></path>
+                </svg>
+              </div>
+              <span class="text-white text-xs">播放</span>
+            </div>
+            
+            <!-- 文档图标 -->
+            <div class="flex flex-col items-center gap-2">
+              <div class="icon-container icon-container--sm icon-container--success">
+                <svg class="svg-icon svg-icon--sm svg-icon--white" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M832 64H192c-17.7 0-32 14.3-32 32v832c0 17.7 14.3 32 32 32h640c17.7 0 32-14.3 32-32V96c0-17.7-14.3-32-32-32zM760 888H264V136h496v752z"></path>
+                  <path d="M368 272h288v48H368zM368 400h288v48H368zM368 528h288v48H368zM368 656h176v48H368z"></path>
+                </svg>
+              </div>
+              <span class="text-white text-xs">文档</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 尺寸系统展示 -->
+        <div class="bg-white/5 rounded-lg p-4">
+          <h3 class="text-white font-medium mb-4">尺寸系统 (xs, sm, md, lg, xl)</h3>
+          <div class="flex flex-wrap gap-6 items-end">
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--xs svg-icon--primary" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">xs(12px)</span>
+            </div>
+            
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--sm svg-icon--primary" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">sm(14px)</span>
+            </div>
+            
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--md svg-icon--primary" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">md(16px)</span>
+            </div>
+            
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--lg svg-icon--primary" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">lg(20px)</span>
+            </div>
+            
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--xl svg-icon--primary" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">xl(24px)</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 主题系统展示 -->
+        <div class="bg-white/5 rounded-lg p-4">
+          <h3 class="text-white font-medium mb-4">主题系统</h3>
+          <div class="flex flex-wrap gap-6 items-center">
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--lg svg-icon--primary" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">Primary</span>
+            </div>
+            
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--lg svg-icon--success" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">Success</span>
+            </div>
+            
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--lg svg-icon--warning" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">Warning</span>
+            </div>
+            
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--lg svg-icon--danger" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">Danger</span>
+            </div>
+            
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--lg svg-icon--gray" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">Gray</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 状态系统展示 -->
+        <div class="bg-white/5 rounded-lg p-4">
+          <h3 class="text-white font-medium mb-4">状态系统</h3>
+          <div class="flex flex-wrap gap-6 items-center">
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--lg svg-icon--primary svg-icon--clickable" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">可点击(hover缩放)</span>
+            </div>
+            
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--lg svg-icon--primary svg-icon--spinning" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">旋转动画</span>
+            </div>
+            
+            <div class="flex flex-col items-center gap-2">
+              <svg class="svg-icon svg-icon--lg svg-icon--primary svg-icon--disabled" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+                <path d="M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z"></path>
+                <path d="M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z"></path>
+              </svg>
+              <span class="text-white text-xs">禁用状态</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 使用示例代码 -->
+        <div class="bg-black/20 rounded-lg p-4">
+          <h3 class="text-white font-medium mb-4">使用示例</h3>
+          <div class="text-sm text-green-300 font-mono leading-relaxed">
+            <div class="mb-2">// 基础SVG图标</div>
+            <div class="mb-2">&lt;svg class="svg-icon svg-icon--md svg-icon--primary"&gt;...&lt;/svg&gt;</div>
+            <div class="mb-4">&nbsp;</div>
+            <div class="mb-2">// 带容器的图标</div>
+            <div class="mb-2">&lt;div class="icon-container icon-container--sm icon-container--primary"&gt;</div>
+            <div class="mb-2">&nbsp;&nbsp;&lt;svg class="svg-icon svg-icon--sm svg-icon--white"&gt;...&lt;/svg&gt;</div>
+            <div class="mb-4">&lt;/div&gt;</div>
+            <div class="mb-2">// 可交互图标</div>
+            <div class="mb-2">&lt;svg class="svg-icon svg-icon--lg svg-icon--primary svg-icon--clickable"&gt;...&lt;/svg&gt;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 样式总结 -->
     <div class="bg-white/10 rounded-2xl p-6 glass-effect border border-white/20">
       <h2 class="text-xl font-bold text-white mb-4" style="text-shadow: 0 2px 4px rgba(0,0,0,0.5);">
@@ -1109,35 +1691,534 @@
         <div class="space-y-2">
           <div class="text-white font-medium">特殊类型 (9,11,12)</div>
           <div class="text-white/80">• 类型9: AI草稿气泡</div>
-          <div class="text-white/80">• 类型11: 语音消息</div>
+          <div class="text-white/80">• 类型11: 语音消息(SVG图标)</div>
           <div class="text-white/80">• 类型12: 聊天记录消息</div>
           <div class="text-white/80">• 交互式展开收起</div>
+        </div>
+        <div class="space-y-2">
+          <div class="text-white font-medium">SVG图标系统</div>
+          <div class="text-white/80">• 解耦的图标管理系统</div>
+          <div class="text-white/80">• 5种尺寸规格(xs-xl)</div>
+          <div class="text-white/80">• 6种主题颜色</div>
+          <div class="text-white/80">• 多种交互状态</div>
         </div>
       </div>
     </div>
   </div>
   
   <script>
+    // ============= SVG图标管理系统 =============
+    class IconManager {
+      constructor() {
+        this.icons = new Map();
+        this.cache = new Map(); // 图标缓存
+        this.metrics = {
+          created: 0,
+          cached: 0,
+          renderTime: 0,
+          cacheHits: 0
+        }; // 性能指标
+        this.initDefaultIcons();
+      }
+      
+      // 初始化默认图标库
+      initDefaultIcons() {
+        // 语音图标
+        this.registerIcon('voice', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M304.48 421.504L213.952 512l90.528 90.496a128 128 0 0 0 0-180.992zM394.976 693.024l45.248 45.248c124.992-124.96 124.992-327.584 0-452.544l-45.248 45.248a256 256 0 0 1 0 362.048z',
+            'M530.752 195.2c174.944 174.976 174.944 458.624 0 633.6L576 874.048c199.936-199.968 199.936-524.16 0-724.096l-45.248 45.28z'
+          ]
+        });
+        
+        // 暂停图标
+        this.registerIcon('pause', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M209.645253 863.934444l201.049992 0 0-703.866842L209.645253 160.067602 209.645253 863.934444zM611.804588 863.934444l201.113437 0 0-703.866842L611.804588 160.067602 611.804588 863.934444z'
+          ]
+        });
+        
+        // 播放图标
+        this.registerIcon('play', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M192 128l640 384L192 896V128z'
+          ]
+        });
+        
+        // 文档图标
+        this.registerIcon('document', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M832 64H192c-17.7 0-32 14.3-32 32v832c0 17.7 14.3 32 32 32h640c17.7 0 32-14.3 32-32V96c0-17.7-14.3-32-32-32zM760 888H264V136h496v752z',
+            'M368 272h288v48H368zM368 400h288v48H368zM368 528h288v48H368zM368 656h176v48H368z'
+          ]
+        });
+
+        // === 新添加的8个图标（用于毛刺测试） ===
+        
+        // 十字准心图标
+        this.registerIcon('crosshair', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M850.688 554.666667A341.504 341.504 0 0 1 554.666667 850.688V725.333333h-85.333334v125.354667A341.504 341.504 0 0 1 173.312 554.666667H298.666667v-85.333334H173.312A341.504 341.504 0 0 1 469.333333 173.312V298.666667h85.333334V173.312A341.504 341.504 0 0 1 850.688 469.333333H725.333333v85.333334h125.354667zM85.333333 512c0 235.648 191.018667 426.666667 426.666667 426.666667s426.666667-191.018667 426.666667-426.666667S747.648 85.333333 512 85.333333 85.333333 276.352 85.333333 512z m426.666667 128a128 128 0 1 0 0-256 128 128 0 0 0 0 256z'
+          ]
+        });
+        
+        // 定位图标
+        this.registerIcon('location', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M512 185.6A262.4 262.4 0 0 0 249.6 448a352.64 352.64 0 0 0 84.8 216.064A738.496 738.496 0 0 0 512 822.784c133.888-88.448 262.4-225.472 262.4-374.784A262.4 262.4 0 0 0 512 185.6m0-89.6A352 352 0 0 1 864 448c0 194.432-162.368 370.56-352 480-192.448-111.104-352-285.568-352-480A352 352 0 0 1 512 96z',
+            'M512 396.8a51.2 51.2 0 1 0 51.2 51.2 51.2 51.2 0 0 0-51.2-51.2M512 320a128 128 0 1 1-128 128 128 128 0 0 1 128-128z'
+          ]
+        });
+        
+        // 麦克风关闭图标
+        this.registerIcon('mic-off', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M839.368 880.902c11.31 11.312 29.608 11.312 40.92 0 11.312-11.31 11.312-29.61 0-40.92l-40.92 40.92zM185.404 145.1c-11.31-11.312-29.61-11.312-40.92 0-11.312 11.31-11.312 29.61 0 40.92l40.92-40.92z m162.912 174.88c0-15.984-12.972-28.954-28.954-28.954-15.98 0-28.954 12.97-28.954 28.952h57.908zM232.502 513c0-15.982-12.972-28.954-28.954-28.954-15.98 0-28.954 12.972-28.954 28.954h57.908z m617.674 0c0-15.982-12.97-28.954-28.954-28.954-15.98 0-28.952 12.972-28.952 28.954h57.906z m-65.01 140.096c-3.552 15.596 6.176 31.154 21.734 34.706 15.596 3.59 31.154-6.14 34.706-21.734l-56.44-12.972z m-108.71-101.492c0 15.982 12.97 28.954 28.952 28.954 15.984 0 28.954-12.972 28.954-28.954h-57.906zM334.804 186.752c-9.612 12.816-7.026 30.96 5.752 40.534 12.818 9.614 30.96 7.028 40.536-5.752l-46.288-34.782z m372.42 509.89c7.68-14.052 2.548-31.656-11.504-39.3-14.014-7.68-31.618-2.548-39.3 11.504l50.804 27.796zM784.2 790.8c9.496-12.856 6.794-31-6.06-40.498-12.896-9.496-31-6.794-40.5 6.06l46.56 34.438z m96.086 49.18L185.404 145.1l-40.92 40.92 694.884 694.884 40.92-40.92z m-589.88-520.004v270.234h57.908V319.976h-57.908z m0 270.234c0 122.608 99.37 221.976 221.978 221.976V754.28c-90.606 0-164.07-73.466-164.07-164.07h-57.908zM512.386 155.906c90.604 0 164.07 73.466 164.07 164.07h57.906C734.362 197.368 634.994 98 512.386 98v57.906zM174.596 513v77.21h57.906V513H174.594z m675.58 77.21V513h-57.906v77.21h57.906zM512.386 870.094c-154.574 0-279.884-125.312-279.884-279.884H174.594C174.594 776.746 325.848 928 512.386 928v-57.906z m329.22-204.026c5.598-24.4 8.57-49.8 8.57-75.86h-57.906c0 21.66-2.472 42.698-7.104 62.888l56.44 12.972z m-107.244-114.464V319.976h-57.906v231.628h57.906zM512.386 98c-72.654 0-137.124 34.938-177.58 88.752l46.286 34.782c29.996-39.916 77.634-65.628 131.294-65.628V98z m0 714.186c84.08 0 157.198-46.75 194.838-115.544l-50.804-27.796c-27.872 50.96-81.958 85.434-144.034 85.434v57.906z m0 115.814c111.49 0 210.356-54.046 271.816-137.2l-46.56-34.436c-51.034 69.064-132.914 113.73-225.256 113.73V928z'
+          ]
+        });
+        
+        // 三点菜单图标
+        this.registerIcon('menu-dots', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M395.21211 182.914448c0 62.669318 49.541323 113.472378 110.642936 113.472378 61.093427 0 110.652146-50.80306 110.65214601-113.472378 0-62.685691-49.559742-113.487727-110.65214601-113.487727C444.75241 69.426721 395.21211 120.22978 395.21211 182.914448zM395.21211 523.34693101c0 62.668295 49.541323 113.487727 110.642936 113.48772699 61.093427 0 110.652146-50.820456 110.652146-113.487727 0-62.669318-49.559742-113.472378-110.652146-113.472378C444.75241 409.874553 395.21211 460.67761301 395.21211 523.34693101zM395.21211 841.084529c0 62.686714 49.541323 113.488751 110.642936 113.488751 61.093427 0 110.652146-50.80203599 110.65214601-113.488751 0-62.669318-49.559742-113.471354-110.65214601-113.471354C444.75241 727.614198 395.21211 778.416234 395.21211 841.084529z'
+          ]
+        });
+        
+        // 添加人员图标
+        this.registerIcon('add-user', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M791.04 715.264v-138.752c0-19.456 15.872-34.816 35.328-34.816 19.456 0 34.816 15.36 35.328 34.816v138.752h117.248c19.456 0 34.816 15.36 35.328 34.816 0 19.456-15.872 34.816-35.328 34.816h-117.248v115.712c0 19.456-15.872 34.816-35.328 34.816-19.456 0-34.816-15.36-35.328-34.816v-115.712H650.24c-19.456 0-34.816-15.36-35.328-34.816 0-19.456 15.872-34.816 35.328-34.816h140.8z m-706.56 128.512c-1.536 8.704-1.024 16.384 0 21.504h560.128c19.456 0 34.816 15.36 35.328 34.816 0 19.456-15.872 34.816-35.328 34.816h-568.32c-49.664 0-69.12-48.64-60.928-101.376 7.68-48.128 36.864-93.696 82.432-119.296 14.336-8.192 32.256-16.384 57.344-26.624 8.192-3.584 52.736-21.504 65.536-27.136 88.576-37.376 130.56-67.072 130.56-91.136 0-15.36-4.608-27.648-15.872-45.056-4.096-6.144-22.528-31.744-26.624-37.888-36.352-53.76-54.272-107.52-54.272-189.952 0-175.616 91.648-268.288 228.864-268.288 139.264 0 232.448 92.672 232.448 268.288 0 82.432-18.432 136.704-55.296 189.952-4.608 6.656-23.04 31.744-27.136 37.888-11.776 17.408-15.872 29.184-15.872 44.544 0 9.728 7.68 20.992 25.088 34.816 15.36 11.776 17.92 33.792 5.632 48.64-12.288 14.848-34.304 17.408-49.152 5.632-32.768-25.6-52.224-54.784-52.224-89.6 0-30.72 9.216-55.296 27.648-82.944 5.12-7.68 24.064-33.792 27.648-38.912 29.184-42.496 43.008-83.456 43.008-151.04 0-137.216-61.952-199.168-162.304-199.168-97.792 0-158.72 61.44-158.72 199.168 0 67.584 13.824 108.544 42.496 151.04 3.584 5.12 22.016 31.232 27.136 38.912 17.92 27.648 27.136 52.224 27.136 82.432 0 66.048-55.808 105.472-173.056 155.136-13.312 5.632-57.856 24.064-65.536 27.136-23.04 9.728-38.4 16.896-50.176 23.04-26.112 15.36-43.52 42.496-47.616 70.656z'
+          ]
+        });
+        
+        // 眼睛图标
+        this.registerIcon('eye', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M512 832c-156.448 0-296.021333-98.730667-418.410667-291.605333a52.938667 52.938667 0 0 1 0-56.789334C215.978667 290.730667 355.552 192 512 192c156.448 0 296.021333 98.730667 418.410667 291.605333a52.938667 52.938667 0 0 1 0 56.789334C808.021333 733.269333 668.448 832 512 832z m0-576c-129.514667 0-249.461333 83.850667-360.117333 256C262.538667 684.149333 382.485333 768 512 768c129.514667 0 249.461333-83.850667 360.117333-256C761.461333 339.850667 641.514667 256 512 256z m0 405.333333c-83.210667 0-150.666667-66.858667-150.666667-149.333333S428.789333 362.666667 512 362.666667s150.666667 66.858667 150.666667 149.333333S595.210667 661.333333 512 661.333333z m0-64c47.552 0 86.101333-38.208 86.101333-85.333333S559.552 426.666667 512 426.666667c-47.552 0-86.101333 38.208-86.101333 85.333333s38.549333 85.333333 86.101333 85.333333z'
+          ]
+        });
+        
+        // 主页图标（复杂版）
+        this.registerIcon('home-complex', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M752.623585 1004.223261H600.67230601a21.965365 21.965365 0 0 1-21.96536501-21.965365V680.029768c0-4.074008 0.079107-7.910696 0.14503-11.549616a154.79912999 154.79912999 0 0 0-0.22413699-16.572907 41.610259 41.610259 0 0 0-6.17034201-0.38235H452.359947a41.04332601 41.04332601 0 0 0-6.183527 0.38235 154.627731 154.627731 0 0 0-0.224137 16.559723c0.06592199 3.63892 0.145029 7.488792 0.14503 11.5628v302.228128a21.965365 21.965365 0 0 1-21.952181 21.965365H272.20703801c-74.307801 0-134.79825399-66.331183-134.79825401-147.850902V592.74842599h-30.32433399c-37.654911 0-67.240913-18.181416-81.28239801-49.89012099-11.365033-25.84160599-9.37417399-68.11109001 30.32433401-109.36536701L412.977867 62.24399001a137.63292 137.63292 0 0 1 198.874889-2e-8L968.796529 433.49293799c39.632585 41.241093 41.623444 83.52376201 30.32433301 109.32581401-14.107407 31.748259-43.70659401 49.92967399-81.34832 49.92967399h-30.32433401v263.62393301c0 81.519719-60.503637 147.85090199-134.824623 147.850902z m-129.985914-43.917546h129.985914c56.13956999 0 90.880709-53.950944 90.88070899-103.94654101v-285.57611299a21.965365 21.965365 0 0 1 21.95218-21.95218h52.316068c20.317303 0 34.147836-7.97661801 41.109248-23.73208701 1.924936-4.390436 10.020215-28.122523-21.75441299-61.17604699L580.249527 92.686984a93.715375 93.715375 0 0 0-135.562955 0L87.690061 463.922747c-31.774628 33.066708-23.732087 56.798795-21.728044 61.2156 6.935043 15.715915 20.765576 23.732087 41.08288 23.73208701h52.329252a21.95218 21.95218 0 0 1 21.95218 21.96536499v285.576113c0 49.982412 34.74113801 103.933357 90.88070901 103.933357h130.051836V680.029768c0-3.770765-0.06592199-7.34376201-0.13184501-10.705808-0.355981-18.36599801-0.69877799-35.729975 12.076996-48.782623 11.40458601-11.628723 27.2919-12.973541 38.23502901-12.973541h120.09754499c10.956313 0 26.830443 1.318449 38.235029 12.973541 12.762589 13.01309401 12.432977 30.324333 12.076995 48.782623 0 3.36204599-0.131845 6.935043-0.13184499 10.705808z m0 0M752.623585 1024H600.67230601a41.78165801 41.78165801 0 0 1-41.742104-41.742104V680.029768c0-3.05880201 0-5.94620599 0.09229099-8.71495001h-93.227548c0 2.781928 0.092291 5.656147 0.092292 8.71495001v302.228128a41.78165801 41.78165801 0 0 1-41.742105 41.742104H272.20703801c-85.23774601 0-154.574993-75.151609-154.57499401-167.627641V612.525165h-10.54759399c-45.170072 0-82.323973-23.05967801-99.37152201-61.690242-13.949193-31.642783-12.314316-82.759061 34.095099-131.053858l356.90421901-371.23576301a157.409659 157.409659 0 0 1 227.37976199 2e-8l357.365677 371.60492899c46.01388 48.162952 47.609203 99.002356 33.712748 130.52647901-17.139841 38.670117-54.241003 61.729795-99.39789099 61.72979499h-10.54759401v243.965854c0 92.476032-69.376801 167.627641-154.601363 167.627641zM452.359947 631.748156h120.097545a61.74298 61.74298 0 0 1 9.110484 0.672409l14.898477 2.267732 1.806275 14.872108a154.39041001 154.39041001 0 0 1 0.35598199 19.117515v0.435088c-0.06592199 3.493891-0.131845 7.10644201-0.13184499 10.890391v302.254497a2.18862601 2.18862601 0 0 0 2.188626 2.18862601h151.938094c63.41740999 0 115.021515-57.458019 115.021515-128.07416301V572.971687h50.101073c29.889245 0 52.329252-13.54047401 63.206458-38.142738 8.767688-19.921769 6.434032-53.423565-26.434908-87.63732301l-0.395535-0.40871899L597.587135 75.955863a117.856181 117.856181 0 0 0-170.370016 0L70.286531 447.20480999c-32.86894 34.20057401-35.202596 67.728739-26.368986 87.69006201 10.837653 24.54952599 33.27766 38.09 63.18009 38.089999h50.101072v283.387488c0 70.629328 51.59092 128.074163 115.02151501 128.07416301H424.145132a2.18862601 2.18862601 0 0 0 2.18862601-2.18862601V680.029768c0-3.81031799-0.06592199-7.44923801-0.13184501-10.96949801v-0.435088a154.16627399 154.16627399 0 0 1 0.355982-19.03840798l1.766722-14.91166101 14.80618499-2.254548a60.899172 60.899172 0 0 1 9.22914501-0.672409z m300.250454 348.334299H602.847747V680.029768c0-3.783949 0.06592199-7.251471 0.131845-10.54759399v-0.46145701c0.342797-17.522191 0.210952-27.76654201-6.420848-34.517002-4.77278601-4.86507799-12.20884-7.040519-24.114437-7.04052H452.359947c-11.866043 0-19.341651 2.175441-24.11443701 7.04052-6.59224601 6.75046-6.75046 16.994811-6.420848 34.503817 0 3.309308 0.145029 7.066888 0.14502901 11.088159v299.986764H272.20703801c-31.972395 0-61.083755-14.50294199-81.967992-40.68734501a135.576139 135.576139 0 0 1-28.689456-83.06230499V570.783061a2.18862601 2.18862601 0 0 0-2.17544101-2.188626H107.044897c-28.069785 0-49.085867-12.604375-59.185188-35.47947-3.955348-9.070931-13.936009-41.79484201 25.564731-82.90409L430.368213 78.988296a113.49211401 113.49211401 0 0 1 164.067828 0L951.39299799 450.210875c39.487556 41.082879 29.58600201 73.83316 25.60428501 82.838168-10.152059 22.941017-31.168141 35.59812999-59.21155701 35.59813h-52.329252a2.175441 2.175441 0 0 0-2.17544099 2.17544099v285.57611401a135.576139 135.576139 0 0 1-28.689456 83.062304c-20.884237 26.17121799-49.982412 40.62142199-81.967992 40.621423z m-110.20917501-39.553479h110.20917501c34.20057401 0 71.10396999-32.183347 71.10396899-84.16980201v-285.57611299a41.78165801 41.78165801 0 0 1 41.72892-41.72892h52.329252c15.623624 0 20.409595-6.03849799 23.020124-11.94515 0.197767-0.514195 5.656147-14.93802999-17.93090999-39.474371L565.931168 106.359303a73.938635 73.938635 0 0 0-107.07126599 0L101.94249799 477.63462c-23.58705799 24.54952599-18.115493 38.973361-17.86498798 39.55347799 2.636899 5.82754601 7.33057799 11.866043 22.96738699 11.86604301h52.329252a41.78165801 41.78165801 0 0 1 41.728919 41.74210499v285.57611301c0 40.476393 27.186424 84.156617 71.10396999 84.156617h110.27509701V680.029768c0-3.625736-0.06592199-7.185549-0.13184501-10.310273-0.38235001-19.618525-0.856992-44.03620601 17.71995901-62.982322s43.996652-18.89337799 52.35562-18.893378h120.09754499c8.358968 0 33.818224 0 52.35562101 18.893378s18.102309 43.363797 17.73314299 62.982322v0.461457c0 3.16427799-0.11866 6.447217-0.11866099 9.848816z'
+          ]
+        });
+        
+        // 主页图标（简单版）
+        this.registerIcon('home', {
+          viewBox: '0 0 1024 1024',
+          paths: [
+            'M898.5 255.6L568.4 76.4c-35.3-19.2-77.6-19.2-112.9 0l-330 179.2C86.4 276.8 62 318.2 62 363.3v476.6C62 907.3 115.7 962 181.9 962H842c66.2 0 119.9-54.7 119.9-122.1V363.3c0.1-45.1-24.3-86.5-63.4-107.7zM872 809.3c0 33.7-26.9 61.1-60 61.1H212c-33.1 0-60-27.3-60-61.1V369.5c0-22.6 12.2-43.3 31.8-53.9l300-162.9c17.6-9.6 38.8-9.6 56.5 0l300 162.9c19.6 10.6 31.8 31.3 31.8 53.9v439.8z',
+            'M677 687.1H347c-24.8 0-45 20.6-45 45.8s20.2 45.8 45 45.8h330c24.8 0 45-20.6 45-45.8s-20.2-45.8-45-45.8z'
+          ]
+        });
+      }
+      
+      // 注册新图标
+      registerIcon(name, config) {
+        this.icons.set(name, config);
+      }
+      
+      // 获取图标配置
+      getIcon(name) {
+        return this.icons.get(name);
+      }
+      
+      // 创建SVG元素（2025增强版本 - 性能监控 + 无障碍）
+      createIcon(name, options = {}) {
+        const startTime = performance.now();
+        
+        const iconConfig = this.getIcon(name);
+        if (!iconConfig) {
+          console.warn(`Icon '${name}' not found`);
+          return null;
+        }
+        
+        const {
+          size = 'md',
+          theme = 'white',        // 默认白色
+          clickable = false,
+          disabled = false,
+          spinning = false,
+          shadow = 'strong',      // 默认strong阴影
+          ariaLabel = '',
+          ariaHidden = true,
+          className = ''
+        } = options;
+        
+        // 创建缓存键
+        const cacheKey = `${name}-${size}-${theme}-${clickable}-${disabled}-${spinning}-${shadow}-${className}`;
+        
+        // 检查缓存
+        if (this.cache.has(cacheKey)) {
+          this.metrics.cacheHits++;
+          const cached = this.cache.get(cacheKey).cloneNode(true);
+          
+          // 应用无障碍属性（动态设置）
+          if (ariaLabel) {
+            cached.setAttribute('aria-label', ariaLabel);
+            cached.setAttribute('aria-hidden', 'false');
+          } else {
+            cached.setAttribute('aria-hidden', ariaHidden.toString());
+          }
+          
+          return cached;
+        }
+        
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', iconConfig.viewBox);
+        svg.setAttribute('role', 'img');
+        
+        // SVG渲染优化属性 - 保持原始粗细度
+        svg.setAttribute('fill-rule', 'evenodd');
+        svg.style.imageRendering = 'crisp-edges';
+        
+        // 无障碍属性设置
+        if (ariaLabel) {
+          svg.setAttribute('aria-label', ariaLabel);
+          svg.setAttribute('aria-hidden', 'false');
+        } else {
+          svg.setAttribute('aria-hidden', ariaHidden.toString());
+        }
+        
+        // 键盘访问支持
+        if (clickable) {
+          svg.setAttribute('tabindex', '0');
+          svg.setAttribute('role', 'button');
+        }
+        
+        // 构建CSS类名
+        const classes = [
+          'svg-icon',
+          `svg-icon--${size}`,
+          `svg-icon--${theme}`,
+          clickable ? 'svg-icon--clickable' : '',
+          disabled ? 'svg-icon--disabled' : '',
+          spinning ? 'svg-icon--spinning' : '',
+          shadow ? `svg-icon--shadow-${shadow}` : '',
+          className
+        ].filter(Boolean).join(' ');
+        
+        svg.setAttribute('class', classes);
+        
+        iconConfig.paths.forEach(pathData => {
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', pathData);
+          
+          // 移除内联fill和stroke属性，让CSS样式生效
+          path.removeAttribute('fill');
+          path.removeAttribute('stroke');
+          
+          svg.appendChild(path);
+        });
+        
+        // 存储到缓存（限制缓存大小）
+        if (this.cache.size < 50) {
+          this.cache.set(cacheKey, svg.cloneNode(true));
+          this.metrics.cached++;
+        }
+        
+        // 性能监控
+        const endTime = performance.now();
+        this.metrics.renderTime += (endTime - startTime);
+        this.metrics.created++;
+        
+        return svg;
+      }
+      
+      // 创建带容器的图标
+      createIconWithContainer(name, options = {}) {
+        const {
+          containerSize = 'sm',
+          containerTheme = 'primary',
+          ...iconOptions
+        } = options;
+        
+        const container = document.createElement('div');
+        container.className = `icon-container icon-container--${containerSize} icon-container--${containerTheme}`;
+        
+        const icon = this.createIcon(name, { ...iconOptions, theme: 'white' });
+        if (icon) {
+          container.appendChild(icon);
+        }
+        
+        return container;
+      }
+      
+      // 更新图标
+      updateIcon(element, newIconName) {
+        const iconConfig = this.getIcon(newIconName);
+        if (!iconConfig || !element) return false;
+        
+        // 清空当前路径
+        element.innerHTML = '';
+        
+        // 添加新路径
+        iconConfig.paths.forEach(pathData => {
+          const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+          path.setAttribute('d', pathData);
+          element.appendChild(path);
+        });
+        
+        return true;
+      }
+      
+      // 获取性能指标 - 2025最佳实践
+      getMetrics() {
+        const avgRenderTime = this.metrics.created > 0 ? 
+          (this.metrics.renderTime / this.metrics.created).toFixed(2) : 0;
+        const cacheHitRate = this.metrics.created > 0 ? 
+          ((this.metrics.cacheHits / this.metrics.created) * 100).toFixed(1) : 0;
+          
+        return {
+          totalCreated: this.metrics.created,
+          totalCached: this.metrics.cached,
+          cacheHits: this.metrics.cacheHits,
+          cacheHitRate: `${cacheHitRate}%`,
+          avgRenderTime: `${avgRenderTime}ms`,
+          totalRenderTime: `${this.metrics.renderTime.toFixed(2)}ms`,
+          cacheSize: this.cache.size,
+          iconTypes: this.icons.size
+        };
+      }
+      
+      // 重置性能指标
+      resetMetrics() {
+        this.metrics = {
+          created: 0,
+          cached: 0,
+          renderTime: 0,
+          cacheHits: 0
+        };
+      }
+      
+      // 清理缓存
+      clearCache() {
+        this.cache.clear();
+        console.log('🧹 Icon cache cleared');
+      }
+      
+      // 导出性能报告
+      generateReport() {
+        const metrics = this.getMetrics();
+        const report = `
+🎯 SVG图标系统性能报告 (2025标准)
+=======================================
+📊 基础数据:
+  - 图标总数: ${metrics.iconTypes}
+  - 创建次数: ${metrics.totalCreated}
+  - 缓存命中: ${metrics.cacheHits}
+  
+⚡ 性能指标:
+  - 缓存命中率: ${metrics.cacheHitRate}
+  - 平均渲染时间: ${metrics.avgRenderTime}
+  - 总渲染时间: ${metrics.totalRenderTime}
+  - 缓存大小: ${metrics.cacheSize}/50
+  
+🎨 优化建议:
+  ${metrics.cacheHitRate.replace('%', '') < 70 ? 
+    '⚠️  缓存命中率偏低，建议复用更多图标配置' : 
+    '✅ 缓存命中率良好'}
+  ${parseFloat(metrics.avgRenderTime) > 2 ? 
+    '⚠️  平均渲染时间偏高，检查图标复杂度' : 
+    '✅ 渲染性能良好'}
+=======================================`;
+        
+        console.log(report);
+        return metrics;
+      }
+    }
+    
+    // 全局图标管理器实例
+    const iconManager = new IconManager();
+    
     // 语音消息交互逻辑
     function toggleVoiceMessage(bubble) {
       const expanded = bubble.querySelector('.voice-message__expanded');
-      const icon = bubble.querySelector('.voice-message__icon');
       
       if (expanded.classList.contains('show')) {
         // 收起
         expanded.classList.remove('show');
-        icon.classList.remove('playing');
       } else {
-        // 展开和播放
+        // 展开
         expanded.classList.add('show');
-        icon.classList.add('playing');
-        
-        // 模拟播放完成后停止动画
-        setTimeout(() => {
-          icon.classList.remove('playing');
-        }, 3000);
       }
     }
+    
+    // 语音播放功能（使用图标管理器）
+    function playVoice(iconElement) {
+      event.stopPropagation(); // 阻止事件冒泡
+      
+      const isPlaying = iconElement.classList.contains('playing');
+      
+      if (isPlaying) {
+        // 暂停播放 - 显示声音图标
+        const voiceIcon = iconManager.createIcon('voice', { size: 'sm', theme: 'white' });
+        iconElement.innerHTML = '';
+        iconElement.appendChild(voiceIcon);
+        iconElement.classList.remove('playing');
+      } else {
+        // 开始播放 - 显示暂停图标
+        const pauseIcon = iconManager.createIcon('pause', { size: 'sm', theme: 'white' });
+        iconElement.innerHTML = '';
+        iconElement.appendChild(pauseIcon);
+        iconElement.classList.add('playing');
+        
+        // 获取时长并模拟播放结束
+        const durationText = iconElement.nextElementSibling.textContent;
+        const duration = parseInt(durationText.replace('"', '')) * 1000;
+        
+        setTimeout(() => {
+          const voiceIcon = iconManager.createIcon('voice', { size: 'sm', theme: 'white' });
+          iconElement.innerHTML = '';
+          iconElement.appendChild(voiceIcon);
+          iconElement.classList.remove('playing');
+        }, duration);
+      }
+    }
+    
+    // 初始化默认效果展示
+    function initDefaultIconsDemo() {
+      // 在页面加载时展示所有图标的默认效果
+      const iconNames = ['voice', 'pause', 'play', 'document'];
+      
+      iconNames.forEach(iconName => {
+        const container = document.getElementById(`default-${iconName}-icon`);
+        if (container) {
+          // 使用完全默认的参数创建图标
+          const defaultIcon = iconManager.createIcon(iconName);
+          if (defaultIcon) {
+            container.appendChild(defaultIcon);
+          }
+        }
+      });
+      
+      console.log('🌟 默认图标效果展示已初始化');
+    }
+
+    // 初始化新图标毛刺测试展示 
+    function initNewIconsAntiAliasingTest() {
+      // 新添加的8个图标名称映射
+      const newIcons = [
+        { name: 'crosshair', id: 'crosshair-test', label: '十字准心' },
+        { name: 'location', id: 'location-test', label: '定位图标' },
+        { name: 'mic-off', id: 'mic-off-test', label: '麦克风关闭' },
+        { name: 'menu-dots', id: 'menu-dots-test', label: '三点菜单' },
+        { name: 'add-user', id: 'add-user-test', label: '添加用户' },
+        { name: 'eye', id: 'eye-test', label: '眼睛图标' },
+        { name: 'home-complex', id: 'home-complex-test', label: '主页复杂版' },
+        { name: 'home', id: 'home-test', label: '主页简单版' }
+      ];
+      
+      // 为每个新图标创建测试图标
+      newIcons.forEach(({ name, id, label }) => {
+        const container = document.getElementById(id);
+        if (container) {
+          // 使用默认设置创建图标 (白色+Strong阴影+中等尺寸)
+          const testIcon = iconManager.createIcon(name, {
+            size: 'sm',
+            theme: 'white',
+            shadow: 'strong',
+            ariaLabel: label
+          });
+          
+          if (testIcon) {
+            container.appendChild(testIcon);
+            
+            // 🔍 调试信息：检查实际生成的DOM结构
+            console.log(`✓ 新图标测试: ${label} (${name}) 已加载`);
+            console.log(`  - SVG类名: ${testIcon.className}`);
+            console.log(`  - SVG outerHTML:`, testIcon.outerHTML.substring(0, 200) + '...');
+            console.log(`  - 计算后的fill样式:`, window.getComputedStyle(testIcon).fill);
+          } else {
+            console.warn(`⚠️  新图标 ${name} 加载失败`);
+          }
+        }
+      });
+      
+      // 同时在原有测试位置放一个对比图标
+      const antialiasingContainer = document.getElementById('antialiasing-test-icon');
+      if (antialiasingContainer) {
+        const compareIcon = iconManager.createIcon('voice', {
+          size: 'sm',
+          theme: 'white',
+          shadow: 'strong'
+        });
+        if (compareIcon) {
+          antialiasingContainer.appendChild(compareIcon);
+        }
+      }
+      
+      console.log('🔍 新图标反锯齿测试已初始化 - 8个新图标');
+    }
+
+    // 图标系统使用示例
+    function demonstrateIconSystem() {
+      console.log('🎨 SVG图标系统使用示例:');
+      
+      // 创建默认效果图标 (2025新增)
+      const defaultIcon = iconManager.createIcon('voice');
+      console.log('✓ 默认效果图标创建成功 (白色+Strong阴影+无描边)');
+      
+      // 创建自定义图标
+      const customIcon = iconManager.createIcon('voice', {
+        size: 'lg',
+        theme: 'primary',
+        clickable: true,
+        shadow: 'medium'
+      });
+      console.log('✓ 自定义图标创建成功');
+      
+      // 创建带容器的图标
+      const containerIcon = iconManager.createIconWithContainer('pause', {
+        containerSize: 'md',
+        containerTheme: 'success',
+        size: 'md'
+      });
+      console.log('✓ 容器图标创建成功');
+      
+      // 注册自定义图标
+      iconManager.registerIcon('custom-heart', {
+        viewBox: '0 0 1024 1024',
+        paths: [
+          'M512 896c-12.8 0-25.6-5.12-34.56-15.36-184.32-211.2-307.2-350.72-307.2-518.4C170.24 219.52 277.76 128 419.84 128c70.4 0 135.68 35.84 174.08 89.6 38.4-53.76 103.68-89.6 174.08-89.6 142.08 0 249.6 91.52 249.6 234.24 0 167.68-122.88 307.2-307.2 518.4C537.6 890.88 524.8 896 512 896z'
+        ]
+      });
+      console.log('✓ 自定义图标注册成功');
+      
+      return { defaultIcon, customIcon, containerIcon };
+    }
+    
+    // 页面加载后演示图标系统
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('🚀 页面加载完成');
+      
+      // 初始化默认效果展示 (2025新增)
+      initDefaultIconsDemo();
+      
+      // 初始化新图标毛刺测试 (2025新增)
+      initNewIconsAntiAliasingTest();
+      
+      // 运行图标系统示例
+      demonstrateIconSystem();
+      
+      // 生成性能报告
+      setTimeout(() => {
+        iconManager.generateReport();
+      }, 1000);
+    });
     
     // 聊天记录消息交互逻辑
     function toggleChatRecord(bubble) {

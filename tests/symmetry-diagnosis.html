@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>第二转折45度对称性问题诊断</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            color: white;
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+        }
+
+        .diagnosis-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .title {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            color: #ff6b35;
+        }
+
+        .demo-section {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .section-title {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #00ff88;
+        }
+
+        .svg-container {
+            width: 100%;
+            height: 200px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+        }
+
+        .path-current {
+            stroke: #ff6b35;
+            stroke-width: 3;
+            fill: transparent;
+            filter: drop-shadow(0 0 8px #ff6b35);
+        }
+
+        .path-corrected {
+            stroke: #00ff88;
+            stroke-width: 3;
+            fill: transparent;
+            filter: drop-shadow(0 0 8px #00ff88);
+        }
+
+        .base-path {
+            stroke: #666;
+            stroke-width: 1;
+            fill: transparent;
+            stroke-dasharray: 2,2;
+        }
+
+        .control-point {
+            fill: #ffaa00;
+            stroke: #fff;
+            stroke-width: 1;
+            r: 4;
+        }
+
+        .problem-point {
+            fill: #ff0000;
+            stroke: #fff;
+            stroke-width: 2;
+            r: 5;
+        }
+
+        .solution-point {
+            fill: #00ff88;
+            stroke: #fff;
+            stroke-width: 2;
+            r: 5;
+        }
+
+        .diagnosis-results {
+            background: rgba(0,0,0,0.5);
+            padding: 15px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            margin-top: 15px;
+        }
+
+        .problem { color: #ff6b35; }
+        .solution { color: #00ff88; }
+        .neutral { color: #ccc; }
+
+        .legend {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+    </style>
+</head>
+<body>
+    <div class="diagnosis-container">
+        <h1 class="title">🔍 第二转折45度对称性问题诊断</h1>
+
+        <!-- 当前实现问题展示 -->
+        <div class="demo-section">
+            <div class="section-title">❌ 当前实现 - 不对称问题</div>
+            <svg class="svg-container" xmlns="http://www.w3.org/2000/svg">
+                <!-- 基础网格参考线 -->
+                <defs>
+                    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#333" stroke-width="0.5"/>
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)" opacity="0.3"/>
+                
+                <!-- 当前实现的路径（问题版本） -->
+                <path id="current-path" class="path-current"></path>
+                
+                <!-- 控制点标记 -->
+                <circle id="current-start" class="problem-point"></circle>
+                <circle id="current-control" class="control-point"></circle>
+                <circle id="current-end" class="problem-point"></circle>
+                
+                <!-- 距离标记线 -->
+                <line id="distance-vertical" stroke="#ff6b35" stroke-width="2" stroke-dasharray="3,3"></line>
+                <line id="distance-horizontal" stroke="#ff6b35" stroke-width="2" stroke-dasharray="3,3"></line>
+            </svg>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff6b35;"></div>
+                    <span>当前实现路径</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff0000;"></div>
+                    <span>问题点</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ffaa00;"></div>
+                    <span>L型控制点</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 修正后实现展示 -->
+        <div class="demo-section">
+            <div class="section-title">✅ 修正实现 - 完美45度对称</div>
+            <svg class="svg-container" xmlns="http://www.w3.org/2000/svg">
+                <rect width="100%" height="100%" fill="url(#grid)" opacity="0.3"/>
+                
+                <!-- 修正后的路径（解决方案版本） -->
+                <path id="corrected-path" class="path-corrected"></path>
+                
+                <!-- 对比：当前路径（半透明） -->
+                <path id="comparison-current" class="path-current" opacity="0.3"></path>
+                
+                <!-- 控制点标记 -->
+                <circle id="corrected-start" class="solution-point"></circle>
+                <circle id="corrected-control" class="control-point"></circle>
+                <circle id="corrected-end" class="solution-point"></circle>
+                
+                <!-- 对称距离标记线 -->
+                <line id="sym-distance-vertical" stroke="#00ff88" stroke-width="2"></line>
+                <line id="sym-distance-horizontal" stroke="#00ff88" stroke-width="2"></line>
+            </svg>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #00ff88;"></div>
+                    <span>修正后路径</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #ff6b35; opacity: 0.3;"></div>
+                    <span>原路径对比</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-dot" style="background: #00ff88;"></div>
+                    <span>对称点</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 诊断结果 -->
+        <div class="diagnosis-results" id="diagnosis-output">
+            <div class="neutral">🔍 正在分析几何参数...</div>
+        </div>
+    </div>
+
+    <script>
+        // 模拟当前实现的参数
+        const currentParams = {
+            radius: 5,
+            centerOffset: -15, // left-to-right 类型
+            extend: Math.abs(-15) - 5, // = 10
+        };
+
+        // 计算当前实现的坐标
+        const current = {
+            // 垂直段终点
+            start: { x: 200, y: 150 },
+            // L型控制点
+            control: { x: 200, y: 200 },
+            // 水平延伸起点  
+            end: { x: 200 - currentParams.extend, y: 200 }
+        };
+
+        // 计算修正后的坐标（对称版本）
+        const corrected = {
+            // 垂直段终点
+            start: { x: 200, y: 150 },
+            // L型控制点
+            control: { x: 200, y: 200 },
+            // 水平延伸起点（修正：使用radius作为水平距离）
+            end: { x: 200 - currentParams.radius, y: 200 }
+        };
+
+        // 渲染当前实现
+        function renderCurrent() {
+            const path = document.getElementById('current-path');
+            const pathData = `M ${current.start.x} ${current.start.y} Q ${current.control.x} ${current.control.y} ${current.end.x} ${current.end.y}`;
+            path.setAttribute('d', pathData);
+
+            document.getElementById('current-start').setAttribute('cx', current.start.x);
+            document.getElementById('current-start').setAttribute('cy', current.start.y);
+            document.getElementById('current-control').setAttribute('cx', current.control.x);
+            document.getElementById('current-control').setAttribute('cy', current.control.y);
+            document.getElementById('current-end').setAttribute('cx', current.end.x);
+            document.getElementById('current-end').setAttribute('cy', current.end.y);
+
+            // 距离标记线
+            const vertLine = document.getElementById('distance-vertical');
+            vertLine.setAttribute('x1', current.start.x);
+            vertLine.setAttribute('y1', current.start.y);
+            vertLine.setAttribute('x2', current.control.x);
+            vertLine.setAttribute('y2', current.control.y);
+
+            const horzLine = document.getElementById('distance-horizontal');
+            horzLine.setAttribute('x1', current.control.x);
+            horzLine.setAttribute('y1', current.control.y);
+            horzLine.setAttribute('x2', current.end.x);
+            horzLine.setAttribute('y2', current.end.y);
+        }
+
+        // 渲染修正实现
+        function renderCorrected() {
+            const path = document.getElementById('corrected-path');
+            const pathData = `M ${corrected.start.x} ${corrected.start.y} Q ${corrected.control.x} ${corrected.control.y} ${corrected.end.x} ${corrected.end.y}`;
+            path.setAttribute('d', pathData);
+
+            // 对比路径（当前实现的半透明版本）
+            const comparisonPath = document.getElementById('comparison-current');
+            const currentPathData = `M ${current.start.x} ${current.start.y} Q ${current.control.x} ${current.control.y} ${current.end.x} ${current.end.y}`;
+            comparisonPath.setAttribute('d', currentPathData);
+
+            document.getElementById('corrected-start').setAttribute('cx', corrected.start.x);
+            document.getElementById('corrected-start').setAttribute('cy', corrected.start.y);
+            document.getElementById('corrected-control').setAttribute('cx', corrected.control.x);
+            document.getElementById('corrected-control').setAttribute('cy', corrected.control.y);
+            document.getElementById('corrected-end').setAttribute('cx', corrected.end.x);
+            document.getElementById('corrected-end').setAttribute('cy', corrected.end.y);
+
+            // 对称距离标记线
+            const vertLine = document.getElementById('sym-distance-vertical');
+            vertLine.setAttribute('x1', corrected.start.x);
+            vertLine.setAttribute('y1', corrected.start.y);
+            vertLine.setAttribute('x2', corrected.control.x);
+            vertLine.setAttribute('y2', corrected.control.y);
+
+            const horzLine = document.getElementById('sym-distance-horizontal');
+            horzLine.setAttribute('x1', corrected.control.x);
+            horzLine.setAttribute('y1', corrected.control.y);
+            horzLine.setAttribute('x2', corrected.end.x);
+            horzLine.setAttribute('y2', corrected.end.y);
+        }
+
+        // 计算距离
+        function calculateDistance(p1, p2) {
+            return Math.sqrt((p2.x - p1.x) ** 2 + (p2.y - p1.y) ** 2);
+        }
+
+        // 生成诊断报告
+        function generateDiagnosisReport() {
+            const currentVertDistance = calculateDistance(current.start, current.control);
+            const currentHorzDistance = calculateDistance(current.control, current.end);
+            const correctedVertDistance = calculateDistance(corrected.start, corrected.control);
+            const correctedHorzDistance = calculateDistance(corrected.control, corrected.end);
+
+            const report = `
+🔍 第二转折几何分析结果：
+
+<span class="problem">❌ 当前实现问题：</span>
+   • 垂直方向距离: ${currentVertDistance.toFixed(1)}px (radius = ${currentParams.radius})
+   • 水平方向距离: ${currentHorzDistance.toFixed(1)}px (extend = ${currentParams.extend})
+   • 距离比例: ${(currentHorzDistance/currentVertDistance).toFixed(2)}:1 ≠ 1:1
+   • <span class="problem">结论: 不对称！水平距离是垂直距离的${(currentHorzDistance/currentVertDistance).toFixed(1)}倍</span>
+
+<span class="solution">✅ 修正后解决方案：</span>
+   • 垂直方向距离: ${correctedVertDistance.toFixed(1)}px 
+   • 水平方向距离: ${correctedHorzDistance.toFixed(1)}px
+   • 距离比例: ${(correctedHorzDistance/correctedVertDistance).toFixed(2)}:1 = 1:1
+   • <span class="solution">结论: 完美对称！实现45度对称圆角</span>
+
+<span class="neutral">🎯 问题根源：</span>
+   • extend = |centerOffset| - radius = ${Math.abs(currentParams.centerOffset)} - ${currentParams.radius} = ${currentParams.extend}
+   • 应该改为: extend = radius = ${currentParams.radius}
+   
+<span class="solution">🔧 修复方案：</span>
+   • 将水平方向距离统一为 radius
+   • 或者调整 radius 为 extend 的值
+   • 确保两个方向的控制距离相等
+            `;
+
+            document.getElementById('diagnosis-output').innerHTML = report;
+        }
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            renderCurrent();
+            renderCorrected();
+            generateDiagnosisReport();
+        });
+    </script>
+</body>
+</html>

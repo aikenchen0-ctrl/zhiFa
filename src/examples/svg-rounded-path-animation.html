@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG圆角路径光线动画 - 10次转折</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at center, #0f0f23, #1a1a2e, #16213e);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+
+        .title {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+            background: linear-gradient(45deg, #00ff88, #00bcd4);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .svg-container {
+            position: relative;
+            width: 90vw;
+            height: 70vh;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 255, 136, 0.1);
+            backdrop-filter: blur(10px);
+            overflow: visible;
+        }
+
+        .main-svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 10px rgba(0, 255, 136, 0.3));
+        }
+
+        /* 基础路径样式 - 静态灰色线条 */
+        .base-path {
+            stroke: #333;
+            stroke-width: 4;
+            fill: transparent;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* 主光线路径 - 明亮的绿色光线 */
+        .primary-light {
+            stroke: #00ff88;
+            stroke-width: 4;
+            fill: transparent;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            /* 光线段：80px长的光线 + 400px空白 */
+            stroke-dasharray: 80, 400;
+            stroke-dashoffset: 0;
+            animation: light-flow 4s infinite linear;
+            filter: drop-shadow(0 0 12px #00ff88) drop-shadow(0 0 24px rgba(0, 255, 136, 0.8));
+        }
+
+        /* 隐藏次级和第三层光线 */
+        .secondary-light,
+        .tertiary-light {
+            display: none;
+        }
+
+        /* 光线流动动画 - 单一主光线移动 */
+        @keyframes light-flow {
+            0% {
+                stroke-dashoffset: 0;
+            }
+            100% {
+                stroke-dashoffset: -480;  /* 光线沿路径移动 */
+            }
+        }
+
+        /* 路径节点样式 */
+        .path-node {
+            fill: #ffffff;
+            stroke: #00ff88;
+            stroke-width: 2;
+            r: 6;
+            filter: drop-shadow(0 0 8px rgba(0, 255, 136, 0.8));
+            animation: node-pulse 2s infinite ease-in-out;
+        }
+
+        /* 节点脉动动画 */
+        @keyframes node-pulse {
+            0%, 100% {
+                r: 6;
+                opacity: 1;
+            }
+            50% {
+                r: 8;
+                opacity: 0.7;
+            }
+        }
+
+        /* 路径信息面板 */
+        .info-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 320px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .info-panel h3 {
+            color: #00ff88;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+
+        .info-panel .tech-details {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #ccc;
+        }
+
+        .info-panel .highlight {
+            color: #00bcd4;
+            font-weight: bold;
+        }
+
+        /* 控制面板 */
+        .control-panel {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            padding: 10px 20px;
+            background: linear-gradient(45deg, #00ff88, #00bcd4);
+            border: none;
+            border-radius: 25px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .control-btn:hover {
+            transform: scale(1.1);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* 路径长度指示器 */
+        .path-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .path-indicator .label {
+            color: #00ff88;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+
+        .path-indicator .value {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">SVG圆角路径光线动画 - 10次转折</h1>
+    
+    <div class="svg-container">
+        <svg class="main-svg" viewBox="0 0 1200 600" xmlns="http://www.w3.org/2000/svg">
+            <!-- 定义渐变效果 -->
+            <defs>
+                <linearGradient id="pathGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#333;stop-opacity:1" />
+                    <stop offset="50%" style="stop-color:#555;stop-opacity:1" />
+                    <stop offset="100%" style="stop-color:#333;stop-opacity:1" />
+                </linearGradient>
+            </defs>
+            
+            <!-- 基础静态路径 - 使用path元素创建圆角转折 -->
+            <path class="base-path" 
+                  stroke="url(#pathGradient)"
+                  d="M 50 300 
+                     Q 100 300 100 250
+                     L 150 250
+                     Q 200 250 200 200
+                     L 250 200
+                     Q 300 200 300 150
+                     L 400 150
+                     Q 450 150 450 200
+                     L 500 200
+                     Q 550 200 550 250
+                     L 650 250
+                     Q 700 250 700 300
+                     L 750 300
+                     Q 800 300 800 350
+                     L 850 350
+                     Q 900 350 900 400
+                     L 950 400
+                     Q 1000 400 1000 350
+                     L 1050 350
+                     Q 1100 350 1100 300
+                     L 1150 300" />
+            
+            <!-- 主光线路径 - 绿色主光线 -->
+            <path class="primary-light"
+                  d="M 50 300 
+                     Q 100 300 100 250
+                     L 150 250
+                     Q 200 250 200 200
+                     L 250 200
+                     Q 300 200 300 150
+                     L 400 150
+                     Q 450 150 450 200
+                     L 500 200
+                     Q 550 200 550 250
+                     L 650 250
+                     Q 700 250 700 300
+                     L 750 300
+                     Q 800 300 800 350
+                     L 850 350
+                     Q 900 350 900 400
+                     L 950 400
+                     Q 1000 400 1000 350
+                     L 1050 350
+                     Q 1100 350 1100 300
+                     L 1150 300" />
+            
+            <!-- 次级光线路径 - 蓝色尾迹 -->
+            <path class="secondary-light"
+                  d="M 50 300 
+                     Q 100 300 100 250
+                     L 150 250
+                     Q 200 250 200 200
+                     L 250 200
+                     Q 300 200 300 150
+                     L 400 150
+                     Q 450 150 450 200
+                     L 500 200
+                     Q 550 200 550 250
+                     L 650 250
+                     Q 700 250 700 300
+                     L 750 300
+                     Q 800 300 800 350
+                     L 850 350
+                     Q 900 350 900 400
+                     L 950 400
+                     Q 1000 400 1000 350
+                     L 1050 350
+                     Q 1100 350 1100 300
+                     L 1150 300" />
+            
+            <!-- 第三层光线路径 - 白色高亮 -->
+            <path class="tertiary-light"
+                  d="M 50 300 
+                     Q 100 300 100 250
+                     L 150 250
+                     Q 200 250 200 200
+                     L 250 200
+                     Q 300 200 300 150
+                     L 400 150
+                     Q 450 150 450 200
+                     L 500 200
+                     Q 550 200 550 250
+                     L 650 250
+                     Q 700 250 700 300
+                     L 750 300
+                     Q 800 300 800 350
+                     L 850 350
+                     Q 900 350 900 400
+                     L 950 400
+                     Q 1000 400 1000 350
+                     L 1050 350
+                     Q 1100 350 1100 300
+                     L 1150 300" />
+            
+            <!-- 路径节点标记 - 标识每个转折点 -->
+            <circle class="path-node" cx="50" cy="300" />   <!-- 起点 -->
+            <circle class="path-node" cx="100" cy="250" />  <!-- 转折1 -->
+            <circle class="path-node" cx="200" cy="200" />  <!-- 转折2 -->
+            <circle class="path-node" cx="300" cy="150" />  <!-- 转折3 -->
+            <circle class="path-node" cx="450" cy="200" />  <!-- 转折4 -->
+            <circle class="path-node" cx="550" cy="250" />  <!-- 转折5 -->
+            <circle class="path-node" cx="700" cy="300" />  <!-- 转折6 -->
+            <circle class="path-node" cx="800" cy="350" />  <!-- 转折7 -->
+            <circle class="path-node" cx="900" cy="400" />  <!-- 转折8 -->
+            <circle class="path-node" cx="1000" cy="350" /> <!-- 转折9 -->
+            <circle class="path-node" cx="1100" cy="300" /> <!-- 转折10 -->
+            <circle class="path-node" cx="1150" cy="300" /> <!-- 终点 -->
+        </svg>
+    </div>
+
+    <!-- 技术信息面板 -->
+    <div class="info-panel">
+        <h3>🔧 技术实现详解</h3>
+        <div class="tech-details">
+            <p><span class="highlight">SVG Path语法：</span></p>
+            <p>• M: 移动到起始点</p>
+            <p>• L: 直线连接</p>
+            <p>• Q: 二次贝塞尔曲线（圆角）</p>
+            <p><span class="highlight">光线参数：</span>80px光线段 + 400px空白</p>
+            <p><span class="highlight">动画原理：</span>stroke-dashoffset移动</p>
+            <p><span class="highlight">转折次数：</span>10次圆角转折</p>
+            <p><span class="highlight">光线颜色：</span>绿色 (#00ff88)</p>
+            <p><span class="highlight">发光效果：</span>双重drop-shadow</p>
+        </div>
+    </div>
+
+    <!-- 路径指示器 -->
+    <div class="path-indicator">
+        <div class="label">路径统计</div>
+        <div class="value" id="pathStats">
+            长度: ~1100px<br>
+            转折: 10次<br>
+            圆角: 全部
+        </div>
+    </div>
+
+    <!-- 控制面板 -->
+    <div class="control-panel">
+        <button class="control-btn" onclick="toggleAnimation()">暂停/播放</button>
+        <button class="control-btn" onclick="changeSpeed()">调速</button>
+        <button class="control-btn" onclick="toggleColor()">切换颜色</button>
+    </div>
+
+    <script>
+        let animationPaused = false;
+        let currentSpeed = 1;
+        let layersVisible = true;
+
+        // 暂停/播放动画
+        function toggleAnimation() {
+            const primaryLight = document.querySelector('.primary-light');
+            const nodes = document.querySelectorAll('.path-node');
+            
+            if (animationPaused) {
+                primaryLight.style.animationPlayState = 'running';
+                nodes.forEach(node => {
+                    node.style.animationPlayState = 'running';
+                });
+                animationPaused = false;
+            } else {
+                primaryLight.style.animationPlayState = 'paused';
+                nodes.forEach(node => {
+                    node.style.animationPlayState = 'paused';
+                });
+                animationPaused = true;
+            }
+        }
+
+        // 调整动画速度
+        function changeSpeed() {
+            const speeds = [0.5, 1, 1.5, 2];
+            currentSpeed = speeds[(speeds.indexOf(currentSpeed) + 1) % speeds.length];
+            
+            const primaryLight = document.querySelector('.primary-light');
+            primaryLight.style.animationDuration = (4 / currentSpeed) + 's';
+
+            console.log(`动画速度调整为: ${currentSpeed}x`);
+        }
+
+        // 切换光线颜色
+        function toggleColor() {
+            const colors = [
+                { color: '#00ff88', name: '绿色' },
+                { color: '#00bcd4', name: '青色' },
+                { color: '#ff6b35', name: '橙色' },
+                { color: '#9c27b0', name: '紫色' },
+                { color: '#ffffff', name: '白色' }
+            ];
+            
+            const primaryLight = document.querySelector('.primary-light');
+            const currentColor = getComputedStyle(primaryLight).stroke;
+            
+            // 找到下一个颜色
+            let currentIndex = 0;
+            for (let i = 0; i < colors.length; i++) {
+                if (currentColor.includes(colors[i].color.substring(1))) {
+                    currentIndex = i;
+                    break;
+                }
+            }
+            
+            const nextIndex = (currentIndex + 1) % colors.length;
+            const nextColor = colors[nextIndex];
+            
+            primaryLight.style.stroke = nextColor.color;
+            primaryLight.style.filter = `drop-shadow(0 0 12px ${nextColor.color}) drop-shadow(0 0 24px ${nextColor.color}80)`;
+            
+            console.log(`光线颜色切换为: ${nextColor.name}`);
+        }
+
+        // 页面加载完成后的初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            // 计算实际路径长度（近似值）
+            const pathElement = document.querySelector('.primary-light');
+            const pathLength = pathElement.getTotalLength();
+            
+            document.getElementById('pathStats').innerHTML = `
+                长度: ${Math.round(pathLength)}px<br>
+                转折: 10次<br>
+                圆角: 全部
+            `;
+
+            // 控制台输出详细信息
+            console.log(`
+                🌟 SVG圆角路径光线动画技术详解：
+                
+                📐 路径设计：
+                • 使用SVG path元素的Q指令创建二次贝塞尔曲线
+                • 每个转折点都采用Q指令实现平滑圆角过渡
+                • 路径总长度：${Math.round(pathLength)}px
+                
+                ⚡ 动画机制：
+                • stroke-dasharray: 80px光线段 + 400px空白段
+                • stroke-dashoffset: 从0移动到-480px
+                • animation: 4秒线性循环动画
+                • 单一光线流畅移动，简洁高效
+                
+                🎨 视觉效果：
+                • 双重drop-shadow创建发光效果
+                • 圆滑线帽(round)和线条连接
+                • 节点脉动动画标记路径
+                • 支持多种颜色切换
+                
+                🔧 SVG Path语法说明：
+                • M x y: 移动到点(x,y)
+                • L x y: 直线连接到点(x,y)  
+                • Q x1 y1 x y: 二次贝塞尔曲线，(x1,y1)为控制点，(x,y)为终点
+            `);
+        });
+    </script>
+</body>
+</html>

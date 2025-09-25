@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>连接线光线动画 - 三种实现方法</title>
+    <style>
+        /* CSS自定义属性 - 支持角度值的动画过渡 */
+        @property --rotation-angle {
+            syntax: '<angle>';
+            inherits: false;
+            initial-value: 180deg;
+        }
+        
+        @property --rotation-angle2 {
+            syntax: '<angle>';
+            inherits: false;
+            initial-value: 90deg;
+        }
+
+        /* 基础样式重置和页面布局 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Arial', sans-serif;
+            color: white;
+        }
+
+        .title {
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .demo-container {
+            display: flex;
+            flex-direction: column;
+            gap: 4rem;
+            align-items: center;
+        }
+
+        .demo-section {
+            position: relative;
+            padding: 2rem;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .section-title {
+            position: absolute;
+            top: -15px;
+            left: 20px;
+            background: linear-gradient(45deg, #ff6b35, #f7931e);
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        /* 方法一：SVG实现线条光线动画 */
+        .svg-demo {
+            position: relative;
+            width: 300px;
+            height: 150px;
+        }
+
+        .svg-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        /* SVG基础路径 - 静态灰色线条 */
+        .base-path {
+            stroke: #444;
+            fill: transparent;
+            stroke-width: 3;
+        }
+
+        /* SVG光线动画路径 - 主光线 */
+        .light-path {
+            --dash-offset: 0;
+            --dash-end: -400;
+            stroke-dasharray: 60, 400;  /* 60px光线段 + 400px空白段 */
+            stroke-dashoffset: var(--dash-offset);
+            animation: svg-light-move 3s infinite linear;
+            stroke: #00ff88;
+            stroke-width: 3;
+            filter: drop-shadow(0 0 8px #00ff88);
+        }
+
+        /* SVG光线阴影路径 - 增强光线效果 */
+        .shadow-path {
+            --shadow-offset: -20;
+            --shadow-end: -420;
+            stroke-dasharray: 20, 400;  /* 较短的光线尾巴效果 */
+            stroke-dashoffset: var(--shadow-offset);
+            animation: svg-light-move 3s infinite linear;
+            stroke: #00ff88;
+            stroke-width: 2;
+            opacity: 0.6;
+            filter: drop-shadow(0 0 15px #00ff88);
+        }
+
+        /* SVG动画关键帧 */
+        @keyframes svg-light-move {
+            0% {
+                stroke-dashoffset: var(--dash-offset, 0);
+            }
+            100% {
+                stroke-dashoffset: var(--dash-end, -400);
+            }
+        }
+
+        /* 方法二：CSS Gradient实现单段线条动画 */
+        .gradient-demo {
+            position: relative;
+            width: 300px;
+            height: 150px;
+        }
+
+        .gradient-line {
+            position: absolute;
+            left: 0;
+            top: 50px;
+            width: 250px;
+            height: 50px;
+            /* 背景：静态灰色线条 */
+            background: #444;
+            /* 使用mask创建线条形状：水平线条 + 垂直线条 */
+            mask: 
+                linear-gradient(90deg, #000 0%, #000 100%) 0 0/100% 3px no-repeat,
+                linear-gradient(0deg, #000 0%, #000 100%) 0 47px/3px 100% no-repeat;
+        }
+
+        .gradient-line::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            /* 锥形渐变创建旋转光线效果 */
+            background: conic-gradient(
+                from var(--rotation-angle), 
+                transparent, 
+                #ff6b35, 
+                #f7931e 60deg, 
+                transparent 60deg
+            );
+            animation: gradient-rotate 3s infinite ease-in-out;
+        }
+
+        /* 渐变旋转动画 */
+        @keyframes gradient-rotate {
+            0% {
+                --rotation-angle: 180deg;
+            }
+            100% {
+                --rotation-angle: 540deg;  /* 旋转一圈 */
+            }
+        }
+
+        /* 方法三：多段Gradient实现复杂路径动画 */
+        .multi-gradient-demo {
+            position: relative;
+            width: 300px;
+            height: 150px;
+        }
+
+        .multi-gradient-line {
+            position: absolute;
+            top: 20px;
+            left: 50px;
+            width: 200px;
+            height: 80px;
+        }
+
+        .multi-gradient-line::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            /* 双重mask：水平线 + 垂直线，创建L形路径 */
+            mask: 
+                linear-gradient(90deg, #000 0%, #000 100%) 0 0/100% 3px no-repeat,
+                linear-gradient(0deg, #000 0%, #000 100%) 197px 0/3px 100% no-repeat;
+            /* 背景：静态线条 + 动态光线 */
+            background: 
+                conic-gradient(
+                    from var(--rotation-angle2), 
+                    transparent, 
+                    #00ff88, 
+                    #00bcd4 45deg, 
+                    transparent 45deg
+                ),
+                linear-gradient(#444, #444);
+            animation: multi-gradient-rotate 3s infinite ease-in-out;
+        }
+
+        .multi-gradient-line::after {
+            content: "";
+            position: absolute;
+            top: 80px;
+            right: 0;
+            width: 3px;
+            height: 50px;
+            /* 垂直段的光线动画 */
+            background: 
+                linear-gradient(#00bcd4, #00ff88),
+                linear-gradient(#444, #444);
+            background-repeat: no-repeat;
+            background-size: 100% 100%, 100% 100%;
+            background-position: 0 0, 0 0;
+            animation: vertical-light-move 3s linear infinite;
+        }
+
+        /* 多段渐变旋转动画 */
+        @keyframes multi-gradient-rotate {
+            0% {
+                --rotation-angle2: 90deg;
+            }
+            100% {
+                --rotation-angle2: 450deg;
+            }
+        }
+
+        /* 垂直段光线移动动画 */
+        @keyframes vertical-light-move {
+            0% {
+                background-size: 100% 100%, 100% 100%;
+            }
+            20%, 100% {
+                background-size: 100% 0%, 100% 100%;
+            }
+        }
+
+        /* 演示节点样式 */
+        .node {
+            position: absolute;
+            width: 12px;
+            height: 12px;
+            background: #fff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px rgba(255,255,255,0.8);
+        }
+
+        .svg-demo .node:nth-child(2) { top: 20px; left: 20px; }
+        .svg-demo .node:nth-child(3) { top: 20px; right: 20px; }
+        .svg-demo .node:nth-child(4) { bottom: 20px; left: 20px; }
+
+        .gradient-demo .node:nth-child(2) { top: 44px; left: -6px; }
+        .gradient-demo .node:nth-child(3) { top: 44px; right: 44px; }
+        .gradient-demo .node:nth-child(4) { bottom: 44px; right: 44px; }
+
+        .multi-gradient-demo .node:nth-child(2) { top: 14px; left: 44px; }
+        .multi-gradient-demo .node:nth-child(3) { top: 14px; right: 44px; }
+        .multi-gradient-demo .node:nth-child(4) { bottom: 14px; right: 44px; }
+
+        /* 技术说明面板 */
+        .tech-info {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            background: rgba(0,0,0,0.8);
+            border-radius: 10px;
+            padding: 15px;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        .tech-info h4 {
+            color: #ff6b35;
+            margin-bottom: 10px;
+        }
+
+        .tech-info ul {
+            list-style: none;
+            padding-left: 10px;
+        }
+
+        .tech-info li {
+            margin-bottom: 5px;
+            position: relative;
+        }
+
+        .tech-info li::before {
+            content: "▸";
+            color: #00ff88;
+            position: absolute;
+            left: -10px;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">连接线光线动画 - 三种实现方法</h1>
+    
+    <div class="demo-container">
+        <!-- 方法一：SVG线条动画 -->
+        <div class="demo-section svg-demo">
+            <div class="section-title">SVG + stroke-dasharray</div>
+            <svg class="svg-container" xmlns="http://www.w3.org/2000/svg">
+                <!-- 静态基础路径 -->
+                <polyline 
+                    class="base-path" 
+                    points="20,30 120,30 120,80 280,80" 
+                />
+                <!-- 主光线路径 -->
+                <polyline 
+                    class="light-path" 
+                    points="20,30 120,30 120,80 280,80" 
+                    fill="transparent" 
+                />
+                <!-- 光线阴影路径 -->
+                <polyline 
+                    class="shadow-path" 
+                    points="20,30 120,30 120,80 280,80" 
+                    fill="transparent" 
+                />
+            </svg>
+            <!-- 连接节点 -->
+            <div class="node"></div>
+            <div class="node"></div>
+            <div class="node"></div>
+        </div>
+
+        <!-- 方法二：单段Gradient动画 -->
+        <div class="demo-section gradient-demo">
+            <div class="section-title">CSS Conic Gradient</div>
+            <div class="gradient-line"></div>
+            <!-- 连接节点 -->
+            <div class="node"></div>
+            <div class="node"></div>
+            <div class="node"></div>
+        </div>
+
+        <!-- 方法三：多段Gradient动画 -->
+        <div class="demo-section multi-gradient-demo">
+            <div class="section-title">Multi-Gradient + Mask</div>
+            <div class="multi-gradient-line"></div>
+            <!-- 连接节点 -->
+            <div class="node"></div>
+            <div class="node"></div>
+            <div class="node"></div>
+        </div>
+    </div>
+
+    <!-- 技术说明面板 -->
+    <div class="tech-info">
+        <h4>技术实现要点</h4>
+        <ul>
+            <li>SVG方式：精确路径控制</li>
+            <li>Gradient方式：纯CSS实现</li>
+            <li>@property：支持角度动画</li>
+            <li>mask属性：裁剪线条形状</li>
+            <li>conic-gradient：锥形渐变光线</li>
+            <li>stroke-dasharray：虚线动画</li>
+        </ul>
+    </div>
+
+    <script>
+        // JavaScript增强功能（可选）
+        document.addEventListener('DOMContentLoaded', function() {
+            // 为演示添加交互效果
+            const sections = document.querySelectorAll('.demo-section');
+            
+            sections.forEach(section => {
+                section.addEventListener('mouseenter', function() {
+                    this.style.transform = 'scale(1.05)';
+                    this.style.transition = 'transform 0.3s ease';
+                });
+                
+                section.addEventListener('mouseleave', function() {
+                    this.style.transform = 'scale(1)';
+                });
+            });
+
+            // 控制台输出技术说明
+            console.log(`
+                🌟 连接线光线动画实现技术分析：
+                
+                1️⃣ SVG + stroke-dasharray 方式：
+                   - stroke-dasharray: 定义虚线模式
+                   - stroke-dashoffset: 控制虚线偏移
+                   - 优点：路径精确，支持复杂形状
+                   - 适用：复杂连接路径
+                
+                2️⃣ CSS Conic Gradient 方式：
+                   - conic-gradient: 创建锥形渐变
+                   - mask: 裁剪出线条形状
+                   - @property: 支持角度值动画
+                   - 优点：纯CSS实现，性能好
+                   - 适用：简单直线路径
+                
+                3️⃣ Multi-Gradient + Mask 方式：
+                   - 多重mask组合复杂路径
+                   - 伪元素处理不同段落
+                   - background-size动画
+                   - 优点：灵活性高，可组合
+                   - 适用：多段路径组合
+            `);
+        });
+    </script>
+</body>
+</html>
