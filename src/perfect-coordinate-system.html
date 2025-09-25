@@ -283,6 +283,28 @@
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.7; transform: scale(1.2); }
         }
+
+        /* CSS硬件加速动画 - 真正的高性能流光效果 */
+        @keyframes dashFlow-left-to-right {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -72; }  /* 12+60=72 */
+        }
+        
+        @keyframes dashFlow-right-to-left {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -60; }  /* 10+50=60 */
+        }
+        
+        @keyframes dashFlow-right-to-right {
+            0% { stroke-dashoffset: 0; }
+            100% { stroke-dashoffset: -48; }  /* 8+40=48 */
+        }
+        
+        /* 启用GPU合成层 */
+        .animated-connection {
+            will-change: stroke-dashoffset;
+            transform: translateZ(0); /* 强制GPU合成 */
+        }
         
         .chat-title {
             background: none;
@@ -1068,6 +1090,15 @@
         <button onclick="testHeightManager()" style="background: #3498db; color: white;">📏 高度管理测试</button>
         <button onclick="resetApplication()" style="background: #e67e22; color: white;">🔄 重置应用</button>
         <button onclick="exportApplicationData()" style="background: #9b59b6; color: white;">📤 导出数据</button>
+        
+        <hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">
+        <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px; color: #ff6b35;">🔗 高性能连接线系统</div>
+        
+        <button onclick="resetConnectionSystem()" style="background: #00ff88; color: black;">🚀 重启系统</button>
+        <button onclick="toggleConnectionDebugMode()" style="background: #ff6b35; color: white;">🐛 调试模式</button>
+        <button onclick="testCoordinateSystem()" style="background: #f39c12; color: white;">🧪 坐标测试</button>
+        <button onclick="debugConnectionSystem()" style="background: #9b59b6; color: white;">🔧 系统诊断</button>
+        <button onclick="toggleConnectionSystem()" style="background: #e74c3c; color: white;">⏸️ 暂停/继续</button>
         
         <hr style="margin: 8px 0; border: none; border-top: 1px solid #ddd;">
         <div style="font-weight: bold; font-size: 11px; margin-bottom: 5px;">Aiff流程ICON 控制 (重构后)</div>
@@ -3079,6 +3110,17 @@
                 console.log('✅ DataManager - 专职数据管理已启动');
                 console.log('✅ UIManager - 专职界面管理已启动');
                 console.log('✅ HeightManager - 高度管理系统已启动');
+                
+                // 延迟启动高性能连接线系统
+                setTimeout(() => {
+                    try {
+                        initializeConnectionSystem();
+                        console.log('✅ HighPerformanceConnectionSystem - 高性能连接线系统已启动');
+                    } catch (connectionError) {
+                        console.warn('连接线系统初始化失败:', connectionError);
+                    }
+                }, 800);
+                
                 console.log('=== 架构重构完成 ===');
                 
             } catch (error) {
@@ -3814,6 +3856,1440 @@
             }, 3000);
             
             console.log('综合演示已启动，请观察各个组件的变化');
+        }
+
+        // ========== 高性能实时连接线系统 ==========
+        
+        // 1. 高性能几何计算引擎
+        class HighPerformanceGeometryEngine {
+            constructor() {
+                // 预计算常量表 - 避免运行时数学计算
+                this.CONSTANTS = {
+                    RADIUS: 2,
+                    PRECISION: 100, // 坐标精度优化
+                    // 三种连接类型的预计算延伸距离
+                    EXTEND_DISTANCES: {
+                        'left-to-right': 12,   // 左侧消息到右侧头像/工具
+                        'right-to-left': 18,   // 右侧消息到左侧头像
+                        'right-to-right': 10   // 右侧消息到右侧工具（短距离）
+                    },
+                    // 中轴线偏移预计算表 - 修正为内侧偏移
+                    CENTER_OFFSETS: {
+                        'left-to-right': 12,    // AI消息向右偏移，中轴线在消息右侧
+                        'right-to-left': -12,   // 用户消息向左偏移，中轴线在消息左侧  
+                        'right-to-right': -10   // 右到右连接向左偏移
+                    }
+                };
+                
+                // TypedArray坐标缓存，提升计算性能
+                this.coordsBuffer = new Float32Array(16); // 8个点 × 2坐标
+            }
+            
+            // 向量化坐标计算 - 批量处理提升性能
+            calculateOptimizedPath(startX, startY, endX, endY, type, connectionId = 0) {
+                const { RADIUS, EXTEND_DISTANCES, CENTER_OFFSETS } = this.CONSTANTS;
+                
+                // 获取预计算常量
+                const extend = EXTEND_DISTANCES[type];
+                const baseOffset = CENTER_OFFSETS[type];
+                
+                // 连接线ID偏移算法 - 解决同侧重叠问题
+                const idOffset = this.calculateConnectionIdOffset(connectionId, type);
+                const centerX = startX + baseOffset + idOffset;
+                
+                // 方向向量化计算
+                const verticalDir = endY > startY ? 1 : -1;
+                const horizontalDir = endX > centerX ? 1 : -1;
+                
+                // 批量计算所有关键点坐标
+                const coords = this.coordsBuffer;
+                
+                // 起点
+                coords[0] = this.optimizePrecision(startX);
+                coords[1] = this.optimizePrecision(startY);
+                
+                // 水平延伸点
+                coords[2] = this.optimizePrecision(startX + (type === 'left-to-right' ? -3 : 3));
+                coords[3] = this.optimizePrecision(startY);
+                
+                // 第一转折控制点
+                coords[4] = this.optimizePrecision(centerX);
+                coords[5] = this.optimizePrecision(startY);
+                
+                // 第一转折结束点
+                coords[6] = this.optimizePrecision(centerX);
+                coords[7] = this.optimizePrecision(startY + (verticalDir * RADIUS));
+                
+                // 垂直段终点 (关键: 动态计算避免重叠)
+                coords[8] = this.optimizePrecision(centerX);
+                coords[9] = this.optimizePrecision(endY - (verticalDir * RADIUS));
+                
+                // 第二转折控制点
+                coords[10] = this.optimizePrecision(centerX);
+                coords[11] = this.optimizePrecision(endY);
+                
+                // 第二转折结束点
+                coords[12] = this.optimizePrecision(centerX + (horizontalDir * RADIUS));
+                coords[13] = this.optimizePrecision(endY);
+                
+                // 终点
+                coords[14] = this.optimizePrecision(endX);
+                coords[15] = this.optimizePrecision(endY);
+                
+                return this.generateSVGPath(coords);
+            }
+            
+            // 连接线ID偏移计算 - 解决同侧重叠的核心算法
+            calculateConnectionIdOffset(connectionId, type) {
+                // 紧密错开算法：每个ID产生不同的偏移
+                const baseSpacing = 8; // 基础间距
+                const offsetMultiplier = (connectionId % 5) - 2; // -2, -1, 0, 1, 2 的循环
+                
+                // 根据连接类型调整偏移方向
+                let directionFactor = 1;
+                if (type === 'right-to-left') {
+                    directionFactor = -1; // 反向偏移
+                }
+                
+                return offsetMultiplier * baseSpacing * directionFactor;
+            }
+            
+            // 坐标精度优化 - 减少SVG数据量
+            optimizePrecision(value) {
+                return Math.round(value * this.CONSTANTS.PRECISION) / this.CONSTANTS.PRECISION;
+            }
+            
+            // 生成优化的SVG路径字符串
+            generateSVGPath(coords) {
+                return `M ${coords[0]} ${coords[1]} L ${coords[2]} ${coords[3]} Q ${coords[4]} ${coords[5]} ${coords[6]} ${coords[7]} L ${coords[8]} ${coords[9]} Q ${coords[10]} ${coords[11]} ${coords[12]} ${coords[13]} L ${coords[14]} ${coords[15]}`;
+            }
+            
+            // 调试点生成 - 便于可视化调试
+            generateDebugPoints(coords, type, connectionId) {
+                return {
+                    start: { x: coords[0], y: coords[1], label: `起点-${connectionId}`, color: '#ff4444' },
+                    extend: { x: coords[2], y: coords[3], label: '水平延伸', color: '#ff8800' },
+                    turn1Control: { x: coords[4], y: coords[5], label: '转折1控制', color: '#ffaa00' },
+                    turn1End: { x: coords[6], y: coords[7], label: '转折1终点', color: '#88ff44' },
+                    verticalEnd: { x: coords[8], y: coords[9], label: `垂直段-${connectionId}`, color: '#4488ff' },
+                    turn2Control: { x: coords[10], y: coords[11], label: 'L形控制点', color: '#8844ff' },
+                    turn2End: { x: coords[12], y: coords[13], label: '水平延伸起点', color: '#ff44aa' },
+                    end: { x: coords[14], y: coords[15], label: `终点-${connectionId}`, color: '#ff00aa' }
+                };
+            }
+        }
+
+        // 2. 连接线ID分配系统 - 解决同侧重叠问题
+        class ConnectionIdManager {
+            constructor() {
+                this.connectionCounts = {
+                    'left-to-right': 0,
+                    'right-to-left': 0,
+                    'right-to-right': 0
+                };
+                this.activeConnections = new Map();
+                this.colorPalettes = this.initializeColorPalettes();
+            }
+            
+            // 初始化多色光线调色板
+            initializeColorPalettes() {
+                return {
+                    'left-to-right': [
+                        '#00ff88', '#00ddaa', '#00bbcc', '#0099ee', '#0077ff'
+                    ],
+                    'right-to-left': [
+                        '#ff6b35', '#ff8844', '#ffaa33', '#ffcc22', '#ffdd11'
+                    ],
+                    'right-to-right': [
+                        '#9c27b0', '#aa44cc', '#bb66dd', '#cc88ee', '#dd99ff'
+                    ]
+                };
+            }
+            
+            // 分配连接线ID和颜色
+            assignConnection(startElement, endElement, type) {
+                const connectionKey = `${startElement.id}-${endElement.id}-${type}`;
+                
+                if (this.activeConnections.has(connectionKey)) {
+                    return this.activeConnections.get(connectionKey);
+                }
+                
+                const connectionId = this.connectionCounts[type]++;
+                const colorIndex = connectionId % this.colorPalettes[type].length;
+                const color = this.colorPalettes[type][colorIndex];
+                
+                const connectionInfo = {
+                    id: connectionId,
+                    key: connectionKey,
+                    type: type,
+                    color: color,
+                    startElement: startElement,
+                    endElement: endElement,
+                    timestamp: performance.now()
+                };
+                
+                this.activeConnections.set(connectionKey, connectionInfo);
+                return connectionInfo;
+            }
+            
+            // 清理过期连接
+            cleanupExpiredConnections() {
+                const currentTime = performance.now();
+                const expiryTime = 30000; // 30秒过期
+                
+                for (const [key, connection] of this.activeConnections) {
+                    if (currentTime - connection.timestamp > expiryTime) {
+                        this.activeConnections.delete(key);
+                    }
+                }
+            }
+            
+            // 重置连接计数器
+            reset() {
+                this.connectionCounts = {
+                    'left-to-right': 0,
+                    'right-to-left': 0,
+                    'right-to-right': 0
+                };
+                this.activeConnections.clear();
+            }
+            
+            // 获取统计信息
+            getStats() {
+                return {
+                    totalConnections: this.activeConnections.size,
+                    countByType: { ...this.connectionCounts },
+                    activeConnections: Array.from(this.activeConnections.keys())
+                };
+            }
+        }
+
+        // 3. LRU缓存系统 - 避免重复计算
+        class LRUPathCache {
+            constructor(maxSize = 500) {
+                this.maxSize = maxSize;
+                this.cache = new Map();
+                this.hitCount = 0;
+                this.missCount = 0;
+            }
+            
+            // 生成缓存键
+            generateCacheKey(startX, startY, endX, endY, type, connectionId) {
+                const precision = 5; // 粗精度减少缓存项
+                return `${Math.round(startX/precision)*precision}_${Math.round(startY/precision)*precision}_${Math.round(endX/precision)*precision}_${Math.round(endY/precision)*precision}_${type}_${connectionId}`;
+            }
+            
+            // 获取缓存
+            get(startX, startY, endX, endY, type, connectionId) {
+                const key = this.generateCacheKey(startX, startY, endX, endY, type, connectionId);
+                
+                if (this.cache.has(key)) {
+                    // LRU机制：移到最末尾
+                    const value = this.cache.get(key);
+                    this.cache.delete(key);
+                    this.cache.set(key, value);
+                    this.hitCount++;
+                    return value;
+                }
+                
+                this.missCount++;
+                return null;
+            }
+            
+            // 设置缓存
+            set(startX, startY, endX, endY, type, connectionId, value) {
+                const key = this.generateCacheKey(startX, startY, endX, endY, type, connectionId);
+                
+                // LRU淘汰：删除最旧项
+                if (this.cache.size >= this.maxSize) {
+                    const firstKey = this.cache.keys().next().value;
+                    this.cache.delete(firstKey);
+                }
+                
+                this.cache.set(key, value);
+            }
+            
+            // 获取缓存命中率
+            getHitRate() {
+                const total = this.hitCount + this.missCount;
+                return total > 0 ? (this.hitCount / total * 100).toFixed(1) : '0.0';
+            }
+            
+            // 清理缓存
+            clear() {
+                this.cache.clear();
+                this.hitCount = 0;
+                this.missCount = 0;
+            }
+        }
+
+        // 4. 对象池系统 - 减少GC压力
+        class ObjectPool {
+            constructor(createFn, resetFn, initialSize = 30) {
+                this.createFn = createFn;
+                this.resetFn = resetFn;
+                this.pool = [];
+                this.activeObjects = new Set();
+                
+                // 预创建对象池
+                for (let i = 0; i < initialSize; i++) {
+                    this.pool.push(this.createFn());
+                }
+            }
+            
+            // 获取对象
+            acquire() {
+                let obj = this.pool.pop();
+                if (!obj) {
+                    obj = this.createFn();
+                }
+                this.activeObjects.add(obj);
+                return obj;
+            }
+            
+            // 释放对象
+            release(obj) {
+                if (this.activeObjects.has(obj)) {
+                    this.activeObjects.delete(obj);
+                    this.resetFn(obj);
+                    
+                    if (this.pool.length < 60) { // 限制池大小
+                        this.pool.push(obj);
+                    }
+                }
+            }
+            
+            // 获取使用率统计
+            getUsageStats() {
+                const total = this.pool.length + this.activeObjects.size;
+                return {
+                    pooled: this.pool.length,
+                    active: this.activeObjects.size,
+                    total: total,
+                    utilization: total > 0 ? (this.activeObjects.size / total * 100).toFixed(1) : '0.0'
+                };
+            }
+        }
+
+        // 创建路径数据对象池
+        const pathDataPool = new ObjectPool(
+            () => ({ 
+                path: '', 
+                debugPoints: {}, 
+                type: '', 
+                connectionId: 0,
+                color: '',
+                timestamp: 0
+            }),
+            (obj) => { 
+                obj.path = ''; 
+                obj.debugPoints = {}; 
+                obj.type = ''; 
+                obj.connectionId = 0;
+                obj.color = '';
+                obj.timestamp = 0;
+            }
+        );
+
+        // 5. SVG渲染管理器 - 批量DOM操作优化
+        class SVGRenderManager {
+            constructor(containerId = 'main-container') {
+                // 重新设计：使用body作为绝对坐标基准，避免容器冲突
+                this.containerElement = document.body;
+                this.targetContainer = document.querySelector('.main-container') || document.querySelector('.app-container');
+                
+                console.log('🎯 SVG渲染管理器: 使用body作为绝对坐标基准');
+                console.log('🎯 目标容器:', this.targetContainer?.className || 'body');
+                
+                this.svgOverlay = null;
+                this.svgElement = null;
+                this.activeConnections = new Map();
+                this.renderQueue = [];
+                this.isRenderPending = false;
+                
+                this.initializeSVGOverlay();
+            }
+            
+            // 初始化SVG覆盖层 - 重新设计为全屏覆盖
+            initializeSVGOverlay() {
+                console.log('🚀 初始化全屏SVG覆盖层...');
+                
+                // 创建全屏SVG覆盖层
+                this.svgOverlay = document.createElement('div');
+                this.svgOverlay.className = 'connection-svg-overlay';
+                this.svgOverlay.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100vw;
+                    height: 100vh;
+                    pointer-events: none;
+                    z-index: 999999;
+                    overflow: visible;
+                `;
+                
+                // 创建SVG元素 - 使用viewport坐标系
+                this.svgElement = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                this.svgElement.setAttribute('width', '100%');
+                this.svgElement.setAttribute('height', '100%');
+                
+                // 使用viewport尺寸作为viewBox，1:1映射
+                const vw = window.innerWidth;
+                const vh = window.innerHeight;
+                this.svgElement.setAttribute('viewBox', `0 0 ${vw} ${vh}`);
+                this.svgElement.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+                
+                this.svgElement.style.cssText = `
+                    width: 100%;
+                    height: 100%;
+                `;
+                
+                this.svgOverlay.appendChild(this.svgElement);
+                
+                // 直接插入body，避免任何容器冲突
+                document.body.appendChild(this.svgOverlay);
+                
+                console.log(`📐 全屏SVG覆盖层已创建: ${vw}x${vh}`);
+                console.log(`🎯 viewBox: 0 0 ${vw} ${vh}`);
+            }
+            
+            // 更新viewBox以匹配当前窗口尺寸
+            updateViewBox() {
+                if (this.svgElement) {
+                    const vw = window.innerWidth;
+                    const vh = window.innerHeight;
+                    this.svgElement.setAttribute('viewBox', `0 0 ${vw} ${vh}`);
+                    console.log(`📐 更新viewBox: 0 0 ${vw} ${vh}`);
+                }
+            }
+            
+            // 批量创建连接路径
+            batchCreateConnections(connectionData) {
+                this.renderQueue = [...connectionData];
+                this.scheduleRender();
+            }
+            
+            // 调度渲染 - 使用requestAnimationFrame优化
+            scheduleRender() {
+                if (!this.isRenderPending) {
+                    this.isRenderPending = true;
+                    requestAnimationFrame(() => {
+                        this.performBatchRender();
+                        this.isRenderPending = false;
+                    });
+                }
+            }
+            
+            // 执行批量渲染
+            performBatchRender() {
+                const fragment = document.createDocumentFragment();
+                const newConnections = new Map();
+                
+                // 批量处理渲染队列
+                this.renderQueue.forEach(connectionData => {
+                    const { pathData, connectionInfo, debugMode = false } = connectionData;
+                    
+                    // 创建基础路径
+                    const basePath = this.createSVGPath(pathData.path, 'base-connection', connectionInfo.color);
+                    fragment.appendChild(basePath);
+                    
+                    // 创建光线动画路径
+                    const animatedPath = this.createAnimatedPath(pathData.path, connectionInfo);
+                    fragment.appendChild(animatedPath);
+                    
+                    // 调试模式：创建调试点
+                    if (debugMode && pathData.debugPoints) {
+                        Object.entries(pathData.debugPoints).forEach(([key, point]) => {
+                            const debugElements = this.createDebugElements(point, key);
+                            debugElements.forEach(elem => fragment.appendChild(elem));
+                        });
+                    }
+                    
+                    // 存储连接信息
+                    newConnections.set(connectionInfo.key, {
+                        basePath,
+                        animatedPath,
+                        connectionInfo,
+                        timestamp: performance.now()
+                    });
+                });
+                
+                // 清空现有内容并添加新内容
+                this.svgElement.innerHTML = '';
+                this.svgElement.appendChild(fragment);
+                
+                // 更新活跃连接映射
+                this.activeConnections = newConnections;
+                this.renderQueue = [];
+            }
+            
+            // 创建SVG路径元素
+            createSVGPath(pathData, className, color = '#666666', strokeWidth = 2) {
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathData);
+                path.setAttribute('class', className);
+                path.setAttribute('stroke', color);
+                path.setAttribute('stroke-width', strokeWidth);
+                path.setAttribute('fill', 'none');
+                path.setAttribute('stroke-linecap', 'round');
+                path.setAttribute('stroke-linejoin', 'round');
+                path.setAttribute('opacity', '0.3');
+                return path;
+            }
+            
+            // 创建带动画的连接路径
+            createAnimatedPath(pathData, connectionInfo) {
+                const path = this.createSVGPath(pathData, 'animated-connection', connectionInfo.color, 3);
+                
+                // 根据连接类型设置动画参数
+                const animationConfig = this.getAnimationConfig(connectionInfo.type);
+                path.setAttribute('stroke-dasharray', animationConfig.dashArray);
+                path.setAttribute('stroke-dashoffset', '0');
+                path.setAttribute('opacity', '0.8');
+                
+                // 设置光线发光效果
+                path.style.filter = `drop-shadow(0 0 4px ${connectionInfo.color}) drop-shadow(0 0 8px ${connectionInfo.color}40)`;
+                
+                return path;
+            }
+            
+            // 获取动画配置参数
+            getAnimationConfig(type) {
+                const configs = {
+                    'left-to-right': { dashArray: '12 60', duration: 2.5, delay: 0 },
+                    'right-to-left': { dashArray: '10 50', duration: 2.0, delay: 0.5 },
+                    'right-to-right': { dashArray: '8 40', duration: 1.8, delay: 1.0 }
+                };
+                return configs[type] || configs['left-to-right'];
+            }
+            
+            // 创建调试元素
+            createDebugElements(point, key) {
+                const elements = [];
+                
+                // 调试圆点
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('cx', point.x);
+                circle.setAttribute('cy', point.y);
+                circle.setAttribute('r', key.includes('Control') ? '4' : '3');
+                circle.setAttribute('fill', point.color);
+                circle.setAttribute('stroke', '#ffffff');
+                circle.setAttribute('stroke-width', '1');
+                circle.setAttribute('class', 'debug-point');
+                circle.style.opacity = '0.8';
+                elements.push(circle);
+                
+                // 调试标签
+                const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                text.setAttribute('x', point.x + 6);
+                text.setAttribute('y', point.y - 6);
+                text.setAttribute('class', 'debug-label');
+                text.setAttribute('fill', '#333333');
+                text.setAttribute('font-size', '9px');
+                text.setAttribute('font-family', 'monospace');
+                text.textContent = `${point.label}`;
+                elements.push(text);
+                
+                return elements;
+            }
+            
+            // 清理渲染器
+            cleanup() {
+                this.activeConnections.clear();
+                this.renderQueue = [];
+                if (this.svgElement) {
+                    this.svgElement.innerHTML = '';
+                }
+            }
+            
+            // 获取渲染统计信息
+            getRenderStats() {
+                return {
+                    activeConnections: this.activeConnections.size,
+                    pendingRenders: this.renderQueue.length,
+                    svgElementsCount: this.svgElement ? this.svgElement.children.length : 0
+                };
+            }
+        }
+
+        // 6. CSS硬件加速动画控制器 - 真正的高性能
+        class AnimationController {
+            constructor() {
+                this.animationId = null;
+                this.isRunning = false;
+                this.animatedElements = new Set();
+                this.animationConfigs = new Map();
+                this.performanceMetrics = {
+                    frameCount: 0,
+                    actualFPS: 0,
+                    averageFrameTime: 0,
+                    lastUpdateTime: 0
+                };
+            }
+            
+            // 启动动画循环
+            start() {
+                if (!this.isRunning) {
+                    this.isRunning = true;
+                    this.lastFrameTime = performance.now();
+                    this.animate();
+                }
+            }
+            
+            // 停止动画循环
+            stop() {
+                this.isRunning = false;
+                if (this.animationId) {
+                    cancelAnimationFrame(this.animationId);
+                    this.animationId = null;
+                }
+            }
+            
+            // 主动画循环 - CSS动画管理（60Hz标准RAF）
+            animate(currentTime = performance.now()) {
+                if (!this.isRunning) return;
+                
+                // CSS动画已在GPU上运行，这里只需管理动画状态
+                this.updateAnimations(currentTime, 0);
+                this.updatePerformanceMetrics(currentTime, 0);
+                
+                this.animationId = requestAnimationFrame(this.animate.bind(this));
+            }
+            
+            // 应用CSS硬件加速动画 - 替代RAF手动更新
+            updateAnimations(currentTime, deltaTime) {
+                for (const element of this.animatedElements) {
+                    if (!element.parentNode) {
+                        // 清理已删除的DOM元素
+                        this.animatedElements.delete(element);
+                        this.animationConfigs.delete(element);
+                        continue;
+                    }
+                    
+                    const config = this.animationConfigs.get(element);
+                    if (!config) continue;
+                    
+                    // 使用CSS动画替代手动更新，获得真正的GPU加速
+                    if (!element.style.animation) {
+                        const dashLength = parseInt(config.dashArray.split(' ')[0]) + parseInt(config.dashArray.split(' ')[1]);
+                        
+                        // 创建CSS动画关键帧
+                        const animationName = `dashFlow-${config.type}`;
+                        const duration = config.duration / 1000; // 转换为秒
+                        
+                        // 应用CSS动画，实现真正的硬件加速
+                        element.style.animation = `${animationName} ${duration}s linear infinite`;
+                        element.style.willChange = 'stroke-dashoffset'; // 启用GPU合成
+                    }
+                }
+            }
+            
+            // 注册动画元素
+            registerAnimation(element, config) {
+                if (element && element.parentNode) {
+                    this.animatedElements.add(element);
+                    
+                    const animationConfig = {
+                        startTime: performance.now() + (config.delay || 0) * 1000,
+                        duration: (config.duration || 2) * 1000,
+                        dashArray: config.dashArray || '12 60',
+                        type: config.type || 'left-to-right'
+                    };
+                    
+                    this.animationConfigs.set(element, animationConfig);
+                    
+                    // 设置初始属性
+                    element.setAttribute('stroke-dasharray', animationConfig.dashArray);
+                }
+            }
+            
+            // 注销动画元素
+            unregisterAnimation(element) {
+                this.animatedElements.delete(element);
+                this.animationConfigs.delete(element);
+            }
+            
+            // 更新性能指标
+            updatePerformanceMetrics(currentTime, deltaTime) {
+                this.performanceMetrics.frameCount++;
+                
+                // 每秒更新一次FPS统计
+                if (currentTime - this.performanceMetrics.lastUpdateTime >= 1000) {
+                    this.performanceMetrics.actualFPS = this.performanceMetrics.frameCount;
+                    this.performanceMetrics.averageFrameTime = deltaTime;
+                    this.performanceMetrics.frameCount = 0;
+                    this.performanceMetrics.lastUpdateTime = currentTime;
+                }
+            }
+            
+            // 获取性能统计
+            getPerformanceStats() {
+                return {
+                    targetFPS: this.targetFPS,
+                    actualFPS: this.performanceMetrics.actualFPS,
+                    averageFrameTime: this.performanceMetrics.averageFrameTime.toFixed(2) + 'ms',
+                    activeAnimations: this.animatedElements.size,
+                    isRunning: this.isRunning
+                };
+            }
+        }
+
+        // 7. 视口优化系统 - IntersectionObserver懒加载
+        class ViewportOptimizer {
+            constructor() {
+                this.observer = null;
+                this.visibleElements = new Set();
+                this.buffer = 100; // 视口缓冲区大小
+                this.setupIntersectionObserver();
+            }
+            
+            // 设置IntersectionObserver
+            setupIntersectionObserver() {
+                if ('IntersectionObserver' in window) {
+                    this.observer = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            const isVisible = entry.isIntersecting;
+                            this.handleElementVisibility(entry.target, isVisible);
+                        });
+                    }, {
+                        rootMargin: `${this.buffer}px`,
+                        threshold: [0, 0.1, 0.5, 1.0]
+                    });
+                }
+            }
+            
+            // 处理元素可见性变化
+            handleElementVisibility(element, isVisible) {
+                if (isVisible) {
+                    this.visibleElements.add(element);
+                    element.style.display = '';
+                    element.style.willChange = 'stroke-dashoffset';
+                } else {
+                    this.visibleElements.delete(element);
+                    element.style.display = 'none';
+                    element.style.willChange = 'auto';
+                }
+            }
+            
+            // 观察元素
+            observeElement(element) {
+                if (this.observer && element) {
+                    this.observer.observe(element);
+                }
+            }
+            
+            // 停止观察元素
+            unobserveElement(element) {
+                if (this.observer && element) {
+                    this.observer.unobserve(element);
+                    this.visibleElements.delete(element);
+                }
+            }
+            
+            // 检查元素是否在视口内
+            isElementVisible(element) {
+                return this.visibleElements.has(element);
+            }
+            
+            // 获取可见元素统计
+            getVisibilityStats() {
+                return {
+                    visibleElements: this.visibleElements.size,
+                    bufferSize: this.buffer,
+                    observerActive: !!this.observer
+                };
+            }
+            
+            // 清理资源
+            cleanup() {
+                if (this.observer) {
+                    this.observer.disconnect();
+                    this.observer = null;
+                }
+                this.visibleElements.clear();
+            }
+        }
+
+        // 8. 高性能连接线系统主控制器
+        class HighPerformanceConnectionSystem {
+            constructor(options = {}) {
+                // 核心组件初始化
+                this.geometryEngine = new HighPerformanceGeometryEngine();
+                this.connectionIdManager = new ConnectionIdManager();
+                this.pathCache = new LRUPathCache(options.cacheSize || 500);
+                this.renderManager = new SVGRenderManager(options.containerId || 'main-container');
+                this.animationController = new AnimationController();
+                this.viewportOptimizer = new ViewportOptimizer();
+                
+                // 增量更新系统
+                this.lastPositions = new Map();
+                this.updateThreshold = 1.0; // 像素更新阈值
+                
+                // 性能监控
+                this.performanceMetrics = {
+                    totalConnections: 0,
+                    generationTime: 0,
+                    cacheHitRate: 0,
+                    renderTime: 0,
+                    lastUpdate: 0
+                };
+                
+                // 配置参数
+                this.config = {
+                    debugMode: options.debugMode || false,
+                    enableViewportOptimization: options.enableViewportOptimization !== false,
+                    updateInterval: options.updateInterval || 16, // 60fps更新间隔
+                    enablePerformanceMonitoring: options.enablePerformanceMonitoring !== false,
+                    maxConnections: options.maxConnections || 200
+                };
+                
+                // 更新节流器
+                this.updateTimer = null;
+                this.isUpdating = false;
+                
+                console.log('🚀 高性能连接线系统已初始化', this.config);
+            }
+            
+            // 启动连接线系统
+            start() {
+                console.log('⚡ 启动连接线系统...');
+                
+                // 启动动画控制器
+                this.animationController.start();
+                
+                // 设置滚动监听
+                this.setupScrollListeners();
+                
+                // 开始初始渲染
+                this.scheduleUpdate();
+                
+                console.log('✅ 连接线系统已启动，CSS硬件加速动画');
+            }
+            
+            // 停止连接线系统
+            stop() {
+                this.animationController.stop();
+                this.viewportOptimizer.cleanup();
+                this.renderManager.cleanup();
+                
+                if (this.updateTimer) {
+                    clearTimeout(this.updateTimer);
+                }
+                
+                console.log('🛑 连接线系统已停止');
+            }
+            
+            // 设置滚动监听器
+            setupScrollListeners() {
+                // 精确识别所有滚动容器
+                const scrollContainers = [
+                    { element: document.querySelector('#sessionAvatars'), name: 'session-avatars' },
+                    { element: document.querySelector('#messagesColumn'), name: 'messages' },
+                    { element: document.querySelector('#accountAvatars'), name: 'account-avatars' },  
+                    { element: document.querySelector('#toolsColumn'), name: 'tools' },
+                    { element: document.querySelector('.aiff-scrolling-container'), name: 'aiff-scroll' }
+                ].filter(container => container.element !== null);
+                
+                console.log(`🎯 监听 ${scrollContainers.length} 个滚动容器:`, scrollContainers.map(c => c.name));
+                
+                // 高精度节流更新
+                const throttledUpdate = this.throttle(() => {
+                    this.scheduleUpdate();
+                }, this.config.updateInterval);
+                
+                // 为每个容器添加滚动监听
+                scrollContainers.forEach(container => {
+                    container.element.addEventListener('scroll', (e) => {
+                        console.log(`📜 ${container.name} 滚动: ${e.target.scrollTop}px`);
+                        throttledUpdate();
+                    }, { passive: true });
+                });
+                
+                // 窗口尺寸变化监听 - 更新SVG viewBox
+                window.addEventListener('resize', this.throttle(() => {
+                    this.renderManager.updateViewBox();
+                    this.scheduleUpdate();
+                    console.log('📏 窗口尺寸变化，更新连接线');
+                }, 200));
+            }
+            
+            // 调度更新 - 避免频繁更新
+            scheduleUpdate() {
+                if (this.isUpdating) return;
+                
+                this.isUpdating = true;
+                requestAnimationFrame(() => {
+                    this.updateConnections();
+                    this.isUpdating = false;
+                });
+            }
+            
+            // 主更新函数 - 生成所有连接线
+            updateConnections() {
+                const startTime = performance.now();
+                
+                try {
+                    // 收集所有需要连接的元素
+                    const connectionRequests = this.collectConnectionRequests();
+                    
+                    if (connectionRequests.length === 0) {
+                        return;
+                    }
+                    
+                    // 限制连接数量以保证性能
+                    const limitedRequests = connectionRequests.slice(0, this.config.maxConnections);
+                    
+                    // 批量生成连接数据
+                    const connectionData = this.generateConnectionsData(limitedRequests);
+                    
+                    // 批量渲染
+                    this.renderManager.batchCreateConnections(connectionData);
+                    
+                    // 注册动画 - 确保在DOM更新后执行
+                    requestAnimationFrame(() => {
+                        this.registerAnimations(connectionData);
+                    });
+                    
+                    // 更新性能指标
+                    this.updatePerformanceMetrics(startTime, limitedRequests.length);
+                    
+                } catch (error) {
+                    console.error('连接线更新错误:', error);
+                }
+            }
+            
+            // 收集连接请求
+            collectConnectionRequests() {
+                const requests = [];
+                
+                // 获取所有消息元素 (修正选择器匹配实际DOM结构)
+                const messages = document.querySelectorAll('.message, .message-item');
+                const sessionAvatars = document.querySelectorAll('#sessionAvatars .avatar-item');
+                const accountAvatars = document.querySelectorAll('#accountAvatars .avatar-item');
+                const toolElements = document.querySelectorAll('#toolsColumn .tool-item, #toolsColumn .tool-icon, #toolsColumn button');
+                
+                console.log(`🔍 收集到的元素数量: 消息${messages.length}, 会话头像${sessionAvatars.length}, 账号头像${accountAvatars.length}, 工具${toolElements.length}`);
+                
+                messages.forEach((message, index) => {
+                    const messagePos = this.getElementPosition(message);
+                    if (!messagePos) return;
+                    
+                    // 增量更新检查
+                    const messageId = message.id || `msg-${index}`;
+                    if (!this.shouldUpdateElement(messageId, messagePos)) {
+                        return;
+                    }
+                    
+                    // 修正判断逻辑：检查message--self类判断用户消息（右侧）
+                    const isUserMessage = message.classList.contains('message--self');
+                    
+                    if (isUserMessage) {
+                        // 用户消息（右侧）- 优先连接到账号头像
+                        if (accountAvatars.length > 0) {
+                            // 优先选择账号头像
+                            const targetAvatar = accountAvatars[index % accountAvatars.length];
+                            const avatarPos = this.getElementPosition(targetAvatar);
+                            if (avatarPos) {
+                                requests.push({
+                                    startElement: message,
+                                    endElement: targetAvatar,
+                                    startPos: messagePos,
+                                    endPos: avatarPos,
+                                    type: 'right-to-left'  // 右侧消息 → 账号头像（左边缘）
+                                });
+                            }
+                        } else if (toolElements.length > 0) {
+                            // 备选：连接到工具图标
+                            const targetTool = toolElements[index % toolElements.length];
+                            const toolPos = this.getElementPosition(targetTool);
+                            if (toolPos) {
+                                requests.push({
+                                    startElement: message,
+                                    endElement: targetTool,
+                                    startPos: messagePos,
+                                    endPos: toolPos,
+                                    type: 'right-to-right'  // 右侧消息 → 工具图标
+                                });
+                            }
+                        }
+                    } else {
+                        // AI消息（左侧）- 连接到会话头像
+                        if (sessionAvatars.length > 0) {
+                            const targetAvatar = sessionAvatars[index % sessionAvatars.length];
+                            const avatarPos = this.getElementPosition(targetAvatar);
+                            if (avatarPos) {
+                                requests.push({
+                                    startElement: message,
+                                    endElement: targetAvatar,
+                                    startPos: messagePos,
+                                    endPos: avatarPos,
+                                    type: 'left-to-right'  // 左侧消息 → 会话头像（右边缘）
+                                });
+                            }
+                        }
+                    }
+                });
+                
+                return requests;
+            }
+            
+            // 获取元素连接点位置 - 根据连接方向返回边缘点
+            getElementPosition(element, connectionType = null) {
+                if (!element || !element.nodeType) return null;
+                
+                try {
+                    // 直接使用viewport坐标，与SVG坐标系1:1匹配
+                    const rect = element.getBoundingClientRect();
+                    
+                    const position = {
+                        left: rect.left,
+                        top: rect.top,
+                        right: rect.right,
+                        bottom: rect.bottom,
+                        width: rect.width,
+                        height: rect.height,
+                        centerX: rect.left + rect.width / 2,
+                        centerY: rect.top + rect.height / 2,
+                        // 添加连接边缘点
+                        leftEdge: rect.left,
+                        rightEdge: rect.right,
+                        topEdge: rect.top + rect.height / 2,
+                        bottomEdge: rect.bottom,
+                        // 根据元素类型调整连接点
+                        connectionX: rect.left + rect.width / 2,
+                        connectionY: rect.top + rect.height / 2
+                    };
+                    
+                    // 为消息气泡和头像优化连接点 - 修复消息类型判断
+                    if (element.classList.contains('message') || element.classList.contains('message-item')) {
+                        // 正确的消息类型判断：检查message--self类
+                        const isUserMessage = element.classList.contains('message--self');
+                        if (isUserMessage) {
+                            // 用户消息(右侧)：从右边缘中点出发 → 账号头像  
+                            position.connectionX = rect.right;  // 右边缘起点
+                            position.connectionY = rect.top + rect.height / 2;
+                        } else {
+                            // AI消息(左侧)：从左边缘中点出发 → 会话头像
+                            position.connectionX = rect.left;   // 左边缘起点
+                            position.connectionY = rect.top + rect.height / 2;
+                        }
+                    } else if (element.classList.contains('avatar-item')) {
+                        // 头像连接点：根据位置决定连接边缘
+                        const parentId = element.closest('[id]')?.id;
+                        if (parentId === 'sessionAvatars') {
+                            // 会话头像(左侧)：接收来自AI消息的连接，使用右边缘
+                            position.connectionX = rect.right;
+                            position.connectionY = rect.top + rect.height / 2;
+                        } else if (parentId === 'accountAvatars') {
+                            // 账号头像(右侧)：接收来自用户消息的连接，使用左边缘
+                            position.connectionX = rect.left;
+                            position.connectionY = rect.top + rect.height / 2;
+                        } else {
+                            // 默认使用中心点
+                            position.connectionX = rect.left + rect.width / 2;
+                            position.connectionY = rect.top + rect.height / 2;
+                        }
+                    } else if (element.classList.contains('tool-icon') || element.classList.contains('tool-item')) {
+                        // 工具图标：接收来自用户消息的连接，使用左边缘
+                        position.connectionX = rect.left;
+                        position.connectionY = rect.top + rect.height / 2;
+                    }
+                    
+                    console.log(`📍 元素位置 (${element.className}):`, {
+                        center: `(${position.centerX.toFixed(1)}, ${position.centerY.toFixed(1)})`,
+                        connection: `(${position.connectionX.toFixed(1)}, ${position.connectionY.toFixed(1)})`,
+                        size: `${position.width.toFixed(1)}x${position.height.toFixed(1)}`
+                    });
+                    
+                    return position;
+                } catch (error) {
+                    console.warn('获取元素位置失败:', error, element);
+                    return null;
+                }
+            }
+            
+            // 简化版：不再需要滚动偏移计算，因为使用viewport坐标
+            // getBoundingClientRect已经考虑了所有滚动和变换
+            
+            // 检查是否需要更新元素
+            shouldUpdateElement(elementId, newPosition) {
+                const lastPos = this.lastPositions.get(elementId);
+                
+                if (!lastPos) {
+                    this.lastPositions.set(elementId, newPosition);
+                    return true;
+                }
+                
+                const changed = Math.abs(lastPos.centerX - newPosition.centerX) > this.updateThreshold ||
+                              Math.abs(lastPos.centerY - newPosition.centerY) > this.updateThreshold;
+                
+                if (changed) {
+                    this.lastPositions.set(elementId, newPosition);
+                }
+                
+                return changed;
+            }
+            
+            // 批量生成连接数据
+            generateConnectionsData(requests) {
+                const connectionData = [];
+                
+                requests.forEach((request) => {
+                    try {
+                        // 分配连接ID和颜色
+                        const connectionInfo = this.connectionIdManager.assignConnection(
+                            request.startElement,
+                            request.endElement,
+                            request.type
+                        );
+                        
+                        // 确定起点和终点坐标 - 使用连接点而非中心点
+                        let startX, startY, endX, endY;
+                        
+                        if (request.type === 'left-to-right') {
+                            // 左侧AI消息(左边缘) → 会话头像(右边缘)
+                            startX = request.startPos.connectionX;  // AI消息左边缘起点
+                            startY = request.startPos.connectionY;
+                            endX = request.endPos.connectionX;     // 会话头像右边缘
+                            endY = request.endPos.connectionY;
+                        } else if (request.type === 'right-to-left') {
+                            // 右侧用户消息(右边缘) → 账号头像(左边缘)
+                            startX = request.startPos.connectionX;  // 用户消息右边缘起点
+                            startY = request.startPos.connectionY;
+                            endX = request.endPos.connectionX;     // 账号头像左边缘
+                            endY = request.endPos.connectionY;
+                        } else {
+                            // right-to-right: 用户消息(右边缘) → 工具(左边缘)
+                            startX = request.startPos.connectionX;
+                            startY = request.startPos.connectionY;
+                            endX = request.endPos.connectionX;
+                            endY = request.endPos.connectionY;
+                        }
+                        
+                        // 尝试从缓存获取路径
+                        let pathData = this.pathCache.get(startX, startY, endX, endY, request.type, connectionInfo.id);
+                        
+                        if (!pathData) {
+                            // 生成新路径
+                            const pathResult = pathDataPool.acquire();
+                            pathResult.path = this.geometryEngine.calculateOptimizedPath(
+                                startX, startY, endX, endY, request.type, connectionInfo.id
+                            );
+                            pathResult.type = request.type;
+                            pathResult.connectionId = connectionInfo.id;
+                            pathResult.color = connectionInfo.color;
+                            pathResult.timestamp = performance.now();
+                            
+                            // 生成调试点
+                            if (this.config.debugMode) {
+                                const coords = this.geometryEngine.coordsBuffer;
+                                pathResult.debugPoints = this.geometryEngine.generateDebugPoints(
+                                    coords, request.type, connectionInfo.id
+                                );
+                            }
+                            
+                            // 缓存结果
+                            this.pathCache.set(startX, startY, endX, endY, request.type, connectionInfo.id, pathResult);
+                            pathData = pathResult;
+                        }
+                        
+                        connectionData.push({
+                            pathData: pathData,
+                            connectionInfo: connectionInfo,
+                            debugMode: this.config.debugMode
+                        });
+                        
+                    } catch (error) {
+                        console.warn('生成连接数据失败:', error, request);
+                    }
+                });
+                
+                return connectionData;
+            }
+            
+            // 注册动画 - 修复DOM查找和动画启动问题
+            registerAnimations(connectionData) {
+                let totalAnimated = 0;
+                
+                connectionData.forEach(({ pathData, connectionInfo }) => {
+                    // 优化选择器：使用更精确的查询
+                    const animatedPaths = this.renderManager.svgElement.querySelectorAll('.animated-connection');
+                    
+                    animatedPaths.forEach(path => {
+                        // 检查颜色匹配
+                        if (path.getAttribute('stroke') === connectionInfo.color) {
+                            const config = this.renderManager.getAnimationConfig(connectionInfo.type);
+                            this.animationController.registerAnimation(path, {
+                                ...config,
+                                type: connectionInfo.type
+                            });
+                            
+                            // 视口优化
+                            if (this.config.enableViewportOptimization) {
+                                this.viewportOptimizer.observeElement(path);
+                            }
+                            
+                            totalAnimated++;
+                        }
+                    });
+                });
+                
+                // 确保动画控制器正在运行
+                if (!this.animationController.isRunning) {
+                    console.log('🚀 启动动画控制器...');
+                    this.animationController.start();
+                }
+                
+                console.log(`🎬 动画注册完成，共注册 ${totalAnimated} 个动画路径`);
+                console.log(`🎯 动画控制器状态: ${this.animationController.isRunning ? '运行中' : '已停止'}`);
+            }
+            
+            // 更新性能指标
+            updatePerformanceMetrics(startTime, connectionCount) {
+                const endTime = performance.now();
+                const generationTime = endTime - startTime;
+                
+                this.performanceMetrics = {
+                    totalConnections: connectionCount,
+                    generationTime: generationTime.toFixed(2),
+                    cacheHitRate: this.pathCache.getHitRate(),
+                    renderTime: generationTime.toFixed(2),
+                    lastUpdate: endTime,
+                    ...this.animationController.getPerformanceStats(),
+                    ...this.viewportOptimizer.getVisibilityStats(),
+                    ...this.renderManager.getRenderStats(),
+                    poolStats: pathDataPool.getUsageStats()
+                };
+                
+                if (this.config.enablePerformanceMonitoring) {
+                    this.updatePerformanceUI();
+                }
+            }
+            
+            // 更新性能监控UI
+            updatePerformanceUI() {
+                const metrics = this.performanceMetrics;
+                console.log(`
+                    📊 连接线系统性能指标:
+                    • 连接数量: ${metrics.totalConnections}
+                    • 生成时间: ${metrics.generationTime}ms
+                    • 缓存命中率: ${metrics.cacheHitRate}%
+                    • 实际FPS: ${metrics.actualFPS}
+                    • 活跃动画: ${metrics.activeAnimations}
+                    • 可见元素: ${metrics.visibleElements}
+                    • 对象池利用率: ${metrics.poolStats.utilization}%
+                `);
+            }
+            
+            // 节流函数
+            throttle(func, limit) {
+                let inThrottle;
+                return function() {
+                    const args = arguments;
+                    const context = this;
+                    if (!inThrottle) {
+                        func.apply(context, args);
+                        inThrottle = true;
+                        setTimeout(() => inThrottle = false, limit);
+                    }
+                }
+            }
+            
+            // 获取系统统计信息
+            getSystemStats() {
+                return {
+                    ...this.performanceMetrics,
+                    cacheStats: {
+                        size: this.pathCache.cache.size,
+                        hitRate: this.pathCache.getHitRate()
+                    },
+                    connectionStats: this.connectionIdManager.getStats(),
+                    poolStats: pathDataPool.getUsageStats()
+                };
+            }
+        }
+
+        // 全局连接线系统实例
+        let connectionSystem = null;
+
+        // 初始化连接线系统
+        function initializeConnectionSystem() {
+            if (connectionSystem) {
+                connectionSystem.stop();
+            }
+            
+            connectionSystem = new HighPerformanceConnectionSystem({
+                debugMode: false,
+                enableViewportOptimization: true,
+                enablePerformanceMonitoring: true,
+                maxConnections: 100,
+                cacheSize: 300
+            });
+            
+            connectionSystem.start();
+            
+            return connectionSystem;
+        }
+
+        // 连接线系统控制函数
+        function toggleConnectionDebugMode() {
+            if (connectionSystem) {
+                connectionSystem.config.debugMode = !connectionSystem.config.debugMode;
+                connectionSystem.scheduleUpdate();
+                console.log('调试模式:', connectionSystem.config.debugMode ? '开启' : '关闭');
+            }
+        }
+
+        function getConnectionSystemStats() {
+            if (connectionSystem) {
+                const stats = connectionSystem.getSystemStats();
+                console.table(stats);
+                return stats;
+            }
+            return null;
+        }
+
+        function resetConnectionSystem() {
+            if (connectionSystem) {
+                connectionSystem.stop();
+                setTimeout(() => {
+                    connectionSystem = initializeConnectionSystem();
+                }, 100);
+                console.log('连接线系统已重置');
+            }
+        }
+        
+        // 测试坐标系统的简单验证函数
+        function testCoordinateSystem() {
+            console.log('🧪 坐标系统测试:');
+            
+            // 创建一个测试连接线，从屏幕左上角到右下角
+            const svg = document.querySelector('.connection-svg-overlay svg');
+            if (svg) {
+                // 清空现有路径
+                svg.innerHTML = '';
+                
+                // 创建测试路径：从左上角(50,50)到右下角(window.innerWidth-50, window.innerHeight-50)
+                const testPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                const startX = 100;
+                const startY = 100;
+                const endX = window.innerWidth - 100;
+                const endY = window.innerHeight - 100;
+                
+                testPath.setAttribute('d', `M ${startX} ${startY} L ${endX} ${endY}`);
+                testPath.setAttribute('stroke', '#ff0000');
+                testPath.setAttribute('stroke-width', '3');
+                testPath.setAttribute('fill', 'none');
+                
+                svg.appendChild(testPath);
+                
+                console.log(`✅ 测试连接线已创建: (${startX},${startY}) → (${endX},${endY})`);
+                console.log('🔍 如果看到红色对角线，说明坐标系统正常');
+                
+                // 3秒后移除测试线
+                setTimeout(() => {
+                    if (testPath.parentNode) {
+                        testPath.remove();
+                        console.log('🧪 测试线已移除');
+                    }
+                }, 3000);
+            } else {
+                console.log('❌ SVG元素未找到');
+            }
+        }
+        
+        function toggleConnectionSystem() {
+            if (connectionSystem) {
+                if (connectionSystem.animationController.isRunning) {
+                    connectionSystem.stop();
+                    console.log('⏸️ 连接线系统已暂停');
+                } else {
+                    connectionSystem.start();
+                    console.log('▶️ 连接线系统已恢复');
+                }
+            } else {
+                connectionSystem = initializeConnectionSystem();
+                console.log('🚀 连接线系统已启动');
+            }
+        }
+        
+        // 连接线系统调试函数 - 增强坐标验证
+        function debugConnectionSystem() {
+            console.log('🔧 连接线系统调试信息:');
+            
+            // 检查系统状态
+            if (connectionSystem) {
+                console.log('✅ 连接线系统已初始化');
+                console.log('📊 系统统计:', connectionSystem.getSystemStats());
+                
+                // 检查DOM元素和坐标
+                const messages = document.querySelectorAll('.message, .message-item');
+                const sessionAvatars = document.querySelectorAll('#sessionAvatars .avatar-item');
+                const accountAvatars = document.querySelectorAll('#accountAvatars .avatar-item');
+                const toolElements = document.querySelectorAll('#toolsColumn .tool-item, #toolsColumn .tool-icon, #toolsColumn button');
+                
+                console.log(`📝 页面元素: 消息${messages.length}, 会话头像${sessionAvatars.length}, 账号头像${accountAvatars.length}, 工具${toolElements.length}`);
+                
+                // 验证坐标系统
+                console.log('📐 坐标系统验证:');
+                console.log(`• viewport尺寸: ${window.innerWidth}x${window.innerHeight}`);
+                
+                // 测试元素的viewport坐标
+                if (messages.length > 0) {
+                    console.log(`🎯 测试前3个消息的坐标:`);
+                    messages.slice(0, 3).forEach((msg, idx) => {
+                        const pos = connectionSystem.getElementPosition(msg);
+                        if (pos) {
+                            console.log(`  消息${idx}: 中心(${pos.centerX.toFixed(1)}, ${pos.centerY.toFixed(1)})`);
+                        }
+                    });
+                }
+                
+                if (sessionAvatars.length > 0) {
+                    console.log(`🎯 测试前3个会话头像的坐标:`);
+                    sessionAvatars.slice(0, 3).forEach((avatar, idx) => {
+                        const pos = connectionSystem.getElementPosition(avatar);
+                        if (pos) {
+                            console.log(`  头像${idx}: 中心(${pos.centerX.toFixed(1)}, ${pos.centerY.toFixed(1)})`);
+                        }
+                    });
+                }
+                
+                // 检查SVG覆盖层和viewBox
+                const svgOverlay = document.querySelector('.connection-svg-overlay');
+                if (svgOverlay) {
+                    console.log('✅ SVG覆盖层已创建');
+                    const svg = svgOverlay.querySelector('svg');
+                    if (svg) {
+                        console.log(`• SVG viewBox: ${svg.getAttribute('viewBox')}`);
+                        console.log(`• SVG子元素数量: ${svg.children.length}`);
+                        
+                        // 列出所有路径元素
+                        const paths = svg.querySelectorAll('path');
+                        paths.forEach((path, index) => {
+                            console.log(`  路径${index}: 颜色${path.getAttribute('stroke')}, 长度${path.getAttribute('d')?.length || 0}`);
+                        });
+                    }
+                } else {
+                    console.log('❌ SVG覆盖层未找到');
+                }
+                
+                // 检查滚动容器状态
+                console.log('📜 滚动状态:');
+                ['#sessionAvatars', '#messagesColumn', '#accountAvatars', '#toolsColumn'].forEach(selector => {
+                    const element = document.querySelector(selector);
+                    if (element) {
+                        console.log(`• ${selector}: scrollTop=${element.scrollTop}px, scrollHeight=${element.scrollHeight}px`);
+                    }
+                });
+                
+                // 强制更新连接线
+                connectionSystem.scheduleUpdate();
+                console.log('🔄 已触发连接线更新');
+                
+            } else {
+                console.log('❌ 连接线系统未初始化');
+            }
         }
         
         // 快速测试函数
