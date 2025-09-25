@@ -326,7 +326,25 @@
         
         .edit-icon::before { content: '✏️'; }
         .add-user-icon::before { content: '👥'; }
-        .search-icon::before { content: '🔍'; }
+        .search-icon {
+            position: relative;
+        }
+        .search-icon::before { 
+            content: '';
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4)) drop-shadow(0 1px 4px rgba(0,0,0,0.6));
+        }
+        .search-icon svg {
+            width: 18px;
+            height: 18px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            filter: drop-shadow(0 2px 8px rgba(0,0,0,0.4)) drop-shadow(0 1px 4px rgba(0,0,0,0.6));
+        }
         
         .current-user-name {
             font-size: 14px;
@@ -919,7 +937,11 @@
             <div class="top-bar-right">
                 <button class="top-bar-icon add-user-icon" id="addUserIcon" title="添加成员"></button>
                 <span class="current-user-name" id="currentUserName">张三</span>
-                <button class="top-bar-icon search-icon" id="searchIcon" title="搜索"></button>
+                <button class="top-bar-icon search-icon" id="searchIcon" title="搜索">
+                    <svg t="1758758081615" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="10718" width="200" height="200">
+                        <path d="M777.1136 704.7168l84.1216 84.1216a51.2 51.2 0 1 1-72.3968 72.3968l-84.1216-84.1216c-135.296 100.3008-327.2192 89.1136-449.8944-33.536-134.9632-134.9632-134.9632-353.792 0-488.7552 134.9632-134.9632 353.792-134.9632 488.7552 0 122.6496 122.6752 133.8368 314.5984 33.536 449.8944z m-87.8336-15.4368c104.96-104.96 104.96-275.2 0-380.16s-275.2-104.96-380.16 0-104.96 275.2 0 380.16 275.2 104.96 380.16 0z" fill="#ffffff" p-id="10719"></path>
+                    </svg>
+                </button>
             </div>
         </div>
         
